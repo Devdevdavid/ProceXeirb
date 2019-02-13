@@ -1,0 +1,15 @@
+
+asm_to_hex_manager/asm_to_hex_manager
+asm_to_hex_manager/*.asm
+asm_to_hex_manager/*.bin
+
+compiler/compiler
+compiler/*.asm
+compiler/*.bag
+
+data_transfer_manager/data_transfer_manager
+
+*.out
+
+*.gch
+doc/Conception-de-circuit-numériques-BESSE-_-JOUBERT.pdf

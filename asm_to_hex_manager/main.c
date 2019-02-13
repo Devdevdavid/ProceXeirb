@@ -3,6 +3,7 @@
  *  With the kind collaboration of : Julien BESSE
  *  Date : 04/04/2018
  *  OS : Linux
+ *  Updated by David DEVANT on 2019-02-02
  *                            _/_/      _/_/_/  _/      _/ 
  *                         _/    _/  _/        _/_/  _/_/  
  *                        _/_/_/_/    _/_/    _/  _/  _/   
@@ -40,6 +41,15 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/file.h>
+
+/** Compiler option: does the output file be created as binary ? */
+#define IS_BINARY_MODE
+
+#define LINE_BUFFER_SIZE  20    // Max Length of a ASM line
+#define INST_BIT_LENGTH   5     // Bits allocated to Instructions
+#define VALUE_BIT_LENGTH  20    // Bits allocated to Value
+
+#define MAX_RAM_SIZE      8192  // Maximum RAM size
 
 
 // list of instructions available
@@ -83,171 +93,182 @@
 //intern shit
 #define VAR 0x69
 
-#define INSTR_HEX_LENGTH 3
-#define ADD_HEX_LENGTH 5
-#define VAR_HEX_LENGTH 7
+int decodeInstruction(char * instruction) {
+  if (!strcmp(instruction, "NOR")) return NOR;
+  if (!strcmp(instruction, "LOR")) return LOR;
+  if (!strcmp(instruction, "AND")) return AND;
+  if (!strcmp(instruction, "XOR")) return XOR;
+  if (!strcmp(instruction, "ADD")) return ADD;
+  if (!strcmp(instruction, "SUB")) return SUB;
+  if (!strcmp(instruction, "DIV")) return DIV;
+  if (!strcmp(instruction, "MUL")) return MUL;
+  if (!strcmp(instruction, "MOD")) return MOD;
+  if (!strcmp(instruction, "FAD")) return FAD;
+  if (!strcmp(instruction, "FDI")) return FDI;
+  if (!strcmp(instruction, "FMU")) return FMU;
+  if (!strcmp(instruction, "FTI")) return FTI;
+  if (!strcmp(instruction, "ITF")) return ITF;
+  if (!strcmp(instruction, "STA")) return STA;
+  if (!strcmp(instruction, "JCC")) return JCC;
+  if (!strcmp(instruction, "JMP")) return JMP;
+  if (!strcmp(instruction, "GET")) return GET;
+  if (!strcmp(instruction, "TGT")) return TGT;
+  if (!strcmp(instruction, "TLT")) return TLT;
+  if (!strcmp(instruction, "TEQ")) return TEQ;
+  if (!strcmp(instruction, "GAD")) return GAD;
+  if (!strcmp(instruction, "SAD")) return SAD;
+  if (!strcmp(instruction, "VAR")) return VAR;
+  return -1;
+}
 
-#define INSTR_BIN_LENGTH 5
-#define VALUE_BIN_LENGTH 20
+/**
+ * Place the two char pointer at the beginning of the instruction and the value
+ * @param  line     Input String (can be modified)
+ * @param  instStr  Pointer on Instruction
+ * @param  valueStr Pointer on Value
+ * @return          0: OK, -1: Error
+ */
+int splitLineArgs(char * line, char ** instStr, char ** valueStr) 
+{
+  int lineLength;
 
-enum FSM {
-  INSTRUCT,
-  SPACE,
-  VALUE,
-  EOL
-};
+  lineLength = strlen(line);
 
-int decode_instruction(char * instruction) {
-  if( ! strcmp(instruction, "NOR") ) return NOR;
-  if( ! strcmp(instruction, "LOR") ) return LOR;
-  if( ! strcmp(instruction, "AND") ) return AND;
-  if( ! strcmp(instruction, "XOR") ) return XOR;
-  if( ! strcmp(instruction, "ADD") ) return ADD;
-  if( ! strcmp(instruction, "SUB") ) return SUB;
-  if( ! strcmp(instruction, "DIV") ) return DIV;
-  if( ! strcmp(instruction, "MUL") ) return MUL;
-  if( ! strcmp(instruction, "MOD") ) return MOD;
-  if( ! strcmp(instruction, "FAD") ) return FAD;
-  if( ! strcmp(instruction, "FDI") ) return FDI;
-  if( ! strcmp(instruction, "FMU") ) return FMU;
-  if( ! strcmp(instruction, "FTI") ) return FTI;
-  if( ! strcmp(instruction, "ITF") ) return ITF;
-  if( ! strcmp(instruction, "STA") ) return STA;
-  if( ! strcmp(instruction, "JCC") ) return JCC;
-  if( ! strcmp(instruction, "JMP") ) return JMP;
-  if( ! strcmp(instruction, "GET") ) return GET;
-  if( ! strcmp(instruction, "TGT") ) return TGT;
-  if( ! strcmp(instruction, "TLT") ) return TLT;
-  if( ! strcmp(instruction, "TEQ") ) return TEQ;
-  if( ! strcmp(instruction, "GAD") ) return GAD;
-  if( ! strcmp(instruction, "SAD") ) return SAD;
-  if( ! strcmp(instruction, "VAR") ) return VAR;
-  if( strlen( instruction ) >= 1 ) {
-    fprintf(stderr, "%s : Instruction inconnue\n", instruction);
-    exit(1);
+  // Line should at least contains 2 char + a space between
+  if (lineLength < 3) {
+    return -1;
   }
+
+  // Instruction start at the beginning of the line
+  (*instStr) = &line[0];
+
+  // Init pointer
+  (*valueStr) = 0;
+
+  for (int index = 0; index < lineLength; ++index) {
+    if (line[index] == ' ') {
+      // Replace by a 0
+      line[index] = '\0';
+
+      // Start the value str
+      if (index < lineLength - 1) {
+        (*valueStr) = &line[index + 1];
+      }
+    }
+
+    // Remove end of line characters
+    if ((line[index] == '\n') || (line[index] == '\r')) {
+
+      // Replace by a 0
+      line[index] = '\0';
+    }
+  }
+
+  // Did we detect the value ?
+  if ((*valueStr) == 0) {
+    return -1;
+  }
+
   return 0;
 }
 
 int main(int argc, char const *argv[])
 {
+  int lineCounter = 0;
+  FILE * asmFile = NULL;
+  FILE * binFile = NULL;
+
+  char lineBuffer[LINE_BUFFER_SIZE];
+  char * instStr;
+  char * valueStr;
+
+  int instCode;
+  int value;
+  int output;
+
+  const int outputMaxValue = (int) pow(2, VALUE_BIT_LENGTH + INST_BIT_LENGTH) - 1;
+
   // Opening of the files
-  if (argc <= 1) {
+  if (argc <= 2) {
     printf("You should use this program with the following arguments :\n");
-    printf("\t %s input_file target_serial_port \n", argv[0]);
-    printf("\t example : %s input_file.asm outputfile.bytes \n", argv[0]);
+    printf("\t %s <input_file> <output_file> \n", argv[0]);
     return -1;
   } 
 
-  printf("Beginning of the program\n");
-
-  const char * input_file = argv[1];
-  int in_f = open(input_file,  O_RDONLY);
-
-  if (in_f <= 0) {
-    printf("Error %d opening %s: %s \n", errno, input_file, strerror(errno));
+  /** Open files */
+  asmFile = fopen(argv[1], "r");
+  if (asmFile == NULL) {
+    printf("Unable to open input file\n");
+    return -1;
+  }
+  binFile = fopen(argv[2], "w");
+  if (binFile == NULL) {
+    printf("Unable to open output file\n");
     return -1;
   }
 
-  flock(in_f, LOCK_EX);  // Lock the file . . .
+  // Loop on all lines
+  while (1) {
+    lineCounter++;
 
-  const char * output_file = argv[2];
-  remove(output_file);
-  int out_f = open(output_file,  O_WRONLY | O_CREAT);
-
-  if (out_f <= 0) {
-    printf ("error %d opening %s: %s \n", errno, output_file, strerror (errno));
-    return -1;
-  }
-  flock(out_f, LOCK_EX);  // Lock the file . . .
-
-  // Parser
-  int state = INSTRUCT;
-  char instruction[3] = "";
-  char value[VAR_HEX_LENGTH + 2] = "";
-  char temp = ' ';
-
-  int ins = 0;
-  int val = 0;
-
-  uint32_t output = 0;
-  char outputHex[5] = "";
-
-  int n = 1;
-  int counter = 0;
-  char file_read[1000000] = "";
-
-  while (n > 0) {
-    switch(state) {
-      case INSTRUCT:
-        strcpy(instruction, "");
-        ins = -1;
-        n = read(in_f, instruction, INSTR_HEX_LENGTH);
-        ins = decode_instruction(instruction);
-        sprintf(file_read, "%s%s", file_read, instruction);
-
-        state = SPACE;
+    // Get a line
+    if (fgets(lineBuffer, LINE_BUFFER_SIZE, asmFile) == NULL) {
+      if (feof(asmFile)) {
         break;
-      case SPACE:
-        n = read(in_f, &temp, 1);
-        sprintf(file_read, "%s%c", file_read, temp);
-
-        state = VALUE;
-        break;
-      case VALUE:
-        strcpy(value, "");
-        if (ins != VAR) {
-          n = read (in_f, value, ADD_HEX_LENGTH);
-          sprintf(file_read, "%s%s", file_read, value);
-
-          //value[n] = 0;
-        } else {
-          n = read (in_f, value, VAR_HEX_LENGTH);
-          sprintf(file_read, "%s%s", file_read, value);
-
-          //value[n] = 0;
-        }
-
-        state = EOL;
-        break;
-      case EOL:
-        n = read (in_f, &temp, 1);
-        if( temp == '\n') {
-          sprintf ( file_read, "%s\n", file_read );
-
-          val = (int)strtol(value, NULL, 16);;
-
-          //overflow security
-          val = val & ((int)pow(2,VALUE_BIN_LENGTH + INSTR_BIN_LENGTH) - 1);
-
-          if(ins != VAR) {
-            output = ins << VALUE_BIN_LENGTH | val;
-          } else {
-            output = val;
-          }
-
-          //printf( "instruction %d:\t %07x\t(hex)\n", 
-          //        counter, 
-          //        output );
-          sprintf( outputHex, "%07x\n", output);
-          write( out_f, outputHex, strlen(outputHex));
-          counter ++;
-          state = INSTRUCT;
-        }
-        break;
-      default:  
-      break;
+      }
+      printf("Can't read line %d of ASM file\n", lineCounter);
+      return -1;
     }
+
+    // Split arguments
+    if (splitLineArgs(lineBuffer, &instStr, &valueStr) == -1) {
+      printf("Can't split line %d of ASM file\n", lineCounter);
+      return -1;
+    }
+
+    // Convert data
+    instCode = decodeInstruction(instStr);
+    if (instCode == -1) {
+      printf("Unknown instruction on line %d : \"%s\"\n", lineCounter, instStr);
+      return -1;
+    }
+    value = (int) strtol(valueStr, NULL, 16);
+    
+    // VAR are not managed the same way
+    if (instCode == VAR) {
+      output = value;
+    } else {
+      output = (instCode << VALUE_BIT_LENGTH) | value;
+    }
+
+    if (output > outputMaxValue) {
+      printf("Too big binary value on line %d : 0x%X (max: 0x%X)\n", lineCounter, value, outputMaxValue);
+      return -1;
+    }
+
+    // Write in output file
+#ifdef IS_BINARY_MODE
+    fwrite(&output, sizeof(output), 1, binFile);
+#else
+    snprintf(lineBuffer, LINE_BUFFER_SIZE, "%07x\n", output);
+    fputs(lineBuffer, binFile);
+#endif
   }
-  //printf("Fichier lu: \n%s\n", file_read);
 
-  
-  printf("End of program\n");
+  printf("%d instructions written\n", lineCounter - 1);
 
-  flock(in_f, LOCK_UN);
-  flock(out_f, LOCK_UN);
-  close(in_f);
-  close(out_f);
+  // Complete file by 0 if in binary mode
+#ifdef IS_BINARY_MODE
+  printf("Completing with zeros to reach %d bytes...\n", MAX_RAM_SIZE);
+  output = 0;
+  while (lineCounter++ < MAX_RAM_SIZE) {
+    fwrite(&output, sizeof(output), 1, binFile);
+  }
+  printf("Work done !\n");
+#endif 
+
+  fclose(asmFile);
+  fclose(binFile);
   
   return 0;
 }

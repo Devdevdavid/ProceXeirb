@@ -1,7 +1,0 @@
-entier base;
-entier adresse;
-entier ad;
-base = 567;
-adresse = 640 * -1;
-adresse = ad + 3.000399800;
-adresse = adresse + base;
