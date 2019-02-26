@@ -5,6 +5,7 @@ use IEEE.numeric_std.all;
 
  -- Main Author : Julien BESSE
  -- With the kind collaboration of : Pierre JOUBERT
+ -- Not used anymore since we use a Vivado-generated RAM
 
 entity RAM is
     generic (

@@ -39,10 +39,10 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 
-#define RAM_SIZE 8192
-#define CHUNK_SIZE 64 // Size of each chunk sent to FPGA, bigger is slower, but if it's too low, data will get lost
+#define MAX_RAM_SIZE  8192
+#define CHUNK_SIZE    64 // Size of each chunk sent to FPGA, bigger is slower, but if it's too low, data will get lost
 
-int set_interface_attribs (int fd, int speed, int parity) {
+int set_interface_attribs(int fd, int speed, int parity) {
   struct termios tty;
   memset (&tty, 0, sizeof tty);
   if (tcgetattr (fd, &tty) != 0) {
@@ -79,7 +79,7 @@ int set_interface_attribs (int fd, int speed, int parity) {
   return 0;
 }
 
-void set_blocking (int fd, int should_block) {
+void set_blocking(int fd, int should_block) {
   struct termios tty;
   memset (&tty, 0, sizeof tty);
   if (tcgetattr (fd, &tty) != 0) {
@@ -96,77 +96,74 @@ void set_blocking (int fd, int should_block) {
 
 int main(int argc, char const *argv[])
 {
+  int sizeRead;
+  int32_t buffer[CHUNK_SIZE];
+  int binFileLen;
+  int byteSentCount = 0;
+  int comPort = 2, binFile;
 
-  int32_t data [RAM_SIZE] = {0};
-
-  if(argc <= 1) {
+  if (argc <= 2) {
     printf("You should use this program with the following arguments :\n");
-    printf("\t ./dtm input_file target_serial_port \n");
-    printf("\t example : ./dtm my_program.bytes /dev/ttyUSB0 \n");
+    printf("\t %s <input_file> <target_serial_port> \n", argv[0]);
     return -1;
   } 
 
-  const char * comm_port = argv[2];
-  int fd = open(comm_port,  O_RDWR | O_NOCTTY | O_SYNC);
-
-  if (fd < 0) {
-    printf ("error %d opening %s: %s \n", errno, comm_port, strerror (errno));
+  /** Open Serial Port */
+  comPort = open(argv[2],  O_RDWR | O_NOCTTY | O_SYNC);
+  if (comPort < 0) {
+    printf ("error %d opening %s: %s \n", errno, argv[2], strerror(errno));
     return -1;
   }
 
-  const char * input_file = argv[1];
-  int in_f = open(input_file,  O_RDWR);
-
-  if (in_f < 0) {
-    printf ("error %d opening %s: %s \n", errno, input_file, strerror (errno));
+  /** Open input binary file  */
+  binFile = open(argv[1],  O_RDWR);
+  if (binFile < 0) {
+    printf ("Error %d opening %s: %s \n", errno, argv[1], strerror(errno));
     return -1;
   }
 
-  set_interface_attribs (fd, B115200, 0);  // set speed to 115,200 bps, 8n1 (no parity)
-  set_blocking (fd, 0);                    // set no blocking
+  /** Get binary file length */
+  binFileLen = lseek(binFile, 0L, SEEK_END);
+  lseek(binFile, 0L, SEEK_SET);
+
+  /** Check the size of the binary */
+  if (binFileLen > MAX_RAM_SIZE) {
+    printf ("The binary file is too large for RAM size: %d (max: %d)\n", binFileLen, MAX_RAM_SIZE);
+    return -1;
+  }
+
+  /** Configure serial port */
+  set_interface_attribs(comPort, B115200, 0);  // set speed to 115,200 bps, 8n1 (no parity)
+  set_blocking(comPort, 0);                    // set no blocking
   
-  char temp = ' ';
-  int32_t value = 0;
-  unsigned int i = 0;
-  int n = 1;
-  char buffer[10] = "";
-  strcpy(buffer, "0x");
-
-  printf("Reading data from the file ...\n");
-
-  while(n > 0) { 
-    n = read (in_f, &temp, sizeof temp);
-    switch(temp) {
-      case '\n':
-        value = (uint32_t)strtol(buffer, NULL, 0);
-        //if(value > 0) {
-          data[i++] = value;
-        //}
-        strcpy(buffer,  "0x");
-        break;
-      default:
-        sprintf(buffer, "%s%c", buffer, temp);
-        break;
+  printf("Chunk size: %d bytes\n", CHUNK_SIZE);
+  printf("Sending data to the target...   0%%");
+  do {
+    /** Read from binary file */
+    sizeRead = read(binFile, buffer, CHUNK_SIZE);
+    if (sizeRead == -1) {
+      printf("Coun't read from binary file: %s\n", strerror(errno));
+      return -1;
     }
-  }
-  
-  printf("Sending data to the target ...  00%%");
-  int ichunk;
-  for (ichunk = 0; ichunk < CHUNK_SIZE; ichunk++) {
-    write (fd, data + ichunk * (RAM_SIZE / CHUNK_SIZE), sizeof(int32_t) * (RAM_SIZE / CHUNK_SIZE));
-    printf("\b\b\b\b%3d%%", (100*ichunk)/CHUNK_SIZE);
-    fflush(stdout);
-    //sleep(0.01);
-  }
-  printf("\b\b\b\b\b 100 %%\nDone .\n");
 
-  /*
-  DEBUG PART - when the target is in broadcast
-  n = read (fd, data, sizeof(int32_t) * RAM_SIZE);  // read up to 100 characters if ready to read
-  for(int i = 0; i < RAM_SIZE; ++i) {
-    printf("%d\n", data[i] );
-  } */
+    /** Write what was read on the serial port */
+    if (write(comPort, buffer, sizeRead) == -1) {
+      printf("Coun't write to serial port: %s\n", strerror(errno));
+      return -1;
+    }
+
+    /** Display loading bar */
+    byteSentCount += sizeRead;
+    printf("\b\b\b\b%3d%%", (100 * byteSentCount) / binFileLen);
+    fflush(stdout);
+
+  } while (byteSentCount < binFileLen);
   
+  printf("\b\b\b\b\b 100%%\nDone (%d bytes sent).\n", byteSentCount);
+
+  close(binFile);
+  close(comPort);
+
   return 0;
 }
 

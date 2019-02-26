@@ -2,7 +2,7 @@ entier a;
 entier b;
 a = 3;
 b = 0;
-afficher_LCD(0);
+afficher_LC(0);
 
 si (a == 1) 
   afficher_LCD(1);

@@ -15,9 +15,21 @@ use work.fixed_generic_pkg_mod.all; -- Fix for Vivado
 
 ### CPU
 
+- Ajouter une Call Stack
+- Ajouter des interruptions
+- Ajouter un timer
+
 ### VGA
+
+### Programmateur
 
 ### Toolchain
 
+- Ajouter des fonctions au Baguet
+- Simulateur de baguet
+
 ## Liste des tâches en cours
+
+- Faire le ménage dans les bag-tools
+- Faire un systeme de log pour bag-compiler
 
