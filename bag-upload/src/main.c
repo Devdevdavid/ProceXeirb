@@ -96,29 +96,54 @@ void set_blocking(int fd, int should_block) {
 
 int main(int argc, char const *argv[])
 {
+  int index;
+  const char * inputFilePath = NULL;
+  const char * portStr = NULL;
   int sizeRead;
   int32_t buffer[CHUNK_SIZE];
   int binFileLen;
   int byteSentCount = 0;
   int comPort = 2, binFile;
 
-  if (argc <= 2) {
+  // Arg check
+  if (argc != (3 + 1)) {
     printf("You should use this program with the following arguments :\n");
-    printf("\t %s <input_file> <target_serial_port> \n", argv[0]);
+    printf("\t ./bag-compiler <file.bytes> -p <port>\n");
     return -1;
   } 
 
+  // Check all argument
+  for (index = 1; index < argc; index++) {
+    if (!strncmp(argv[index], "-p", 2)) {
+      if (argc - index > 1) {
+        // The next argument is an output file path
+        portStr = argv[++index];
+      } else {
+        fprintf(stderr, "-p error: argument missing\n");
+        return -1;
+      }
+    } else {
+      // This is an input file
+      if (inputFilePath == NULL) {
+        inputFilePath = argv[index];
+      } else {
+        fprintf(stderr, "Too much input files\n");
+        return -1;
+      }
+    }
+  }
+
   /** Open Serial Port */
-  comPort = open(argv[2],  O_RDWR | O_NOCTTY | O_SYNC);
+  comPort = open(portStr,  O_RDWR | O_NOCTTY | O_SYNC);
   if (comPort < 0) {
-    printf ("error %d opening %s: %s \n", errno, argv[2], strerror(errno));
+    printf ("error %d opening %s: %s \n", errno, portStr, strerror(errno));
     return -1;
   }
 
   /** Open input binary file  */
-  binFile = open(argv[1],  O_RDWR);
+  binFile = open(inputFilePath,  O_RDWR);
   if (binFile < 0) {
-    printf ("Error %d opening %s: %s \n", errno, argv[1], strerror(errno));
+    printf ("Error %d opening %s: %s \n", errno, inputFilePath, strerror(errno));
     return -1;
   }
 

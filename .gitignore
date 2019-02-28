@@ -1,15 +1,18 @@
+bag-compiler/bin/bag-compiler
+bag-objcopy/bin/bag-objcopy
+bag-upload/bin/bag-upload
 
-asm_to_hex_manager/asm_to_hex_manager
-asm_to_hex_manager/*.asm
-asm_to_hex_manager/*.bin
+bag-compiler/obj/*
+bag-objcopy/obj/*
+bag-upload/obj/*
 
 compiler/compiler
 compiler/*.asm
 compiler/*.bag
 
-data_transfer_manager/data_transfer_manager
+*/*.bytes
+*/*.asm
+main.o
+*/*.gch
 
-*.out
-
-*.gch
 doc/Conception-de-circuit-numériques-BESSE-_-JOUBERT.pdf

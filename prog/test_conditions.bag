@@ -1,8 +1,9 @@
 entier a;
 entier b;
+entier c;
 a = 3;
 b = 0;
-afficher_LC(0);
+afficher_LCD(0);
 
 si (a == 1) 
   afficher_LCD(1);

@@ -9,7 +9,7 @@ BINTARG         = $(BINDIR)/$(TARGET)
 CC				= gcc
 LINKER		 	= gcc -o
 
-CFLAGS          = -std=c99 -Wall
+CFLAGS          = -std=c99 -Wall -D IS_BINARY_MODE
 LFLAGS          = 
 LIBS            = 
 

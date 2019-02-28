@@ -26,6 +26,8 @@
  *    The goal of this program is to convert a program written in language 
  *  assembly to hexa, ready to put in the RAM of the processor we have created.
  * Usage: ./asm input_file.asm outputfile.bytes
+ * 
+ * Compiler option : IS_BINARY_MODE
  ******************************************************************************/
 
 #include <errno.h>
@@ -41,9 +43,6 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/file.h>
-
-/** Compiler option: does the output file be created as binary ? */
-#define IS_BINARY_MODE
 
 #define LINE_BUFFER_SIZE  20    // Max Length of a ASM line
 #define INST_BIT_LENGTH   5     // Bits allocated to Instructions
@@ -118,7 +117,7 @@ int decodeInstruction(char * instruction) {
   if (!strcmp(instruction, "GAD")) return GAD;
   if (!strcmp(instruction, "SAD")) return SAD;
   if (!strcmp(instruction, "VAR")) return VAR;
-  return -1;
+  return 1;
 }
 
 /**
@@ -136,7 +135,7 @@ int splitLineArgs(char * line, char ** instStr, char ** valueStr)
 
   // Line should at least contains 2 char + a space between
   if (lineLength < 3) {
-    return -1;
+    return 1;
   }
 
   // Instruction start at the beginning of the line
@@ -166,7 +165,7 @@ int splitLineArgs(char * line, char ** instStr, char ** valueStr)
 
   // Did we detect the value ?
   if ((*valueStr) == 0) {
-    return -1;
+    return 1;
   }
 
   return 0;
@@ -174,7 +173,10 @@ int splitLineArgs(char * line, char ** instStr, char ** valueStr)
 
 int main(int argc, char const *argv[])
 {
+  int index;
   int lineCounter = 0;
+  const char * inputFilePath;
+  const char * outputFilePath;
   FILE * asmFile = NULL;
   FILE * binFile = NULL;
 
@@ -188,23 +190,47 @@ int main(int argc, char const *argv[])
 
   const int outputMaxValue = (int) pow(2, VALUE_BIT_LENGTH + INST_BIT_LENGTH) - 1;
 
-  // Opening of the files
-  if (argc <= 2) {
+  // Arg check
+  if (argc != (4 + 1)) {
     printf("You should use this program with the following arguments :\n");
-    printf("\t %s <input_file> <output_file> \n", argv[0]);
-    return -1;
+    printf("\t ./bag-objcopy -i <file.asm> -o <file.bytes>\n");
+    return 1;
   } 
 
+  // Check all argument
+  for (index = 1; index < argc; index++) {
+    if (!strncmp(argv[index], "-i", 2)) {
+      if (argc - index > 1) {
+        // The next argument is an output file path
+        inputFilePath = argv[++index];
+      } else {
+        fprintf(stderr, "-i error: argument missing\n");
+        return 1;
+      }
+    } else if (!strncmp(argv[index], "-o", 2)) {
+      if (argc - index > 1) {
+        // The next argument is an output file path
+        outputFilePath = argv[++index];
+      } else {
+        fprintf(stderr, "-o error: argument missing\n");
+        return 1;
+      }
+    } else {
+      fprintf(stderr, "Argument error: \"%s\"\n", argv[index]);
+      return 1;
+    }
+  }
+
   /** Open files */
-  asmFile = fopen(argv[1], "r");
+  asmFile = fopen(inputFilePath, "r");
   if (asmFile == NULL) {
     printf("Unable to open input file\n");
-    return -1;
+    return 1;
   }
-  binFile = fopen(argv[2], "w");
+  binFile = fopen(outputFilePath, "w");
   if (binFile == NULL) {
     printf("Unable to open output file\n");
-    return -1;
+    return 1;
   }
 
   // Loop on all lines
@@ -217,20 +243,20 @@ int main(int argc, char const *argv[])
         break;
       }
       printf("Can't read line %d of ASM file\n", lineCounter);
-      return -1;
+      return 1;
     }
 
     // Split arguments
     if (splitLineArgs(lineBuffer, &instStr, &valueStr) == -1) {
       printf("Can't split line %d of ASM file\n", lineCounter);
-      return -1;
+      return 1;
     }
 
     // Convert data
     instCode = decodeInstruction(instStr);
     if (instCode == -1) {
       printf("Unknown instruction on line %d : \"%s\"\n", lineCounter, instStr);
-      return -1;
+      return 1;
     }
     value = (int) strtol(valueStr, NULL, 16);
     
@@ -243,7 +269,7 @@ int main(int argc, char const *argv[])
 
     if (output > outputMaxValue) {
       printf("Too big binary value on line %d : 0x%X (max: 0x%X)\n", lineCounter, value, outputMaxValue);
-      return -1;
+      return 1;
     }
 
     // Write in output file

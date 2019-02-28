@@ -3,74 +3,25 @@
  *  With the kind collaboration of : Julien BESSE
  *  Date : 04/04/2018
  *  OS : Linux
- *               ____ ___  __  __ ____ ___ _     _____ ____
- *              / ___| _ \|  \/  |  _ \_ _| |   | ____|  _ \
- *             | |  | | | | |\/| | |_) | || |   |  _| | |_) |
- *             | |___ |_| | |  | |  __/| || |___| |___|  _ < 
- *              \____|___/|_|  |_|_|  |___|_____|_____|_| \_\
- *
- *
- *
  *    The goal of this program is to compile a code written in language 
  *  baguette to assembly.
- * Usage: ./compiler input_file.bag outputfile.asm
  ******************************************************************************/
 
-#include <errno.h>
-#include <fcntl.h>
 #include <fstream>
 #include <iostream>
-#include <iterator>
-#include <map>
 #include <stdint.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string>
-#include <termios.h>
 #include <unistd.h>
 #include <vector>
 #include <stack>
 
-#include <sys/types.h>
-#include <sys/stat.h>
-
 #include "instruction.hpp"
 #include "variable.hpp"
 
-#define MAX_RAM 8192
+#define MAX_RAM             8192
+#define DEFAULT_FILE_PERM   (S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH)
 
-/* list of instructions available
-  //locical operands
-  LOR // logical OR
-  XOR
-  AND
-  NOR
-  //mathematical operands
-  ADD
-  SUB
-  DIV
-  MUL
-  MOD //modulo
-  //float operands
-  FAD // addition 
-  FDI //division
-  FMU //multiply
-
-  //UTILS
-  STA
-  JCC
-  JMP //jump
-  VAR //declaration of a variable
-
-  //TESTS
-  TGT //greater than
-  TLT //lower than
-  TEQ //equal
-
-  //Casts
-  FTI //float to int 
-  ITF //int to float
-*/
+#define LOG_ERROR(str)  std::cerr << "\033[1;31m[ERROR] " << str << "\033[0m" << std::endl; ++nbErrorDetected;
+#define LOG_WARNING(str)  std::cerr << "\033[1;33m[WARN ] " << str << "\033[0m" << std::endl; ++nbWarningsDetected;
 
 bool is_declared( std::string name, std::vector<var> var_v) {
   for (unsigned int i = 0; i < var_v.size(); ++i) {
@@ -347,28 +298,53 @@ int word_occurence_count ( std::string const & str, std::string const &word) {
 
 int main(int argc, char const *argv[])
 {
-  //opening of the files
-  if(argc <= 1) {
+  int index;
+  const char * outputFilePath = NULL;
+  const char * inputFilePath = NULL;
+  int nbErrorDetected = 0;                // Number of error detected during compilation
+  int nbWarningsDetected = 0;             // Number of warning detected during compilation
+
+  // Arg check
+  if (argc != (3 + 1)) {
     printf("You should use this program with the following arguments :\n");
-    printf("\t ./compiler <file.bag> <file.asm> \n");
-    return -1;
+    printf("\t ./bag-compiler -o <file.asm> <file.bag>\n");
+    return 1;
   } 
 
-  const char * input_file = argv[1];
-  std::ifstream in_f( input_file );
-
+  // Check all argument
+  for (index = 1; index < argc; index++) {
+    if (!strncmp(argv[index], "-o", 2)) {
+      if (argc - index > 1) {
+        // The next argument is an output file path
+        outputFilePath = argv[++index];
+      } else {
+        fprintf(stderr, "-o error: argument missing\n");
+        return 1;
+      }
+    } else {
+      // This is an input file
+      if (inputFilePath == NULL) {
+        inputFilePath = argv[index];
+      } else {
+        fprintf(stderr, "Too much input files\n");
+        return 1;
+      }
+    }
+  }
+  
+  // Input file
+  std::ifstream in_f(inputFilePath);
   if (!in_f.is_open()) {
-    printf ("error %d opening %s: %s \n", errno, input_file, strerror (errno));
-    return -1;
+    fprintf(stderr, "Error %d opening input file %s: %s\n", errno, inputFilePath, strerror(errno));
+    return 1;
   }
 
-  const char * output_file = argv[2];
-  remove(output_file);
-  int out_f = open(output_file,  O_WRONLY | O_CREAT);
-
+  // Output file
+  remove(outputFilePath);
+  int out_f = open(outputFilePath,  O_WRONLY | O_CREAT, DEFAULT_FILE_PERM);
   if (out_f < 0) {
-    printf ("error %d opening %s: %s \n", errno, output_file, strerror (errno));
-    return -1;
+    fprintf(stderr, "Error %d opening output file %s: %s\n", errno, outputFilePath, strerror(errno));
+    return 1;
   }
 
   std::string line = "";
@@ -783,7 +759,7 @@ int main(int argc, char const *argv[])
 
       ins_v.push_back(ins);
     } else {
-      std::cerr << "\033[1;31mUnkown instruction: " << line << "\033[0m" << std::endl;
+      LOG_ERROR("Unkown instruction: " << line);
     }
   }
   
@@ -837,12 +813,11 @@ int main(int argc, char const *argv[])
     var_v[i].address = index_ram;
     index_ram++;
     
-    if ( word_occurence_count ( whole_file, var_v[i].name ) < 2) {
-      if ( !var_v[i].is_standard && var_v[i].value == 0) {
-        printf("Warning: unused variable: %s\n", var_v[i].name.c_str() );
+    if (word_occurence_count ( whole_file, var_v[i].name ) < 2) {
+      if (!var_v[i].is_standard && var_v[i].value == 0) {
+        LOG_WARNING("Unused variable \"" << var_v[i].name << "\"");
       }
     }
-
 
     //replacement of the variable name in the program with the address
     char temp1[30] = "";
@@ -852,30 +827,34 @@ int main(int argc, char const *argv[])
     whole_file = ReplaceAll(whole_file, std::string(temp1), std::string(temp2));
   }
 
-  //printf("\n\nFinal program : \n%s\n", whole_file.c_str() );
-  //whole_file = whole_file + "\n\n";
-  write( out_f, whole_file.c_str(), strlen(whole_file.c_str()));
+  write(out_f, whole_file.c_str(), strlen(whole_file.c_str()));
 
-  if ( conditions.size() < 0)
-    std::cerr << "\033[1;31mError: " << loops.size() * -1 << " more loop closed than open\033[0m" << std::endl;
-  if ( conditions.size() > 0)
-    std::cerr << "\033[1;31mError: " << loops.size() << " loop(s) has not been closed\033[0m" << std::endl;
-
-  if ( conditions.size() < 0)
-    std::cerr << "\033[1;31mError: " << conditions.size() * -1 << " more condition(s) closed than open\033[0m" << std::endl;
-  if ( conditions.size() > 0)
-    std::cerr << "\033[1;31mError: " << conditions.size() << " condition(s) has not been closed\033[0m" << std::endl;
-
-  if ( whole_file.find(":addr(")  != std::string::npos ) {
-    std::cerr << "\033[1;31mError: Variable not declared: " << find_between ( whole_file, ":addr(", ")") << "\033[0m" << std::endl;
+  if (loops.size() < 0) {
+    LOG_ERROR(loops.size() * -1 << " more loop closed than open");
+  }
+  if (loops.size() > 0) {
+    LOG_ERROR(loops.size() * -1 << " more loop closed than open");
+  }
+  if (conditions.size() < 0) {
+    LOG_ERROR(conditions.size() * -1 << " more condition closed than open");
+  }
+  if (conditions.size() > 0) {
+    LOG_ERROR(conditions.size() * -1 << " more condition closed than open");
+  }
+  if (whole_file.find(":addr(") != std::string::npos ) {
+    LOG_ERROR("Variable not declared: " << find_between(whole_file, ":addr(", ")"));
   }
 
-  printf("This program has a total of %d lines = %.2f%% of the maximum\n", 
-          index_ram,
-          ((float)index_ram*100.f)/ (float)MAX_RAM  );
+  if ((nbErrorDetected == 0) && (nbWarningsDetected == 0)) {
+    printf("This program has a total of %d lines = %.2f%% of the maximum\n", index_ram, ((float)index_ram * 100.f) / (float)MAX_RAM);
+  }
+
+  fprintf(stdout, "--- %d Error(s) --- %d Warning(s) ---\n", nbErrorDetected, nbWarningsDetected);
+
   in_f.close();
   close(out_f);
 
-  return 0;
+  // Return 0 only if no error
+  return (nbErrorDetected == 0) ? 0 : 1;
 }
 
