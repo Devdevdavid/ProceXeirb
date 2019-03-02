@@ -4,25 +4,6 @@
  *  Date : 04/04/2018
  *  OS : Linux
  *  Updated by David DEVANT on 2019-02-02
- *                            _/_/      _/_/_/  _/      _/ 
- *                         _/    _/  _/        _/_/  _/_/  
- *                        _/_/_/_/    _/_/    _/  _/  _/   
- *                       _/    _/        _/  _/      _/    
- *                      _/    _/  _/_/_/    _/      _/     
- *
- *                           _/_/_/_/_/    _/_/  
- *                              _/      _/    _/ 
- *                             _/      _/    _/  
- *                            _/      _/    _/   
- *                           _/        _/_/      
- *
- *                      _/    _/  _/_/_/_/  _/      _/
- *                     _/    _/  _/          _/  _/   
- *                    _/_/_/_/  _/_/_/        _/      
- *                   _/    _/  _/          _/  _/     
- *                  _/    _/  _/_/_/_/  _/      _/    
- *                                                    
- *
  *    The goal of this program is to convert a program written in language 
  *  assembly to hexa, ready to put in the RAM of the processor we have created.
  * Usage: ./asm input_file.asm outputfile.bytes
@@ -43,13 +24,13 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/file.h>
+#include <bag_devlib.h>
 
 #define LINE_BUFFER_SIZE  20    // Max Length of a ASM line
 #define INST_BIT_LENGTH   5     // Bits allocated to Instructions
 #define VALUE_BIT_LENGTH  20    // Bits allocated to Value
 
 #define MAX_RAM_SIZE      8192  // Maximum RAM size
-
 
 // list of instructions available
 //locical operands
@@ -192,7 +173,7 @@ int main(int argc, char const *argv[])
 
   // Arg check
   if (argc != (4 + 1)) {
-    printf("You should use this program with the following arguments :\n");
+    printf("ou should use this program with the following arguments :\n");
     printf("\t ./bag-objcopy -i <file.asm> -o <file.bytes>\n");
     return 1;
   } 

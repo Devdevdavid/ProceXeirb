@@ -13,15 +13,20 @@
 #include <unistd.h>
 #include <vector>
 #include <stack>
+#include <sys/time.h>
 
 #include "instruction.hpp"
 #include "variable.hpp"
+//#include <bag_devlib.h>
 
 #define MAX_RAM             8192
 #define DEFAULT_FILE_PERM   (S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH)
 
-#define LOG_ERROR(str)  std::cerr << "\033[1;31m[ERROR] " << str << "\033[0m" << std::endl; ++nbErrorDetected;
-#define LOG_WARNING(str)  std::cerr << "\033[1;33m[WARN ] " << str << "\033[0m" << std::endl; ++nbWarningsDetected;
+// Prototype
+void print_build_finished(struct timeval startTime, int nbError, int nbWarnings);
+
+#define LOG_ERROR(...)  //std::cerr << "\033[1;31m[ERROR] " << str << "\033[0m" << std::endl; ++nbErrorDetected;
+#define LOG_WARNING(...)  //std::cerr << "\033[1;33m[WARN ] " << str << "\033[0m" << std::endl; ++nbWarningsDetected;
 
 bool is_declared( std::string name, std::vector<var> var_v) {
   for (unsigned int i = 0; i < var_v.size(); ++i) {
@@ -298,6 +303,7 @@ int word_occurence_count ( std::string const & str, std::string const &word) {
 
 int main(int argc, char const *argv[])
 {
+  struct timeval startTime;
   int index;
   const char * outputFilePath = NULL;
   const char * inputFilePath = NULL;
@@ -309,7 +315,7 @@ int main(int argc, char const *argv[])
     printf("You should use this program with the following arguments :\n");
     printf("\t ./bag-compiler -o <file.asm> <file.bag>\n");
     return 1;
-  } 
+  }
 
   // Check all argument
   for (index = 1; index < argc; index++) {
@@ -331,6 +337,9 @@ int main(int argc, char const *argv[])
       }
     }
   }
+
+  // Save start time
+  gettimeofday(&startTime, NULL);
   
   // Input file
   std::ifstream in_f(inputFilePath);
@@ -759,7 +768,7 @@ int main(int argc, char const *argv[])
 
       ins_v.push_back(ins);
     } else {
-      LOG_ERROR("Unkown instruction: " << line);
+      LOG_ERROR("Unkown instruction: %s", line.c_str());
     }
   }
   
@@ -815,7 +824,7 @@ int main(int argc, char const *argv[])
     
     if (word_occurence_count ( whole_file, var_v[i].name ) < 2) {
       if (!var_v[i].is_standard && var_v[i].value == 0) {
-        LOG_WARNING("Unused variable \"" << var_v[i].name << "\"");
+        LOG_WARNING("Unused variable \"%s\"", var_v[i].name.c_str());
       }
     }
 
@@ -830,27 +839,27 @@ int main(int argc, char const *argv[])
   write(out_f, whole_file.c_str(), strlen(whole_file.c_str()));
 
   if (loops.size() < 0) {
-    LOG_ERROR(loops.size() * -1 << " more loop closed than open");
+    LOG_ERROR("%d more loop closed than open", loops.size() * -1);
   }
   if (loops.size() > 0) {
-    LOG_ERROR(loops.size() * -1 << " more loop closed than open");
+    LOG_ERROR("%d more loop closed than open", loops.size() * -1);
   }
   if (conditions.size() < 0) {
-    LOG_ERROR(conditions.size() * -1 << " more condition closed than open");
+    LOG_ERROR("%d more condition closed than open", conditions.size() * -1);
   }
   if (conditions.size() > 0) {
-    LOG_ERROR(conditions.size() * -1 << " more condition closed than open");
+    LOG_ERROR("%d more condition closed than open", conditions.size() * -1);
   }
   if (whole_file.find(":addr(") != std::string::npos ) {
-    LOG_ERROR("Variable not declared: " << find_between(whole_file, ":addr(", ")"));
+    LOG_ERROR("Variable not declared: %s", find_between(whole_file, ":addr(", ")").c_str());
   }
 
-  if ((nbErrorDetected == 0) && (nbWarningsDetected == 0)) {
-    printf("This program has a total of %d lines = %.2f%% of the maximum\n", index_ram, ((float)index_ram * 100.f) / (float)MAX_RAM);
-  }
+  //if ((nbErrorDetected == 0) && (nbWarningsDetected == 0)) {
+    //printf("This program has a total of %d lines = %.2f%% of the maximum\n", index_ram, ((float)index_ram * 100.f) / (float)MAX_RAM);
+  //}
 
-  fprintf(stdout, "--- %d Error(s) --- %d Warning(s) ---\n", nbErrorDetected, nbWarningsDetected);
-
+  print_build_finished(startTime, nbErrorDetected, nbWarningsDetected);
+  
   in_f.close();
   close(out_f);
 
@@ -858,3 +867,31 @@ int main(int argc, char const *argv[])
   return (nbErrorDetected == 0) ? 0 : 1;
 }
 
+/**
+ * @brief Print the ending line of the compiler 
+ * 
+ * @param startTime
+ * @param nbError 
+ * @param nbWarnings 
+ */
+void print_build_finished(struct timeval startTime, int nbError, int nbWarnings)
+{
+  char curTimeBuffer[80];
+  time_t curTime;
+  struct timeval endTime;
+  int elapsedTimeSec;
+  int elapsedTimeMs;
+
+  // Save end time
+  gettimeofday(&endTime, NULL);
+  time(&curTime);
+
+  // Compute time variable
+  elapsedTimeSec = endTime.tv_sec - startTime.tv_sec;
+  elapsedTimeMs = (endTime.tv_usec - startTime.tv_usec) / 1000;
+
+  strftime(curTimeBuffer, sizeof(curTimeBuffer), "%H:%M:%S", localtime(&curTime));
+
+  fprintf(stdout, "%s Build Finished. %d errors, %d warnings. (took %ds.%03dms)\n",
+    curTimeBuffer, nbError, nbWarnings, elapsedTimeSec, elapsedTimeMs);
+}

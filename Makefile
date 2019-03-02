@@ -39,4 +39,8 @@ tools:
 
 .PHONY: clean
 clean:
-	$(RM) $(BINTARG).bytes $(BINTARG).asm
+	$(RM) $(OBJTARG).asm
+	$(MAKE) -C bag-library clean
+	$(MAKE) -C bag-upload clean
+	$(MAKE) -C bag-objcopy clean
+	$(MAKE) -C bag-compiler clean

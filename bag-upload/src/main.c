@@ -3,55 +3,34 @@
  *  With the kind collaboration of : Julien BESSE
  *  Date : 04/04/2018
  *  OS : Linux
- *                        ______  ___ _____ ___   
- *                        |  _  \/ _ \_   _/ _ \  
- *                        | | | / /_\ \| |/ /_\ \ 
- *                        | | | |  _  || ||  _  | 
- *                        | |/ /| | | || || | | | 
- *                        |___/ \_| |_/\_/\_ | |_/ 
- *            ___________  ___   _   _  ___________ ___________  
- *           |_   _| ___ \/ _ \ | \ | |/  ___|  ___|  ___| ___ \ 
- *             | | | |_/ / /_\ \|  \| |\ `--.| |_  | |__ | |_/ / 
- *             | | |    /|  _  || . ` | `--. \  _| |  __||    /  
- *             | | | |\ \| | | || |\  |/\__/ / |   | |___| |\ \  
- *             \_/ \_| \_\_| |_/\_| \_/\____/\_|   \____/\_| \_| 
- *             ___  ___  ___   _   _   ___  _____  ___________ 
- *             |  \/  | / _ \ | \ | | / _ \|  __ \|  ___| ___ \
- *             | .  . |/ /_\ \|  \| |/ /_\ \ |  \/| |__ | |_/ /
- *             | |\/| ||  _  || . ` ||  _  | | __ |  __||    / 
- *             | |  | || | | || |\  || | | | |_\ \| |___| |\ \ 
- *             \_|  |_/\_| |_/\_| \_/\_| |_/\____/\____/\_| \_|
- *
  *    The goal of this program is to transfer an hexadecimal file threw the a
  * serial connection. The file is send in integer, not in ASCII.
- * Usage: ./dtm input_file.bytes /dev/serialport
  ******************************************************************************/
-#include <errno.h>
-#include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
+#include <errno.h>
+#include <fcntl.h>
 #include <termios.h>
 #include <unistd.h>
 
-#include <stdint.h>
+#include <bag_devlib.h>
 
-#include <sys/types.h>
-#include <sys/stat.h>
+#define MAX_RAM_SIZE      8192
+#define CHUNK_SIZE        64      // Size of each chunk sent to FPGA, bigger is slower, but if it's too low, data will get lost
 
-#define MAX_RAM_SIZE  8192
-#define CHUNK_SIZE    64 // Size of each chunk sent to FPGA, bigger is slower, but if it's too low, data will get lost
-
-int set_interface_attribs(int fd, int speed, int parity) {
+int set_interface_attribs(int fd, int speed, int parity) 
+{
   struct termios tty;
-  memset (&tty, 0, sizeof tty);
-  if (tcgetattr (fd, &tty) != 0) {
-    printf ("error %d from tcgetattr \n", errno);
+
+  memset(&tty, 0, sizeof tty);
+
+  if (tcgetattr(fd, &tty) != 0) {
+    LOG_ERROR("Failed from tcsetattr(): code %d", errno);
     return -1;
   }
 
-  cfsetospeed (&tty, speed);
-  cfsetispeed (&tty, speed);
+  cfsetospeed(&tty, speed);
+  cfsetispeed(&tty, speed);
 
   tty.c_cflag = (tty.c_cflag & ~CSIZE) | CS8;     // 8-bit chars
   // disable IGNBRK for mismatched speed tests; otherwise receive break
@@ -72,26 +51,30 @@ int set_interface_attribs(int fd, int speed, int parity) {
   tty.c_cflag &= ~CSTOPB;
   tty.c_cflag &= ~CRTSCTS;
 
-  if (tcsetattr (fd, TCSANOW, &tty) != 0) {
-    printf ("error %d from tcsetattr\n", errno);
+  if (tcsetattr(fd, TCSANOW, &tty) != 0) {
+    LOG_ERROR("Failed from tcsetattr(): code %d", errno);
     return -1;
   }
   return 0;
 }
 
-void set_blocking(int fd, int should_block) {
+void set_blocking(int fd, int should_block) 
+{
   struct termios tty;
-  memset (&tty, 0, sizeof tty);
-  if (tcgetattr (fd, &tty) != 0) {
-    printf ("error %d from tggetattr\n", errno);
+
+  memset(&tty, 0, sizeof tty);
+
+  if (tcgetattr(fd, &tty) != 0) {
+    LOG_ERROR("Failed from tggetattr(): code %d", errno);
     return;
   }
 
   tty.c_cc[VMIN]  = should_block ? 1 : 0;
   tty.c_cc[VTIME] = 5;            // 0.5 seconds read timeout
 
-  if (tcsetattr (fd, TCSANOW, &tty) != 0)
-    printf ("error %d setting term attributes\n", errno);
+  if (tcsetattr (fd, TCSANOW, &tty) != 0) {
+    LOG_ERROR("Failed setting term attributes: code %d", errno);
+  }
 }
 
 int main(int argc, char const *argv[])
@@ -107,8 +90,8 @@ int main(int argc, char const *argv[])
 
   // Arg check
   if (argc != (3 + 1)) {
-    printf("You should use this program with the following arguments :\n");
-    printf("\t ./bag-compiler <file.bytes> -p <port>\n");
+    LOG("You should use this program with the following arguments :\n");
+    LOG("\t ./bag-compiler <file.bytes> -p <port>\n");
     return -1;
   } 
 
@@ -119,7 +102,7 @@ int main(int argc, char const *argv[])
         // The next argument is an output file path
         portStr = argv[++index];
       } else {
-        fprintf(stderr, "-p error: argument missing\n");
+        LOG_ERROR("-p error: argument missing");
         return -1;
       }
     } else {
@@ -127,7 +110,7 @@ int main(int argc, char const *argv[])
       if (inputFilePath == NULL) {
         inputFilePath = argv[index];
       } else {
-        fprintf(stderr, "Too much input files\n");
+        LOG_ERROR("Too much input files");
         return -1;
       }
     }
@@ -136,14 +119,14 @@ int main(int argc, char const *argv[])
   /** Open Serial Port */
   comPort = open(portStr,  O_RDWR | O_NOCTTY | O_SYNC);
   if (comPort < 0) {
-    printf ("error %d opening %s: %s \n", errno, portStr, strerror(errno));
+    LOG_ERROR("Failed to open %s: %s", portStr, strerror(errno));
     return -1;
   }
 
   /** Open input binary file  */
   binFile = open(inputFilePath,  O_RDWR);
   if (binFile < 0) {
-    printf ("Error %d opening %s: %s \n", errno, inputFilePath, strerror(errno));
+    LOG_ERROR("Failed to open %s: %s", inputFilePath, strerror(errno));
     return -1;
   }
 
@@ -153,7 +136,7 @@ int main(int argc, char const *argv[])
 
   /** Check the size of the binary */
   if (binFileLen > MAX_RAM_SIZE) {
-    printf ("The binary file is too large for RAM size: %d (max: %d)\n", binFileLen, MAX_RAM_SIZE);
+    LOG_ERROR("The binary file is too large for RAM size: %d (max: %d)", binFileLen, MAX_RAM_SIZE);
     return -1;
   }
 
@@ -161,30 +144,32 @@ int main(int argc, char const *argv[])
   set_interface_attribs(comPort, B115200, 0);  // set speed to 115,200 bps, 8n1 (no parity)
   set_blocking(comPort, 0);                    // set no blocking
   
-  printf("Chunk size: %d bytes\n", CHUNK_SIZE);
-  printf("Sending data to the target...   0%%");
+  LOG_DEBUG("Chunk size: %d bytes", CHUNK_SIZE);
+  LOG_INFO("Sending data to the target...   0%%");
   do {
     /** Read from binary file */
     sizeRead = read(binFile, buffer, CHUNK_SIZE);
     if (sizeRead == -1) {
-      printf("Coun't read from binary file: %s\n", strerror(errno));
+      LOG_ERROR("Couldn't read from binary file: %s", strerror(errno));
       return -1;
     }
 
     /** Write what was read on the serial port */
     if (write(comPort, buffer, sizeRead) == -1) {
-      printf("Coun't write to serial port: %s\n", strerror(errno));
+      LOG_ERROR("Coun't write to serial port: %s", strerror(errno));
       return -1;
     }
 
     /** Display loading bar */
     byteSentCount += sizeRead;
-    printf("\b\b\b\b%3d%%", (100 * byteSentCount) / binFileLen);
-    fflush(stdout);
+
+    // Move Cursor Up, Go to Colomn 1, Clear the line
+    LOG("\033[1A\033[;1\033[K");
+    LOG_INFO("Sending data to the target... %d%%", (100 * byteSentCount) / binFileLen);
 
   } while (byteSentCount < binFileLen);
   
-  printf("\b\b\b\b\b 100%%\nDone (%d bytes sent).\n", byteSentCount);
+  LOG_INFO("Work done ! (%d bytes sent)", byteSentCount);
 
   close(binFile);
   close(comPort);
