@@ -171,6 +171,10 @@ string find_between(string str, string start, string end)
   int first = str.find(start) + start.length();
   int last = str.find(end);
 
+  if ((first == string::npos) || (last == string::npos)) {
+    return "";
+  }
+
   return str.substr(first, last - first);
 }
 
@@ -243,8 +247,72 @@ int word_occurence_count(string const &str, string const &word)
   return count;
 }
 
+/**
+ * @brief Create the *.bago file precompiled
+ * 
+ * @param bagFilePath 
+ * @param bagoFilePath 
+ * @return int 0: OK, 1: Error
+ */
+int preprocessor(const char * bagFilePath, const char * bagoFilePath)
+{
+  int lineCounter = 0;
+  ifstream bagFile;
+  ofstream bagoFile;
+  string line, originLine, defineTmp;
+  vector<string> defineContent;
+  vector<string> defineName;
+
+  remove(bagoFilePath);
+  bagoFile.open(bagoFilePath);
+  if (!bagoFile.is_open()) {
+    LOG_ERROR("Failed to create .bago file %s: %s\n", bagoFilePath, strerror(errno));
+    return 1;
+  }
+
+  bagFile.open(bagFilePath);
+  if (!bagoFile.is_open()) {
+    LOG_ERROR("Failed to open .bag file %s: %s\n", bagFilePath, strerror(errno));
+    return 1;
+  }
+
+  // First pass: Preprocessor duty
+  while (getline(bagFile, originLine)) {
+    ++lineCounter;
+    line = replaceAll(originLine, " ", "");
+    line = removeLineComment(line); // Remove text after comment symbole "//"
+
+    if (line.find("#definition") != string::npos) {
+      defineName.push_back(find_between(line, "#definition", "("));
+      defineContent.push_back(find_between(line, "(", ")"));
+
+      if (defineName.back().empty()) {
+        _LOG_ERROR("Wrong syntax on line %d: \"%s\"", lineCounter, originLine.c_str());
+        return 1;
+      } 
+      continue; // Do not copy this line
+    }
+
+    for (size_t index = 0; index < defineName.size(); ++index) {
+      if (line.find(defineName[index]) != string::npos) {
+        line = replaceAll(line, defineName[index], defineContent[index]);
+      }
+    }
+    
+    if (line.length() > 1) {
+      bagoFile << line << endl;
+    }
+  }
+
+  bagFile.close();
+  bagoFile.close();
+
+  return 0;
+}
+
 int main(int argc, char const *argv[])
 {
+  char bagoFilePath[100];
   struct timeval startTime;
   int index;
   bool tooMuchErrorAbort = false;
@@ -293,10 +361,16 @@ int main(int argc, char const *argv[])
   // Save start time
   gettimeofday(&startTime, NULL);
 
+  // Preprocessor duty : generate a *.bago file
+  snprintf(bagoFilePath, sizeof(bagoFilePath), "%so", inputFilePath);
+  if (preprocessor(inputFilePath, bagoFilePath) != 0) {
+    LOG_ERROR("-- Preprocessor failed --");
+    return -1;
+  }
+
   // Input file
-  ifstream in_f(inputFilePath);
-  if (!in_f.is_open())
-  {
+  ifstream in_f(bagoFilePath);
+  if (!in_f.is_open()) {
     fprintf(stderr, "Error %d opening input file %s: %s\n", errno, inputFilePath, strerror(errno));
     return 1;
   }
@@ -322,74 +396,69 @@ int main(int argc, char const *argv[])
   /*implementation of standard constants*/
   var * v;
   var tmpVar;
+  {
+    // 0
+    tmpVar.name = "0";
+    tmpVar.value = 0;
+    tmpVar.type = INTEGER;
+    tmpVar.is_standard = true;
+    variableTable.push_back(tmpVar);
 
-  // 0
-  tmpVar.name = "0";
-  tmpVar.value = 0;
-  tmpVar.type = INTEGER;
-  tmpVar.is_standard = true;
-  variableTable.push_back(tmpVar);
+    tmpVar.name = "0.";
+    tmpVar.value = 0;
+    tmpVar.type = REAL;
+    tmpVar.is_standard = true;
+    variableTable.push_back(tmpVar);
+    // 1
+    tmpVar.name = "1";
+    tmpVar.value = 1;
+    tmpVar.type = INTEGER;
+    tmpVar.is_standard = true;
+    variableTable.push_back(tmpVar);
+    // 180
+    tmpVar.name = "180";
+    tmpVar.value = 0xB4;
+    tmpVar.type = INTEGER;
+    tmpVar.is_standard = true;
+    variableTable.push_back(tmpVar);
+    // 90
+    tmpVar.name = "90";
+    tmpVar.value = 0x5A;
+    tmpVar.type = INTEGER;
+    tmpVar.is_standard = true;
+    variableTable.push_back(tmpVar);
+    // FF
+    tmpVar.name = "FFFFFFF";
+    tmpVar.value = 0xFFFFFFF;
+    tmpVar.type = INTEGER;
+    tmpVar.is_standard = true;
+    variableTable.push_back(tmpVar);
+    // sine index
+    tmpVar.name = "SININDEX";
+    tmpVar.value = 0x0003000;
+    tmpVar.type = INTEGER;
+    tmpVar.is_standard = true;
+    variableTable.push_back(tmpVar);
 
-  tmpVar.name = "0.";
-  tmpVar.value = 0;
-  tmpVar.type = REAL;
-  tmpVar.is_standard = true;
-  variableTable.push_back(tmpVar);
-  // 1
-  tmpVar.name = "1";
-  tmpVar.value = 1;
-  tmpVar.type = INTEGER;
-  tmpVar.is_standard = true;
-  variableTable.push_back(tmpVar);
-  // 180
-  tmpVar.name = "180";
-  tmpVar.value = 0xB4;
-  tmpVar.type = INTEGER;
-  tmpVar.is_standard = true;
-  variableTable.push_back(tmpVar);
-  // 90
-  tmpVar.name = "90";
-  tmpVar.value = 0x5A;
-  tmpVar.type = INTEGER;
-  tmpVar.is_standard = true;
-  variableTable.push_back(tmpVar);
-  // FF
-  tmpVar.name = "FFFFFFF";
-  tmpVar.value = 0xFFFFFFF;
-  tmpVar.type = INTEGER;
-  tmpVar.is_standard = true;
-  variableTable.push_back(tmpVar);
-  // sine index
-  tmpVar.name = "SININDEX";
-  tmpVar.value = 0x0003000;
-  tmpVar.type = INTEGER;
-  tmpVar.is_standard = true;
-  variableTable.push_back(tmpVar);
+    // sine index
+    tmpVar.name = "SHARED_INDEX";
+    tmpVar.value = 0x0002000;
+    tmpVar.is_standard = true;
+    variableTable.push_back(tmpVar);
 
-  // sine index
-  tmpVar.name = "SHARED_INDEX";
-  tmpVar.value = 0x0002000;
-  tmpVar.is_standard = true;
-  variableTable.push_back(tmpVar);
+    // dummy index
+    tmpVar.name = "DUMMY";
+    tmpVar.value = 0x0000000;
+    tmpVar.is_standard = true;
+    variableTable.push_back(tmpVar);
 
-  // dummy index
-  tmpVar.name = "DUMMY";
-  tmpVar.value = 0x0000000;
-  tmpVar.is_standard = true;
-  variableTable.push_back(tmpVar);
-
-  tmpVar.is_standard = false;
+    tmpVar.is_standard = false;
+  }
 
   //parser
   while (getline(in_f, line) && (tooMuchErrorAbort == false))
   {
-    line = replaceAll(line, " ", "");
-    line = removeLineComment(line); // Remove text after comment symbole "//"
-    if (line.length() < 2)
-    {
-      //do nothing, nothing to do
-    }
-    else if (line.find("entier") != string::npos)
+    if (line.find("entier") != string::npos)
     {
       declare_var(find_between(line, "entier", ";"), INTEGER);
     }

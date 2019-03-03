@@ -1,5 +1,8 @@
+#definition NAME (1092)
+
 entier retour;
 
+ecrire_a(1, NAME);
 ecrire_a(1, 831486);
 retour = lire_a(831486);
 
