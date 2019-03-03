@@ -29,7 +29,7 @@ debug: BAG_LIB_CFLAG += -DDEBUG
 debug: all
 
 library: 
-	$(MAKE) -C ../bag-library ADD_CFLAGS="$(BAG_LIB_CFLAG)"
+	$(MAKE) -C ../bag-library -B ADD_CFLAGS="$(BAG_LIB_CFLAG)"
 
 $(BINTARG): $(OBJECTS) $(addsuffix .o, $(BAG_LIB_DIR)/$(BAG_LIB))
 	$(LINKER) $@ $^ $(LFLAGS) $(LIBS) 

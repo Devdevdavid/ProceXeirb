@@ -5,10 +5,7 @@ bag-upload/bin/bag-upload
 bag-compiler/obj/*
 bag-objcopy/obj/*
 bag-upload/obj/*
-
-compiler/compiler
-compiler/*.asm
-compiler/*.bag
+bag-library/obj/*
 
 */*.bytes
 */*.asm

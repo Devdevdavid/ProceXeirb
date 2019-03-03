@@ -11,19 +11,13 @@
  * Compiler option : IS_BINARY_MODE
  ******************************************************************************/
 
-#include <errno.h>
-#include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
-#include <termios.h>
 #include <unistd.h>
 #include <stdint.h>
+#include <errno.h>
 #include <math.h>
 
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <sys/file.h>
 #include <bag_devlib.h>
 
 #define LINE_BUFFER_SIZE  20    // Max Length of a ASM line
@@ -73,6 +67,8 @@
 //intern shit
 #define VAR 0x69
 
+void print_size(uint32_t instructionCounter, uint32_t varCounter);
+
 int decodeInstruction(char * instruction) {
   if (!strcmp(instruction, "NOR")) return NOR;
   if (!strcmp(instruction, "LOR")) return LOR;
@@ -98,7 +94,7 @@ int decodeInstruction(char * instruction) {
   if (!strcmp(instruction, "GAD")) return GAD;
   if (!strcmp(instruction, "SAD")) return SAD;
   if (!strcmp(instruction, "VAR")) return VAR;
-  return 1;
+  return -1;
 }
 
 /**
@@ -116,7 +112,7 @@ int splitLineArgs(char * line, char ** instStr, char ** valueStr)
 
   // Line should at least contains 2 char + a space between
   if (lineLength < 3) {
-    return 1;
+    return -1;
   }
 
   // Instruction start at the beginning of the line
@@ -138,7 +134,6 @@ int splitLineArgs(char * line, char ** instStr, char ** valueStr)
 
     // Remove end of line characters
     if ((line[index] == '\n') || (line[index] == '\r')) {
-
       // Replace by a 0
       line[index] = '\0';
     }
@@ -146,7 +141,7 @@ int splitLineArgs(char * line, char ** instStr, char ** valueStr)
 
   // Did we detect the value ?
   if ((*valueStr) == 0) {
-    return 1;
+    return -1;
   }
 
   return 0;
@@ -154,38 +149,45 @@ int splitLineArgs(char * line, char ** instStr, char ** valueStr)
 
 int main(int argc, char const *argv[])
 {
-  int index;
-  int lineCounter = 0;
-  const char * inputFilePath;
-  const char * outputFilePath;
   FILE * asmFile = NULL;
   FILE * binFile = NULL;
+  const char * inputFilePath;
+  const char * outputFilePath;
+  const uint32_t outputMaxValue = (uint32_t) pow(2, VALUE_BIT_LENGTH + INST_BIT_LENGTH) - 1;
+  int lineCounter = 0;
 
   char lineBuffer[LINE_BUFFER_SIZE];
   char * instStr;
   char * valueStr;
 
-  int instCode;
-  int value;
-  int output;
+  int8_t instCode;
+  uint32_t value;
+  uint32_t output;
 
-  const int outputMaxValue = (int) pow(2, VALUE_BIT_LENGTH + INST_BIT_LENGTH) - 1;
+  uint8_t index;
+  uint32_t varCounter = 0;              // Number of variable in the asm file
+  uint32_t instructionCounter = 0;      // Number of instruction (!= VAR) in the asm file
+
+  uint8_t printSizeOpt = 0;
+
 
   // Arg check
-  if (argc != (4 + 1)) {
-    printf("ou should use this program with the following arguments :\n");
-    printf("\t ./bag-objcopy -i <file.asm> -o <file.bytes>\n");
+  if (argc < (4 + 1)) {
+    LOG("You should use this program with the following arguments :\n");
+    LOG("\t ./bag-objcopy -i <file.asm> -o <file.bytes> [-s]\n");
     return 1;
   } 
 
   // Check all argument
   for (index = 1; index < argc; index++) {
-    if (!strncmp(argv[index], "-i", 2)) {
+    if (!strncmp(argv[index], "-s", 2)) {
+      printSizeOpt = 1;
+    } else if (!strncmp(argv[index], "-i", 2)) {
       if (argc - index > 1) {
         // The next argument is an output file path
         inputFilePath = argv[++index];
       } else {
-        fprintf(stderr, "-i error: argument missing\n");
+        LOG_ERROR("-i error: argument missing");
         return 1;
       }
     } else if (!strncmp(argv[index], "-o", 2)) {
@@ -193,11 +195,11 @@ int main(int argc, char const *argv[])
         // The next argument is an output file path
         outputFilePath = argv[++index];
       } else {
-        fprintf(stderr, "-o error: argument missing\n");
+        LOG_ERROR("-o error: argument missing");
         return 1;
       }
     } else {
-      fprintf(stderr, "Argument error: \"%s\"\n", argv[index]);
+      LOG_ERROR("Argument error: \"%s\"", argv[index]);
       return 1;
     }
   }
@@ -205,16 +207,16 @@ int main(int argc, char const *argv[])
   /** Open files */
   asmFile = fopen(inputFilePath, "r");
   if (asmFile == NULL) {
-    printf("Unable to open input file\n");
+    LOG_ERROR("Failed to open %s: %s", inputFilePath, strerror(errno));
     return 1;
   }
   binFile = fopen(outputFilePath, "w");
   if (binFile == NULL) {
-    printf("Unable to open output file\n");
+    LOG_ERROR("Failed to open %s: %s", outputFilePath, strerror(errno));
     return 1;
   }
 
-  // Loop on all lines
+  // Loop on all lines of input file
   while (1) {
     lineCounter++;
 
@@ -223,61 +225,78 @@ int main(int argc, char const *argv[])
       if (feof(asmFile)) {
         break;
       }
-      printf("Can't read line %d of ASM file\n", lineCounter);
+      LOG_ERROR("Can't read line %d of ASM file", lineCounter);
       return 1;
     }
 
     // Split arguments
     if (splitLineArgs(lineBuffer, &instStr, &valueStr) == -1) {
-      printf("Can't split line %d of ASM file\n", lineCounter);
+      LOG_ERROR("Can't split line %d of ASM file: \"%s\"", lineCounter, lineBuffer);
       return 1;
     }
 
     // Convert data
     instCode = decodeInstruction(instStr);
     if (instCode == -1) {
-      printf("Unknown instruction on line %d : \"%s\"\n", lineCounter, instStr);
+      LOG_ERROR("Unknown instruction on line %d : \"%s\"", lineCounter, instStr);
       return 1;
     }
-    value = (int) strtol(valueStr, NULL, 16);
+    value = (uint32_t) strtol(valueStr, NULL, 16);
     
     // VAR are not managed the same way
     if (instCode == VAR) {
       output = value;
+      ++varCounter;
     } else {
       output = (instCode << VALUE_BIT_LENGTH) | value;
+      ++instructionCounter;
     }
 
     if (output > outputMaxValue) {
-      printf("Too big binary value on line %d : 0x%X (max: 0x%X)\n", lineCounter, value, outputMaxValue);
+      LOG_ERROR("Too big binary value on line %d : 0x%X (max: 0x%X)", lineCounter, value, outputMaxValue);
       return 1;
     }
 
     // Write in output file
-#ifdef IS_BINARY_MODE
     fwrite(&output, sizeof(output), 1, binFile);
-#else
-    snprintf(lineBuffer, LINE_BUFFER_SIZE, "%07x\n", output);
-    fputs(lineBuffer, binFile);
-#endif
   }
 
-  printf("%d instructions written\n", lineCounter - 1);
-
   // Complete file by 0 if in binary mode
-#ifdef IS_BINARY_MODE
-  printf("Completing with zeros to reach %d bytes...\n", MAX_RAM_SIZE);
   output = 0;
   while (lineCounter++ < MAX_RAM_SIZE) {
     fwrite(&output, sizeof(output), 1, binFile);
   }
-  printf("Work done !\n");
-#endif 
+  
+  LOG_INFO("Work done !");
+
+  if (printSizeOpt > 0) {
+    print_size(instructionCounter, varCounter);
+  }
 
   fclose(asmFile);
   fclose(binFile);
   
   return 0;
+}
+
+/**
+ * @brief Print the size of the generated file
+ * 
+ * @param instructionCounter 
+ * @param varCounter 
+ */
+void print_size(uint32_t instructionCounter, uint32_t varCounter)
+{
+  uint32_t totalSizeBit, totalSizeByte;
+  float percentUsed;
+
+  totalSizeBit = (instructionCounter + varCounter) * (INST_BIT_LENGTH + VALUE_BIT_LENGTH);
+  totalSizeByte = (totalSizeBit / 8) + ((totalSizeBit % 8 > 0) ? 1 : 0);
+  percentUsed = (totalSizeByte * 100.0) / (MAX_RAM_SIZE);
+
+  LOG_INFO("Program   : %4d INST", instructionCounter);
+  LOG_INFO("Variables : %4d VAR", varCounter);
+  LOG_INFO("Total     : %4d bytes (%.2f%% Full)", totalSizeByte, percentUsed);
 }
 
 

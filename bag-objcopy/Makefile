@@ -10,7 +10,7 @@ BINTARG         = $(BINDIR)/$(TARGET)
 CC				= gcc
 LINKER		 	= gcc -o
 
-CFLAGS          = -std=c99 -Wall -D IS_BINARY_MODE
+CFLAGS          = -std=c99 -Wall
 LFLAGS          = 
 LIBS            = 
 
@@ -18,13 +18,14 @@ SOURCES         := $(shell find $(SRCDIR) -name '*.c')
 HEADERS         := $(shell find $(SRCDIR) -name '*.h')
 OBJECTS         := $(SOURCES:$(SRCDIR)/%.c=$(OBJDIR)/%.o)
 BAG_LIB     	:= bag_devlib
+BAG_LIB_CFLAG   = -DLOG_SUPPORT_COLOR
 
 RM 				= rm -f
 
 all: library $(BINTARG)
 
 library: 
-	$(MAKE) -C ../bag-library
+	$(MAKE) -C ../bag-library -B ADD_CFLAGS="$(BAG_LIB_CFLAG)"
 
 $(BINTARG): $(OBJECTS) $(addsuffix .o, $(BAG_LIB_DIR)/$(BAG_LIB))
 	$(LINKER) $@ $^ $(LFLAGS) $(LIBS) 

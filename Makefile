@@ -24,7 +24,7 @@ $(OBJTARG).asm: $(SOURCES)
 # Build Bytes file
 $(BINTARG).bytes: $(OBJTARG).asm
 	$(RM) $(BINTARG).bytes
-	bag-objcopy -i $(OBJTARG).asm -o $(BINTARG).bytes
+	bag-objcopy -i $(OBJTARG).asm -o $(BINTARG).bytes -s
 
 .PHONY: load
 load: all

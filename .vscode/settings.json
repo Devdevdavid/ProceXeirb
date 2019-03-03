@@ -59,6 +59,8 @@
         "bag_devlib.h": "c",
         "unistd.h": "c",
         "types.h": "c",
-        "errno.h": "c"
+        "errno.h": "c",
+        "file.h": "c",
+        "stat.h": "c"
     }
 }
