@@ -3,12 +3,20 @@ TARGET          = bag-library
 SRCDIR          = src
 OBJDIR          = obj
 
-CC				= gcc
-LINKER		 	= gcc -o
+# Define USE_GPP=true is you want to use g++ instead of the default gcc
+# This is needed by bag-compiler 
+ifeq ($(USE_GPP),true)
+	CC				= g++
+	LINKER		 	= g++ -o
+	CC_STD			= -std=gnu++11
+else
+	CC				= gcc
+	LINKER		 	= gcc -o
+	CC_STD			= -std=c99
+endif
 
 # Additional CFLAG passing by make argument
-CFLAGS          = -std=c99 -Wall $(ADD_CFLAGS)
-#CFLAGS          = -std=gnu++11 -Wall
+CFLAGS          = $(CC_STD) -Wall $(ADD_CFLAGS)
 LFLAGS          = 
 LIBS            = 
 

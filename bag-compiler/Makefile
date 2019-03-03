@@ -18,13 +18,18 @@ SOURCES         := $(shell find $(SRCDIR) -name '*.cpp')
 HEADERS         := $(shell find $(SRCDIR) -name '*.hpp')
 OBJECTS         := $(SOURCES:$(SRCDIR)/%.cpp=$(OBJDIR)/%.o)
 BAG_LIB     	:= bag_devlib
+BAG_LIB_CFLAG   = -DLOG_SUPPORT_COLOR
 
 RM 				= rm -f
 
 all: library $(BINTARG)
 
+debug: CFLAGS += -DDEBUG -g
+debug: BAG_LIB_CFLAG += -DDEBUG -g
+debug: all
+
 library: 
-	$(MAKE) -C ../bag-library
+	$(MAKE) -C ../bag-library -B ADD_CFLAGS="$(BAG_LIB_CFLAG)" USE_GPP=true
 
 $(BINTARG): $(OBJECTS) $(addsuffix .o, $(BAG_LIB_DIR)/$(BAG_LIB))
 	$(LINKER) $@ $^ $(LFLAGS) $(LIBS) 

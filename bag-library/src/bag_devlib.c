@@ -26,11 +26,11 @@ void lib_log(FILE *output, uint8_t level, const char funcName[], uint32_t lineNu
 		}
 		time(&timer);
 		timeinfo = localtime(&timer);
-		pPrefixStr += strftime(pPrefixStr, 101, ANSI_COLOR_RESET"] %D %T ", timeinfo);
+		pPrefixStr += strftime(pPrefixStr, 101, ANSI_COLOR_RESET "] %T ", timeinfo); // %D : Date, %T : Time
 		
 		// Display line and function name only for debug level
 		if (level == LOG_LVL_DEBUG) {
-			pPrefixStr += sprintf(pPrefixStr, ANSI_COLOR_GRAY"%s() (L.%d) "ANSI_COLOR_RESET, funcName, lineNum);
+			pPrefixStr += sprintf(pPrefixStr, ANSI_COLOR_GRAY "%s() (L.%d) " ANSI_COLOR_RESET, funcName, lineNum);
 		}
 	}
 

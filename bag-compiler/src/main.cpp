@@ -7,6 +7,8 @@
  *  baguette to assembly.
  ******************************************************************************/
 
+#define MAIN_CPP
+
 #include <fstream>
 #include <iostream>
 #include <stdint.h>
@@ -14,286 +16,226 @@
 #include <vector>
 #include <stack>
 #include <sys/time.h>
+#include <bag_devlib.h>
 
+#include "global.hpp"
 #include "instruction.hpp"
 #include "variable.hpp"
-//#include <bag_devlib.h>
 
-#define MAX_RAM             8192
-#define DEFAULT_FILE_PERM   (S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH)
+#define DEFAULT_FILE_PERM (S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH)
 
 // Prototype
-void print_build_finished(struct timeval startTime, int nbError, int nbWarnings);
+void print_build_finished(struct timeval startTime, int nbError, int nbWarning);
 
-#define LOG_ERROR(...)  //std::cerr << "\033[1;31m[ERROR] " << str << "\033[0m" << std::endl; ++nbErrorDetected;
-#define LOG_WARNING(...)  //std::cerr << "\033[1;33m[WARN ] " << str << "\033[0m" << std::endl; ++nbWarningsDetected;
+// Global variables
+vector<var> variableTable;
+vector<instruction *> instructionTable;
 
-bool is_declared( std::string name, std::vector<var> var_v) {
-  for (unsigned int i = 0; i < var_v.size(); ++i) {
-    if ( var_v[i].name == name )
-      return true;
-  }
-  return false;
-}
-
-std::string ReplaceAll( std::string str, 
-                        const std::string& from, 
-                        const std::string& to ) {
-    size_t start_pos = 0;
-    while((start_pos = str.find(from, start_pos)) != std::string::npos) {
-        str.replace(start_pos, from.length(), to);
-        start_pos += to.length(); // Handles case where 'to' is a substring of 'from'
-    }
-    return str;
-}
-
-inline bool isInteger(const std::string & s)
+string replaceAll(string str, const string &from, const string &to)
 {
-  if(s.empty() || ((!isdigit(s[0])) && (s[0] != '-') && (s[0] != '+'))) return false ;
-  if(s.find(".") != std::string::npos) {
+  size_t start_pos = 0;
+  while ((start_pos = str.find(from, start_pos)) != string::npos)
+  {
+    str.replace(start_pos, from.length(), to);
+    start_pos += to.length(); // Handles case where 'to' is a substring of 'from'
+  }
+  return str;
+}
+
+string removeLineComment(string str)
+{
+  bool isInsideQuote = false;
+  for (int index = 0; index < str.length(); index++)
+  {
+    if (str[index] == '"') {
+      isInsideQuote = !isInsideQuote;
+    } else if ((str[index] == '/') && (!isInsideQuote)) {
+      if ((index + 1) < str.length()) {
+        if (str[index + 1] == '/') {    // We got a comment !
+          return str.substr(0, index); // Return all content before "//"
+        }
+      }
+    }
+  }
+  
+  return str;
+}
+
+bool isInteger(const string &s)
+{
+  char * p;
+
+  if (s.empty() || (!isdigit(s[0]) && (s[0] != '-') && (s[0] != '+'))) {
     return false;
   }
-  char * p ;
-  strtol(s.c_str(), &p, 10) ;
+  if (s.find(".") != string::npos) {
+    return false;
+  }
+  
+  strtol(s.c_str(), &p, 10);
 
-  return (*p == 0) ;
+  return (*p == 0);
 }
 
-bool isReal (const std::string & s) {
-  if ( s.find(".") != std::string::npos ) {
-    std::string t1 = s;
-    t1 = ReplaceAll (t1, ".", "");
+bool isReal(const string &s)
+{
+  if (s.find(".") != string::npos) {
+    string t1 = s;
+    t1 = replaceAll(t1, ".", "");
+    
     return isInteger(t1);
   } else {
     return false;
   }
 }
 
-std::string find_name(std::string str) {
-  unsigned first = 0;
-  if(str.find("entier")  != std::string::npos) {
-    first = str.find("r") + 1;
-  } else if(str.find("reel")  != std::string::npos) {
-    first = str.find("l") + 1;
+bool isAValidVarName(const string &s)
+{
+  if (s.empty()) {
+    return false;
   }
-
-  unsigned last = str.find(";");
-  std::string strNew = str.substr (first, last-first);
-  return strNew;
-}
-
-std::string variable_to_change(std::string str) {
-  unsigned last = str.find("=");
-  std::string strNew = str.substr (0, last);
-  return strNew;
-}
-
-std::string argument_addition_1 (std::string str) {
-  unsigned first = str.find("=") + 1;
-  unsigned last = str.find("+");
-  std::string strNew = str.substr (first, last-first);
-  return strNew;
-}
-
-std::string argument_addition_2 (std::string str) {
-  unsigned first = str.find("+") + 1;
-  unsigned last = str.find(";");
-  std::string strNew = str.substr (first, last-first);
-  return strNew;
-}
-
-std::string argument_soustraction_1 (std::string str) {
-  unsigned first = str.find("=") + 1;
-  unsigned last = str.find("-");
-  std::string strNew = str.substr (first, last-first);
-  return strNew;
-}
-
-std::string argument_soustraction_2 (std::string str) {
-  unsigned first = str.find("-") + 1;
-  unsigned last = str.find(";");
-  std::string strNew = str.substr (first, last-first);
-  return strNew;
-}
-
-std::string argument_multiplication_1 (std::string str) {
-  unsigned first = str.find("=") + 1;
-  unsigned last = str.find("*");
-  std::string strNew = str.substr (first, last-first);
-  return strNew;
-}
-
-std::string argument_multiplication_2 (std::string str) {
-  unsigned first = str.find("*") + 1;
-  unsigned last = str.find(";");
-  std::string strNew = str.substr (first, last-first);
-  return strNew;
-}
-
-std::string argument_ou_1 (std::string str) {
-  unsigned first = str.find("=") + 1;
-  unsigned last = str.find("|");
-  std::string strNew = str.substr (first, last-first);
-  return strNew;
-}
-
-std::string argument_ou_2 (std::string str) {
-  unsigned first = str.find("|") + 1;
-  unsigned last = str.find(";");
-  std::string strNew = str.substr (first, last-first);
-  return strNew;
-}
-
-std::string argument_et_1 (std::string str) {
-  unsigned first = str.find("=") + 1;
-  unsigned last = str.find("&");
-  std::string strNew = str.substr (first, last-first);
-  return strNew;
-}
-
-std::string argument_et_2 (std::string str) {
-  unsigned first = str.find("&") + 1;
-  unsigned last = str.find(";");
-  std::string strNew = str.substr (first, last-first);
-  return strNew;
-}
-
-std::string argument_xor_1 (std::string str) {
-  unsigned first = str.find("=") + 1;
-  unsigned last = str.find("^");
-  std::string strNew = str.substr (first, last-first);
-  return strNew;
-}
-
-std::string argument_xor_2 (std::string str) {
-  unsigned first = str.find("^") + 1;
-  unsigned last = str.find(";");
-  std::string strNew = str.substr (first, last-first);
-  return strNew;
-}
-
-std::string argument_nor_1 (std::string str) {
-  unsigned first = str.find("=") + 1;
-  unsigned last = str.find("~|");
-  std::string strNew = str.substr (first, last-first);
-  return strNew;
-}
-
-std::string argument_nor_2 (std::string str) {
-  unsigned first = str.find("~|") + 2;
-  unsigned last = str.find(";");
-  std::string strNew = str.substr (first, last-first);
-  return strNew;
-}
-
-std::string argument_affectation (std::string str) {
-  unsigned first = str.find("=") + 1;
-  unsigned last = str.find(";");
-  std::string strNew = str.substr (first, last-first);
-  return strNew;
-}
-
-std::string argument_condition1 (std::string str, std::string type) {
-  unsigned first = str.find("(") + 1;
-  unsigned last = str.find(type);
-  std::string strNew = str.substr (first, last-first);
-  return strNew;
-}
-
-std::string argument_condition2 (std::string str, std::string type) {
-  unsigned first;
-  if (type == "==")
-    first = str.find(type) + 2;
-  else
-    first = str.find(type) + 1;
-
-  unsigned last = str.find(")");
-  std::string strNew = str.substr (first, last-first);
-  return strNew;
-}
-
-std::string find_between (std::string str, std::string start, std::string end) {
-  unsigned first = str.find(start) + strlen(start.c_str());
-  unsigned last = str.find(end);
-  std::string strNew = str.substr (first, last-first);
-  return strNew;
-}
-
-
-std::string condition_type (std::string str) {
-  if (str.find(">")  != std::string::npos)
-    return ">";
-  if (str.find("<")  != std::string::npos)
-    return "<";
-  if (str.find("==") != std::string::npos)
-    return "==";
-
-//default, should not append
-  return "==";
-}
-
-int condition_to_close (std::vector<instruction*> & ins_v) {
-  for ( unsigned int i = ins_v.size() - 1; i > 0; i-- ) {
-    if(ins_v[i]->type == CONDITION)
-      if(! ins_v[i]->is_closed) {
-        ins_v[i]->is_closed = true;
-        return ins_v[i]->num;
-      }
+  if (isdigit(s[0])) {
+    return false;
   }
-  return 0;
+  return true;
 }
 
-int loop_to_close (std::vector<instruction*> & ins_v) {
-  for ( unsigned int i = ins_v.size() - 1; i > 0; i-- ) {
-    if(ins_v[i]->type == TANT_QUE)
-      if(! ins_v[i]->is_closed) {
-        //ins_v[i]->is_closed = true;
-        return ins_v[i]->num;
-      }
-  }
-  return 0;
-}
+var * declare_var(string name, varType type)
+{
+  var * v = new var;
 
-int loop_to_loop (std::vector<instruction*> & ins_v, int toClose) {
-  for ( unsigned int i = ins_v.size() - 1; i > 0; i-- ) {
-    if(ins_v[i]->type == TANT_QUE)
-      if(ins_v[i]->num == toClose) {
-        //printf("looping %d at address %d\n",ins_v[i]->num, ins_v[i]->address );
-        ins_v[i]->is_closed = true;
-        return ins_v[i]->address;
-      }
-  }
-  return 0;
-}
-
-var variable ( std::string name, std::vector<var> &var_v ) {
-  var v;
-  v.name = name;
-  if ( isInteger(name) && ! is_declared(name, var_v)){
-    v.value = atol(v.name.c_str());
-    v.type = INTEGER;
-    var_v.push_back(v);
+  if (isAValidVarName(name)) {
+    v->name = name;
+    v->type = type;
+    v->value = 0;
+    variableTable.push_back(*v);
     return v;
+  } else {
+    _LOG_ERROR("Invalid name for variable: %s", name.c_str());
+    return NULL;
   }
-  if ( isReal(v.name) && ! is_declared(v.name, var_v) ) {
-    v.value = atof(v.name.c_str())*256;
-    v.type = REAL;
-    var_v.push_back(v);
-    return v;
+}
+
+var * declare_const_var(string name)
+{
+  var * v = new var;
+
+  if (isInteger(name)) {
+    v->value = atol(name.c_str());
+    v->type = INTEGER;
   }
-  for (unsigned int i = 0; i < var_v.size(); ++i) {
-    if ( var_v[i].name == name )
-      return var_v[i];
+  else if (isReal(name)) {
+    v->value = atof(name.c_str()) * 256;
+    v->type = REAL;
+  } else {
+    _LOG_ERROR("Unknonw variable type for \"%s\"", name.c_str());
+    return NULL;
   }
+
+  v->name = name;
+  variableTable.push_back(*v);
+
   return v;
 }
 
-int word_occurence_count ( std::string const & str, std::string const &word) {
+/**
+ * @brief If variable name is declared in table, return the associated object
+ * If not declared, create the object and return it
+ * 
+ * @param name 
+ * @return var 
+ */
+var * get_or_create_variable(string name)
+{
+  uint32_t index;
+
+  for (index = 0; index < variableTable.size(); ++index) {
+    if (variableTable[index].name == name) {
+      return &variableTable[index];             // Return the existing variable
+    }
+  }
+  
+  return declare_const_var(name); // Declare the new constant variable and return its reference
+}
+
+/**
+ * @brief Return the string between start and end
+ * 
+ * @param str 
+ * @param start 
+ * @param end 
+ * @return string 
+ */
+string find_between(string str, string start, string end) 
+{
+  int first = str.find(start) + start.length();
+  int last = str.find(end);
+
+  return str.substr(first, last - first);
+}
+
+string variable_to_change(string str)
+{
+  return str.substr(0, str.find("="));
+}
+
+void create_operation(instruction * ins, string line, string operatorSymbole) 
+{
+  var * v;    // Pointer on a lambda variable
+
+  //first, find the variable to update
+  v = get_or_create_variable(variable_to_change(line));
+  ins->set_return_var(v);
+
+  //Argument 1
+  v = get_or_create_variable(find_between(line, "=", operatorSymbole));
+  ins->set_argument1(v);
+
+  //Argument 2
+  v = get_or_create_variable(find_between(line, operatorSymbole, ";"));
+  ins->set_argument2(v);
+
+  instructionTable.push_back(ins);
+}
+
+string condition_type(string str)
+{
+  if (str.find(">") != string::npos) {
+    return ">";
+  } else if (str.find("<") != string::npos) {
+    return "<";
+  } else if (str.find("==") != string::npos) {
+    return "==";
+  }
+
+  _LOG_ERROR("Unknown condition operator : \"%s\"", str.c_str());
+  return "";
+}
+
+int loop_to_loop(vector<instruction *> &instructionTable, int toClose)
+{
+  for (unsigned int i = instructionTable.size() - 1; i > 0; i--)
+  {
+    if (instructionTable[i]->type == TANT_QUE)
+      if (instructionTable[i]->num == toClose)
+      {
+        //printf("looping %d at address %d\n",instructionTable[i]->num, instructionTable[i]->address );
+        instructionTable[i]->is_closed = true;
+        return instructionTable[i]->address;
+      }
+  }
+  return 0;
+}
+
+int word_occurence_count(string const &str, string const &word)
+{
   int count = 0;
-  std::string::size_type word_pos( 0 );
-  while ( word_pos != std::string::npos ) {
-    word_pos = str.find( word, word_pos );
-    if ( word_pos != std::string::npos ) {
+  string::size_type word_pos(0);
+  while (word_pos != string::npos)
+  {
+    word_pos = str.find(word, word_pos);
+    if (word_pos != string::npos)
+    {
       ++count;
       word_pos += word.length();
     }
@@ -305,33 +247,43 @@ int main(int argc, char const *argv[])
 {
   struct timeval startTime;
   int index;
-  const char * outputFilePath = NULL;
-  const char * inputFilePath = NULL;
-  int nbErrorDetected = 0;                // Number of error detected during compilation
-  int nbWarningsDetected = 0;             // Number of warning detected during compilation
+  bool tooMuchErrorAbort = false;
+  const char *outputFilePath = NULL;
+  const char *inputFilePath = NULL;
 
   // Arg check
-  if (argc != (3 + 1)) {
+  if (argc != (3 + 1))
+  {
     printf("You should use this program with the following arguments :\n");
     printf("\t ./bag-compiler -o <file.asm> <file.bag>\n");
     return 1;
   }
 
   // Check all argument
-  for (index = 1; index < argc; index++) {
-    if (!strncmp(argv[index], "-o", 2)) {
-      if (argc - index > 1) {
+  for (index = 1; index < argc; index++)
+  {
+    if (!strncmp(argv[index], "-o", 2))
+    {
+      if (argc - index > 1)
+      {
         // The next argument is an output file path
         outputFilePath = argv[++index];
-      } else {
+      }
+      else
+      {
         fprintf(stderr, "-o error: argument missing\n");
         return 1;
       }
-    } else {
+    }
+    else
+    {
       // This is an input file
-      if (inputFilePath == NULL) {
+      if (inputFilePath == NULL)
+      {
         inputFilePath = argv[index];
-      } else {
+      }
+      else
+      {
         fprintf(stderr, "Too much input files\n");
         return 1;
       }
@@ -340,526 +292,408 @@ int main(int argc, char const *argv[])
 
   // Save start time
   gettimeofday(&startTime, NULL);
-  
+
   // Input file
-  std::ifstream in_f(inputFilePath);
-  if (!in_f.is_open()) {
+  ifstream in_f(inputFilePath);
+  if (!in_f.is_open())
+  {
     fprintf(stderr, "Error %d opening input file %s: %s\n", errno, inputFilePath, strerror(errno));
     return 1;
   }
 
   // Output file
   remove(outputFilePath);
-  int out_f = open(outputFilePath,  O_WRONLY | O_CREAT, DEFAULT_FILE_PERM);
-  if (out_f < 0) {
+  int out_f = open(outputFilePath, O_WRONLY | O_CREAT, DEFAULT_FILE_PERM);
+  if (out_f < 0)
+  {
     fprintf(stderr, "Error %d opening output file %s: %s\n", errno, outputFilePath, strerror(errno));
     return 1;
   }
 
-  std::string line = "";
-  instruction * ins;
+  string line = "";
+  instruction *ins;
 
-  std::vector<var>            var_v;
-  std::vector<instruction*>   ins_v;
-
-  std::stack<int> conditions;
-  std::stack<int> loops;
+  stack<int> conditions;
+  stack<int> loops;
 
   int id_cond = 0;
   int id_loop = 0;
 
   /*implementation of standard constants*/
-    var v;
-    // 0
-    v.name = "0";
-    v.value = 0;
-    v.type = INTEGER;
-    v.is_standard = true;
-    var_v.push_back(v);
-    v.name = "0.";
-    v.value = 0;
-    v.type = REAL;
-    v.is_standard = true;
-    var_v.push_back(v);
-    // 1
-    v.name = "1";
-    v.value = 1;
-    v.type = INTEGER;
-    v.is_standard = true;
-    var_v.push_back(v);
-    // 180
-    v.name = "180";
-    v.value = 0xB4;
-    v.type = INTEGER;
-    v.is_standard = true;
-    var_v.push_back(v);
-    // 90
-    v.name = "90";
-    v.value = 0x5A;
-    v.type = INTEGER;
-    v.is_standard = true;
-    var_v.push_back(v);
-    // FF
-    v.name = "FFFFFFF";
-    v.value = 0xFFFFFFF;
-    v.type = INTEGER;
-    v.is_standard = true;
-    var_v.push_back(v);
-    // sine index
-    v.name = "SININDEX";
-    v.value = 0x0003000;
-    v.type = INTEGER;
-    v.is_standard = true;
-    var_v.push_back(v);
-    
-    // sine index
-    v.name = "SHARED_INDEX";
-    v.value = 0x0002000;
-    v.is_standard = true;
-    var_v.push_back(v);
-    
-    // dummy index
-    v.name = "DUMMY";
-    v.value = 0x0000000;
-    v.is_standard = true;
-    var_v.push_back(v);
+  var * v;
+  var tmpVar;
 
-    v.is_standard = false;
+  // 0
+  tmpVar.name = "0";
+  tmpVar.value = 0;
+  tmpVar.type = INTEGER;
+  tmpVar.is_standard = true;
+  variableTable.push_back(tmpVar);
+
+  tmpVar.name = "0.";
+  tmpVar.value = 0;
+  tmpVar.type = REAL;
+  tmpVar.is_standard = true;
+  variableTable.push_back(tmpVar);
+  // 1
+  tmpVar.name = "1";
+  tmpVar.value = 1;
+  tmpVar.type = INTEGER;
+  tmpVar.is_standard = true;
+  variableTable.push_back(tmpVar);
+  // 180
+  tmpVar.name = "180";
+  tmpVar.value = 0xB4;
+  tmpVar.type = INTEGER;
+  tmpVar.is_standard = true;
+  variableTable.push_back(tmpVar);
+  // 90
+  tmpVar.name = "90";
+  tmpVar.value = 0x5A;
+  tmpVar.type = INTEGER;
+  tmpVar.is_standard = true;
+  variableTable.push_back(tmpVar);
+  // FF
+  tmpVar.name = "FFFFFFF";
+  tmpVar.value = 0xFFFFFFF;
+  tmpVar.type = INTEGER;
+  tmpVar.is_standard = true;
+  variableTable.push_back(tmpVar);
+  // sine index
+  tmpVar.name = "SININDEX";
+  tmpVar.value = 0x0003000;
+  tmpVar.type = INTEGER;
+  tmpVar.is_standard = true;
+  variableTable.push_back(tmpVar);
+
+  // sine index
+  tmpVar.name = "SHARED_INDEX";
+  tmpVar.value = 0x0002000;
+  tmpVar.is_standard = true;
+  variableTable.push_back(tmpVar);
+
+  // dummy index
+  tmpVar.name = "DUMMY";
+  tmpVar.value = 0x0000000;
+  tmpVar.is_standard = true;
+  variableTable.push_back(tmpVar);
+
+  tmpVar.is_standard = false;
 
   //parser
-  while ( getline(in_f, line) ) {
-    //printf ( "%s\n", line.c_str() );
-    line = ReplaceAll(line, " ", "");
-    if(line.length() < 2) {
+  while (getline(in_f, line) && (tooMuchErrorAbort == false))
+  {
+    line = replaceAll(line, " ", "");
+    line = removeLineComment(line); // Remove text after comment symbole "//"
+    if (line.length() < 2)
+    {
       //do nothing, nothing to do
-    } else if ( line.at(0) == '/' && line.at(1) == '/' ) {
-      //do nothing, it's a comment
-
-    } else if ( line.find("entier")    != std::string::npos ) {
-      v.name = find_name(line);
-      v.type = INTEGER;
-      v.value = 0;
-      var_v.push_back(v);
-
-    } else if ( line.find("reel")    != std::string::npos ) {
-      v.name = find_name(line);
-      v.type = REAL;
-      v.value = 0;
-      var_v.push_back(v);
-
-    } else if ( line.find("+")  != std::string::npos ) {
-      ins = new addition;
-
-      //first, find the variable to update
-      v.name = variable_to_change(line);
-      v = variable( v.name, var_v );
-      ins->set_return_var( v );
-
-      //Argument 1
-      v.name = argument_addition_1 ( line );
-      v = variable( v.name, var_v );
-      ins->set_argument1( v );
-
-      //Argument 2
-      v.name = argument_addition_2(line);
-      v = variable( v.name, var_v );
-      ins->set_argument2( v );
-
-      ins_v.push_back(ins);
-
-    } else if ( line.find("rve")  != std::string::npos ) { //real to int
+    }
+    else if (line.find("entier") != string::npos)
+    {
+      declare_var(find_between(line, "entier", ";"), INTEGER);
+    }
+    else if (line.find("reel") != string::npos)
+    {
+      declare_var(find_between(line, "reel", ";"), REAL);
+    }
+    else if (line.find("rve") != string::npos)
+    { //real to int
       ins = new ins_fti;
 
-      v.name = variable_to_change(line);
-      v = variable( v.name, var_v );
-      ins->set_return_var( v );
+      v = get_or_create_variable(variable_to_change(line));
+      ins->set_return_var(v);
 
       //Argument 1
-      v.name = argument_condition1 ( line, ")" );
-      v = variable( v.name, var_v );
-      ins->set_argument1( v );
+      v = get_or_create_variable(find_between(line, "(", ")"));
+      ins->set_argument1(v);
 
-      ins_v.push_back(ins);
-
-    } else if ( line.find("evr")  != std::string::npos ) { //int to real
+      instructionTable.push_back(ins);
+    }
+    else if (line.find("evr") != string::npos)
+    { //int to real
       ins = new ins_itf;
 
       //first, find the variable to update
-      v.name = variable_to_change(line);
-      v = variable( v.name, var_v );
-      ins->set_return_var( v );
+      v = get_or_create_variable(variable_to_change(line));
+      ins->set_return_var(v);
 
       //Argument 1
-      v.name = argument_condition1 ( line, ")" );
-      v = variable( v.name, var_v );
-      ins->set_argument1( v );
+      v = get_or_create_variable(find_between(line, "(", ")"));
+      ins->set_argument1(v);
 
-      ins_v.push_back(ins);
-
-    } else if ( line.find("|")  != std::string::npos ) {
-      ins = new ins_or;
-
-      //first, find the variable to update
-      v.name = variable_to_change(line);
-      v = variable( v.name, var_v );
-      ins->set_return_var( v );
-
-      //Argument 1
-      v.name = argument_ou_1 ( line );
-      v = variable( v.name, var_v );
-      ins->set_argument1( v );
-
-      //Argument 2
-      v.name = argument_ou_2 ( line );
-      v = variable( v.name, var_v );
-      ins->set_argument2( v );
-
-      ins_v.push_back(ins);
-
-    }  else if ( line.find("&")  != std::string::npos ) {
-      ins = new ins_and;
-
-      //first, find the variable to update
-      v.name = variable_to_change(line);
-      v = variable( v.name, var_v );
-      ins->set_return_var( v );
-
-      //Argument 1
-      v.name = argument_et_1 ( line );
-      v = variable( v.name, var_v );
-      ins->set_argument1( v );
-
-      //Argument 2
-      v.name = argument_et_2 ( line );
-      v = variable( v.name, var_v );
-      ins->set_argument2( v );
-
-      ins_v.push_back(ins);
-
-    } else if ( line.find("^")  != std::string::npos ) {
-      ins = new ins_xor;
-
-      //first, find the variable to update
-      v.name = variable_to_change(line);
-      v = variable( v.name, var_v );
-      ins->set_return_var( v );
-
-      //Argument 1
-      v.name = argument_xor_1 ( line );
-      v = variable( v.name, var_v );
-      ins->set_argument1( v );
-
-      //Argument 2
-      v.name = argument_xor_2 ( line );
-      v = variable( v.name, var_v );
-      ins->set_argument2( v );
-
-      ins_v.push_back(ins);
-
-    } else if ( line.find("~|")  != std::string::npos ) {
-      ins = new ins_nor;
-
-      //first, find the variable to update
-      v.name = variable_to_change(line);
-      v = variable( v.name, var_v );
-      ins->set_return_var( v );
-
-      //Argument 1
-      v.name = argument_nor_1 ( line );
-      v = variable( v.name, var_v );
-      ins->set_argument1( v );
-
-      //Argument 2
-      v.name = argument_nor_2 ( line );
-      v = variable( v.name, var_v );
-      ins->set_argument2( v );
-
-      ins_v.push_back(ins);
-
-    } else if (    line.find("-")  != std::string::npos 
-                && line.find("=-") == std::string::npos) {
-      ins = new soustraction;
-
-      v.name = variable_to_change(line);
-      v = variable( v.name, var_v );
-      ins->set_return_var( v );
-
-      //Argument 1
-      v.name = argument_soustraction_1(line);
-      v = variable( v.name, var_v );
-      ins->set_argument1( v );
-
-      //Argument 2
-      v.name = argument_soustraction_2(line);
-      v = variable( v.name, var_v );
-      ins->set_argument2( v );
-
-      ins_v.push_back(ins);
-    
-    } else if ( line.find("*")  != std::string::npos) {
-
-      ins = new multiplication;
-
-      v.name = variable_to_change(line);
-      v = variable( v.name, var_v );
-      ins->set_return_var( v );
-
-      v.name = argument_multiplication_1(line);
-      v = variable( v.name, var_v );
-      ins->set_argument1( v );
-
-      v.name = argument_multiplication_2(line);
-      v = variable( v.name, var_v );
-      ins->set_argument2( v );
-
-      ins_v.push_back(ins);
-    
-    } else if ( line.find("/")  != std::string::npos) {
-
-      ins = new division;
-
-      v.name = variable_to_change(line);
-      v = variable( v.name, var_v );
-      ins->set_return_var( v );
-      v.name = find_between ( line, "=", "/");
-      v = variable( v.name, var_v );
-      ins->set_argument1( v );
-
-      v.name = find_between ( line, "/", ";");
-      v = variable( v.name, var_v );
-      ins->set_argument2( v );
-
-      ins_v.push_back(ins);
-    
-    } else if ( line.find("fin_si") != std::string::npos ) {
-      ins = new endif;
-      ins->num = conditions.top();
-      conditions.pop();
-      ins_v.push_back(ins);
-
-    } else if (    line.find("si")  != std::string::npos 
-                && line.find("sin") == std::string::npos) {
-
+      instructionTable.push_back(ins);
+    }
+    else if (line.find("|") != string::npos)
+    {
+      create_operation(new ins_or, line, "|");
+    }
+    else if (line.find("&") != string::npos)
+    {
+      create_operation(new ins_and, line, "&");
+    }
+    else if (line.find("^") != string::npos)
+    {
+      create_operation(new ins_xor, line, "^");
+    }
+    else if (line.find("~|") != string::npos)
+    {
+      create_operation(new ins_nor, line, "~|");
+    }
+    else if (line.find("+") != string::npos)
+    {
+      create_operation(new addition, line, "+");
+    }
+    else if (line.find("-") != string::npos && line.find("=-") == string::npos)
+    {
+      create_operation(new soustraction, line, "-");
+    }
+    else if (line.find("*") != string::npos)
+    {
+      create_operation(new multiplication, line, "*");
+    }
+    else if (line.find("/") != string::npos)
+    {
+      create_operation(new division, line, "/");
+    }
+    else if (line.find("si(") != string::npos)
+    {
       condition *cond = new condition;
-      cond->set_condition_type ( condition_type (line) );
+      cond->set_condition_type(condition_type(line));
       cond->num = id_cond;
       conditions.push(id_cond);
       id_cond++;
 
-      v.name = argument_condition1 (line, cond->condition_type);
-      v = variable( v.name, var_v );
-      cond->set_argument1 ( v );
+      v = get_or_create_variable(find_between(line, "(", cond->condition_type));
+      cond->set_argument1(v);
 
-      v.name = argument_condition2 (line, cond->condition_type);
-      v = variable( v.name, var_v );
-      cond->set_argument2( v );
+      v = get_or_create_variable(find_between(line, cond->condition_type, ")"));
+      cond->set_argument2(v);
 
-      ins_v.push_back(cond);
-
-    } else if ( line.find("sin(")  != std::string::npos ) {
-      sine *cond = new sine;
-
-      v.name = argument_condition1(line,")");
-      v = variable( v.name, var_v );
-      cond->set_argument1 ( v );
-
-      v.name = variable_to_change(line);
-      v = variable( v.name, var_v );
-      cond->set_return_var( v );
-
-      ins_v.push_back(cond);
-
-    } else if ( line.find("cos(")  != std::string::npos ) {
-      cos *cond = new cos;
-
-      v.name = argument_condition1(line,")");
-      v = variable( v.name, var_v );
-      cond->set_argument1 ( v );
-      
-      v.name = variable_to_change(line);
-      v = variable( v.name, var_v );
-      cond->set_return_var( v );
-      
-      ins_v.push_back(cond);
-
-    } else if ( line.find("fin_tant_que")  != std::string::npos ) {
-      ins = new endloop;
-
-      ins->num = loops.top();
-      loops.pop();
-      ins_v.push_back(ins);
-
-    } else if ( line.find("tant_que")  != std::string::npos ) {
+      instructionTable.push_back(cond);
+    }
+    else if (line.find("fin_si") != string::npos)
+    {
+      ins = new endif;
+      ins->num = conditions.top();
+      conditions.pop();
+      instructionTable.push_back(ins);
+    }
+    else if (line.find("tant_que(") != string::npos)
+    {
       loop *lo = new loop;
 
-      lo->set_condition_type ( condition_type (line) );
+      lo->set_condition_type(condition_type(line));
       lo->num = id_loop;
       loops.push(id_loop);
       id_loop++;
 
-      v.name = argument_condition1 (line, lo->condition_type);
-      v = variable( v.name, var_v );
-      lo->set_argument1 ( v );
+      v = get_or_create_variable(find_between(line, "(", lo->condition_type));
+      lo->set_argument1(v);
 
-      v.name = argument_condition2 (line, lo->condition_type);
-      v = variable( v.name, var_v );
-      lo->set_argument2( v );
+      v = get_or_create_variable(find_between(line, lo->condition_type, ")"));
+      lo->set_argument2(v);
 
-      ins_v.push_back(lo);
+      instructionTable.push_back(lo);
+    }
+    else if (line.find("fin_tant_que") != string::npos)
+    {
+      ins = new endloop;
 
-    } else if ( line.find("afficher_LCD")  != std::string::npos ) {
+      ins->num = loops.top();
+      loops.pop();
+      instructionTable.push_back(ins);
+    }
+    else if (line.find("sin(") != string::npos)
+    {
+      sine *cond = new sine;
+
+      v = get_or_create_variable(find_between(line, "(", ")"));
+      cond->set_argument1(v);
+
+      v = get_or_create_variable(variable_to_change(line));
+      cond->set_return_var(v);
+
+      instructionTable.push_back(cond);
+    }
+    else if (line.find("cos(") != string::npos)
+    {
+      cos *cond = new cos;
+
+      v = get_or_create_variable(find_between(line, "(", ")"));
+      cond->set_argument1(v);
+
+      v = get_or_create_variable(variable_to_change(line));
+      cond->set_return_var(v);
+
+      instructionTable.push_back(cond);
+    }
+    else if (line.find("afficher_LCD") != string::npos)
+    {
       ins = new disp_LCD;
 
-      v.name = argument_condition1(line,")");
-      v = variable( v.name, var_v );
-      ins->set_argument1( v );
+      v = get_or_create_variable(find_between(line, "(", ")"));
+      ins->set_argument1(v);
 
-      ins_v.push_back(ins);
-
-    } else if ( line.find("ecrire_mem_part")  != std::string::npos ) {
+      instructionTable.push_back(ins);
+    }
+    else if (line.find("ecrire_mem_part") != string::npos)
+    {
       ins = new write_to_shared;
 
-      v.name = argument_condition1(line,",");
-      v = variable( v.name, var_v );
-      ins->set_argument1( v );
+      v = get_or_create_variable(find_between(line, "(", ","));
+      ins->set_argument1(v);
 
-      v.name = argument_condition2(line,",");
-      v = variable( v.name, var_v );
-      ins->set_argument2( v );
+      v = get_or_create_variable(find_between(line, ",", ")"));
+      ins->set_argument2(v);
 
-      ins_v.push_back(ins);
-
-    } else if ( line.find("ecrire_a")  != std::string::npos ) {
+      instructionTable.push_back(ins);
+    }
+    else if (line.find("ecrire_a(") != string::npos)
+    {
       ins = new write_at;
 
-      v.name = argument_condition1(line,",");
-      v = variable( v.name, var_v );
-      ins->set_argument1( v );
+      v = get_or_create_variable(find_between(line, "(", ","));
+      ins->set_argument1(v);
 
-      v.name = argument_condition2(line,",");
-      v = variable( v.name, var_v );
-      ins->set_argument2( v );
+      v = get_or_create_variable(find_between(line, ",", ")"));
+      ins->set_argument2(v);
 
-      ins_v.push_back(ins);
-
-    } else if ( line.find("lire_a")  != std::string::npos ) {
+      instructionTable.push_back(ins);
+    }
+    else if (line.find("lire_a") != string::npos)
+    {
       ins = new read_at;
 
-      v.name = variable_to_change(line);
-      v = variable( v.name, var_v );
-      ins->set_return_var( v );
+      v = get_or_create_variable(variable_to_change(line));
+      ins->set_return_var(v);
 
-      v.name = argument_condition1(line,")");
-      v = variable( v.name, var_v );
-      ins->set_argument1( v );
+      v = get_or_create_variable(find_between(line, "(", ")"));
+      ins->set_argument1(v);
 
-      ins_v.push_back(ins);
-
-    } else if ( line.find("=")  != std::string::npos ) {
+      instructionTable.push_back(ins);
+    }
+    else if (line.find("=") != string::npos)
+    {
       ins = new affectation;
- 
-      v.name = variable_to_change(line);
-      v = variable( v.name, var_v );
-      ins->set_return_var( v );
 
-      v.name = argument_affectation(line);
-      v = variable( v.name, var_v );
-      ins->set_argument1( v );
+      v = get_or_create_variable(variable_to_change(line));
+      ins->set_return_var(v);
 
-      ins_v.push_back(ins);
-    } else {
-      LOG_ERROR("Unkown instruction: %s", line.c_str());
+      v = get_or_create_variable(find_between(line, "=", ";"));
+      ins->set_argument1(v);
+
+      instructionTable.push_back(ins);
+    }
+    else
+    {
+      _LOG_ERROR("Unkown instruction: %s", line.c_str());
+    }
+
+    if (nbErrorDetected >= 5) {
+      tooMuchErrorAbort = true;
     }
   }
-  
-  std::string whole_file = "";
+
+  string whole_file = "";
   uint32_t index_ram = 0;
+  char temp[30];
+
+  if (tooMuchErrorAbort) {
+    goto abortLabel;
+  }
 
   //gestion des instructions
-  for ( unsigned int i = 0; i < ins_v.size(); ++i ) {
-    ins_v[i]->set_address(index_ram);
-    whole_file += ins_v[i]->print_instruction();
-    index_ram  += ins_v[i]->nb_ins;
+  for (unsigned int i = 0; i < instructionTable.size(); ++i)
+  {
+    instructionTable[i]->set_address(index_ram);
+    whole_file += instructionTable[i]->print_instruction();
+    index_ram += instructionTable[i]->nb_ins;
 
-    if (ins_v[i]->type == FIN_CONDITION) {
+    if (instructionTable[i]->type == FIN_CONDITION)
+    {
       //we are in a condition
       char temp1[30] = "";
       char temp2[30] = "";
-      sprintf (temp1, ":condition(%d)", ins_v[i]->num);
-      sprintf (temp2, "%05x", index_ram);
+      sprintf(temp1, ":condition(%d)", instructionTable[i]->num);
+      sprintf(temp2, "%05x", index_ram);
       //printf("replacing: %s by %s .\n", temp1, temp2 );
-      whole_file = ReplaceAll (whole_file, std::string(temp1), std::string(temp2));
+      whole_file = replaceAll(whole_file, string(temp1), string(temp2));
     }
 
-    if (ins_v[i]->type == FIN_TANT_QUE) {
-       //we are in a condition
+    if (instructionTable[i]->type == FIN_TANT_QUE)
+    {
+      //we are in a condition
       char temp1[30] = "";
       char temp2[30] = "";
-      //printf(" numéro de l'instruction: %d\n", ins_v[i]->num );
-      int toClose = ins_v[i]->num;
-      sprintf (temp1, ":endloop(%d)", toClose);
-      sprintf (temp2, "%05x", index_ram); //TODO: verify that
+      //printf(" numéro de l'instruction: %d\n", instructionTable[i]->num );
+      int toClose = instructionTable[i]->num;
+      sprintf(temp1, ":endloop(%d)", toClose);
+      sprintf(temp2, "%05x", index_ram); //TODO: verify that
       //printf("replacing: %s by %s .\n", temp1, temp2 );
-      whole_file = ReplaceAll (whole_file, std::string(temp1), std::string(temp2));
-      sprintf (temp1, ":loop(%d)", toClose);
-      sprintf (temp2, "%05x", loop_to_loop(ins_v,toClose)); //TODO: verify that
+      whole_file = replaceAll(whole_file, string(temp1), string(temp2));
+      sprintf(temp1, ":loop(%d)", toClose);
+      sprintf(temp2, "%05x", loop_to_loop(instructionTable, toClose)); //TODO: verify that
       //printf("replacing: %s by %s .\n", temp1, temp2 );
-      whole_file = ReplaceAll (whole_file, std::string(temp1), std::string(temp2));
+      whole_file = replaceAll(whole_file, string(temp1), string(temp2));
     }
   }
 
   //fin du programme
-  char temp[30];
-  sprintf(temp, "JMP %05x\n", index_ram ++);
+  sprintf(temp, "JMP %05x\n", index_ram++);
   whole_file += temp;
 
   //gestion des variables
-  for (unsigned int i = 0; i < var_v.size(); ++i) {
-    //printf("%d VAR %x //nom: %s // type %d\n", index_ram, var_v[i].value, var_v[i].name.c_str(), var_v[i].type);
+  for (size_t i = 0; i < variableTable.size(); ++i)
+  {
     char temp[30];
-    sprintf(temp, "VAR %07x\n", var_v[i].value & 0x1ffffff);
+    sprintf(temp, "VAR %07x\n", variableTable[i].value & 0x1ffffff);
     whole_file += temp;
-    var_v[i].address = index_ram;
+    variableTable[i].address = index_ram;
     index_ram++;
-    
-    if (word_occurence_count ( whole_file, var_v[i].name ) < 2) {
-      if (!var_v[i].is_standard && var_v[i].value == 0) {
-        LOG_WARNING("Unused variable \"%s\"", var_v[i].name.c_str());
+
+    if (word_occurence_count(whole_file, variableTable[i].name) < 2)
+    {
+      if (!variableTable[i].is_standard && variableTable[i].value == 0)
+      {
+        _LOG_WARNING("Unused variable \"%s\"", variableTable[i].name.c_str());
       }
     }
 
     //replacement of the variable name in the program with the address
     char temp1[30] = "";
     char temp2[30] = "";
-    sprintf(temp1, ":addr(%s)", var_v[i].name.c_str());
-    sprintf(temp2, "%05x", var_v[i].address);
-    whole_file = ReplaceAll(whole_file, std::string(temp1), std::string(temp2));
+    sprintf(temp1, ":addr(%s)", variableTable[i].name.c_str());
+    sprintf(temp2, "%05x", variableTable[i].address);
+    whole_file = replaceAll(whole_file, string(temp1), string(temp2));
   }
 
   write(out_f, whole_file.c_str(), strlen(whole_file.c_str()));
 
-  if (loops.size() < 0) {
-    LOG_ERROR("%d more loop closed than open", loops.size() * -1);
+  if (loops.size() < 0)
+  {
+    _LOG_ERROR("%d more loop closed than open", loops.size() * -1);
   }
-  if (loops.size() > 0) {
-    LOG_ERROR("%d more loop closed than open", loops.size() * -1);
+  if (loops.size() > 0)
+  {
+    _LOG_ERROR("%d more loop closed than open", loops.size() * -1);
   }
-  if (conditions.size() < 0) {
-    LOG_ERROR("%d more condition closed than open", conditions.size() * -1);
+  if (conditions.size() < 0)
+  {
+    _LOG_ERROR("%d more condition closed than open", conditions.size() * -1);
   }
-  if (conditions.size() > 0) {
-    LOG_ERROR("%d more condition closed than open", conditions.size() * -1);
+  if (conditions.size() > 0)
+  {
+    _LOG_ERROR("%d more condition closed than open", conditions.size() * -1);
   }
-  if (whole_file.find(":addr(") != std::string::npos ) {
-    LOG_ERROR("Variable not declared: %s", find_between(whole_file, ":addr(", ")").c_str());
+  if (whole_file.find(":addr(") != string::npos)
+  {
+    _LOG_ERROR("Variable not declared: %s", find_between(whole_file, ":addr(", ")").c_str());
   }
 
-  //if ((nbErrorDetected == 0) && (nbWarningsDetected == 0)) {
-    //printf("This program has a total of %d lines = %.2f%% of the maximum\n", index_ram, ((float)index_ram * 100.f) / (float)MAX_RAM);
-  //}
+abortLabel: 
+  print_build_finished(startTime, nbErrorDetected, nbWarningDetected);
 
-  print_build_finished(startTime, nbErrorDetected, nbWarningsDetected);
-  
   in_f.close();
   close(out_f);
 
@@ -874,24 +708,19 @@ int main(int argc, char const *argv[])
  * @param nbError 
  * @param nbWarnings 
  */
-void print_build_finished(struct timeval startTime, int nbError, int nbWarnings)
+void print_build_finished(struct timeval startTime, int nbError, int nbWarning)
 {
-  char curTimeBuffer[80];
-  time_t curTime;
   struct timeval endTime;
   int elapsedTimeSec;
   int elapsedTimeMs;
 
   // Save end time
   gettimeofday(&endTime, NULL);
-  time(&curTime);
 
   // Compute time variable
   elapsedTimeSec = endTime.tv_sec - startTime.tv_sec;
   elapsedTimeMs = (endTime.tv_usec - startTime.tv_usec) / 1000;
 
-  strftime(curTimeBuffer, sizeof(curTimeBuffer), "%H:%M:%S", localtime(&curTime));
-
-  fprintf(stdout, "%s Build Finished. %d errors, %d warnings. (took %ds.%03dms)\n",
-    curTimeBuffer, nbError, nbWarnings, elapsedTimeSec, elapsedTimeMs);
+  LOG_INFO("Build Finished. %d errors, %d warnings. (took %ds.%03dms)",
+           nbError, nbWarning, elapsedTimeSec, elapsedTimeMs);
 }
