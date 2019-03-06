@@ -5,7 +5,7 @@
 ## Présentation
 
 ProceXeirb est un projet de conception de processeur en VHDL.
-Ce travail est une reprise du projet de Pierre Joubert et Julien Besse, tout deux étudiant à l'ENSEIRB entre 2016-2019. Voici leur page Github originale : https://github.com/Nerradia/proc_elementaire
+Ce travail est une reprise du projet de Pierre Joubert et Julien Besse, tous deux étudiant à l'ENSEIRB entre 2016-2019. Voici leur page Github originale : https://github.com/Nerradia/proc_elementaire
 
 ## Objectifs 
 
