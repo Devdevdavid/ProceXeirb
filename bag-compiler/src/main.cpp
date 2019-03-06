@@ -30,7 +30,7 @@ void print_build_finished(struct timeval startTime, int nbError, int nbWarning);
 
 // Global variables
 vector<var> variableTable;
-vector<instruction *> instructionTable;
+vector<instruction *> instruTable;
 
 string replaceAll(string str, const string &from, const string &to)
 {
@@ -200,7 +200,7 @@ void create_operation(instruction * ins, string line, string operatorSymbole)
   v = get_or_create_variable(find_between(line, operatorSymbole, ";"));
   ins->set_argument2(v);
 
-  instructionTable.push_back(ins);
+  instruTable.push_back(ins);
 }
 
 string condition_type(string str)
@@ -217,17 +217,17 @@ string condition_type(string str)
   return "";
 }
 
-int loop_to_loop(vector<instruction *> &instructionTable, int toClose)
+int loop_to_loop(vector<instruction *> &instruTable, int toClose)
 {
-  for (unsigned int i = instructionTable.size() - 1; i > 0; i--)
-  {
-    if (instructionTable[i]->type == TANT_QUE)
-      if (instructionTable[i]->num == toClose)
-      {
-        //printf("looping %d at address %d\n",instructionTable[i]->num, instructionTable[i]->address );
-        instructionTable[i]->is_closed = true;
-        return instructionTable[i]->address;
+  uint32_t index;
+
+  for (index = instruTable.size() - 1; index > 0; index--) {
+    if (instruTable[index]->type == TANT_QUE) {
+      if (instruTable[index]->num == toClose) {
+        instruTable[index]->is_closed = true;
+        return instruTable[index]->address;
       }
+    }
   }
   return 0;
 }
@@ -236,13 +236,11 @@ int word_occurence_count(string const &str, string const &word)
 {
   int count = 0;
   string::size_type word_pos(0);
-  while (word_pos != string::npos)
-  {
+  while (word_pos != string::npos) {
     word_pos = str.find(word, word_pos);
-    if (word_pos != string::npos)
-    {
-      ++count;
+    if (word_pos != string::npos) {
       word_pos += word.length();
+      ++count;
     }
   }
   return count;
@@ -333,6 +331,7 @@ int preprocessor(const char * bagFilePath, const char * bagoFilePath)
 {
   int retError = 0;
   int lineCounter = 0;
+  uint32_t index;
   ifstream bagFile;
   ofstream bagoFile;
   string line, originLine, defineTmp;
@@ -373,7 +372,7 @@ int preprocessor(const char * bagFilePath, const char * bagoFilePath)
     }
 
     // For each line, try to find known definition
-    for (size_t index = 0; index < defineName.size(); ++index) {
+    for (index = 0; index < defineName.size(); ++index) {
       if (line.find(defineName[index]) != string::npos) {
         line = replaceAll(line, defineName[index], defineContent[index]);
       }
@@ -393,6 +392,17 @@ int preprocessor(const char * bagFilePath, const char * bagoFilePath)
   bagoFile.close();
 
   return retError;
+}
+
+void replaceInWholeFile(string wholeFile, const char * name, int id, int ramIndex)
+{
+  char tmp1[30] = "";
+  char tmp2[30] = "";
+
+  sprintf(tmp1, ":%s(%d)", name, id);
+  sprintf(tmp2, "%05x", ramIndex);
+
+  wholeFile = replaceAll(wholeFile, string(tmp1), string(tmp2));
 }
 
 void addStandardConstant(void)
@@ -457,15 +467,17 @@ int compiler(const char * bagoFilePath, const char * asmFilePath)
   int retError = 0;
   bool tooMuchErrorAbort = false;
   string line = "";
-  string whole_file = "";
+  string wholeFile;
   instruction *ins;
   var * v;
   stack<int> conditions;
   stack<int> loops;
   int id_cond = 0;
   int id_loop = 0;
-  uint32_t index_ram = 0;
-  char tmpStr[50];
+  uint32_t indexRam = 0;
+  uint32_t index = 0;
+  char tmpStr1[30] = "";
+  char tmpStr2[30] = "";
 
   // Input file
   ifstream bagoFile(bagoFilePath);
@@ -499,7 +511,7 @@ int compiler(const char * bagoFilePath, const char * asmFilePath)
       v = get_or_create_variable(find_between(line, "(", ")"));
       ins->set_argument1(v);
 
-      instructionTable.push_back(ins);
+      instruTable.push_back(ins);
     }
     else if (line.find("evr") != string::npos)
     { //int to real
@@ -513,7 +525,7 @@ int compiler(const char * bagoFilePath, const char * asmFilePath)
       v = get_or_create_variable(find_between(line, "(", ")"));
       ins->set_argument1(v);
 
-      instructionTable.push_back(ins);
+      instruTable.push_back(ins);
     }
     else if (line.find("|") != string::npos)
     {
@@ -561,14 +573,14 @@ int compiler(const char * bagoFilePath, const char * asmFilePath)
       v = get_or_create_variable(find_between(line, cond->condition_type, ")"));
       cond->set_argument2(v);
 
-      instructionTable.push_back(cond);
+      instruTable.push_back(cond);
     }
     else if (line.find("fin_si") != string::npos)
     {
       ins = new endif;
       ins->num = conditions.top();
       conditions.pop();
-      instructionTable.push_back(ins);
+      instruTable.push_back(ins);
     }
     else if (line.find("tant_que(") != string::npos)
     {
@@ -585,7 +597,7 @@ int compiler(const char * bagoFilePath, const char * asmFilePath)
       v = get_or_create_variable(find_between(line, lo->condition_type, ")"));
       lo->set_argument2(v);
 
-      instructionTable.push_back(lo);
+      instruTable.push_back(lo);
     }
     else if (line.find("fin_tant_que") != string::npos)
     {
@@ -593,7 +605,7 @@ int compiler(const char * bagoFilePath, const char * asmFilePath)
 
       ins->num = loops.top();
       loops.pop();
-      instructionTable.push_back(ins);
+      instruTable.push_back(ins);
     }
     else if (line.find("sin(") != string::npos)
     {
@@ -605,7 +617,7 @@ int compiler(const char * bagoFilePath, const char * asmFilePath)
       v = get_or_create_variable(variable_to_change(line));
       cond->set_return_var(v);
 
-      instructionTable.push_back(cond);
+      instruTable.push_back(cond);
     }
     else if (line.find("cos(") != string::npos)
     {
@@ -617,7 +629,7 @@ int compiler(const char * bagoFilePath, const char * asmFilePath)
       v = get_or_create_variable(variable_to_change(line));
       cond->set_return_var(v);
 
-      instructionTable.push_back(cond);
+      instruTable.push_back(cond);
     }
     else if (line.find("afficher_LCD") != string::npos)
     {
@@ -626,7 +638,7 @@ int compiler(const char * bagoFilePath, const char * asmFilePath)
       v = get_or_create_variable(find_between(line, "(", ")"));
       ins->set_argument1(v);
 
-      instructionTable.push_back(ins);
+      instruTable.push_back(ins);
     }
     else if (line.find("ecrire_mem_part") != string::npos)
     {
@@ -638,7 +650,7 @@ int compiler(const char * bagoFilePath, const char * asmFilePath)
       v = get_or_create_variable(find_between(line, ",", ")"));
       ins->set_argument2(v);
 
-      instructionTable.push_back(ins);
+      instruTable.push_back(ins);
     }
     else if (line.find("ecrire_a(") != string::npos)
     {
@@ -650,7 +662,7 @@ int compiler(const char * bagoFilePath, const char * asmFilePath)
       v = get_or_create_variable(find_between(line, ",", ")"));
       ins->set_argument2(v);
 
-      instructionTable.push_back(ins);
+      instruTable.push_back(ins);
     }
     else if (line.find("lire_a") != string::npos)
     {
@@ -662,7 +674,7 @@ int compiler(const char * bagoFilePath, const char * asmFilePath)
       v = get_or_create_variable(find_between(line, "(", ")"));
       ins->set_argument1(v);
 
-      instructionTable.push_back(ins);
+      instruTable.push_back(ins);
     }
     else if (line.find("=") != string::npos)
     {
@@ -674,7 +686,7 @@ int compiler(const char * bagoFilePath, const char * asmFilePath)
       v = get_or_create_variable(find_between(line, "=", ";"));
       ins->set_argument1(v);
 
-      instructionTable.push_back(ins);
+      instruTable.push_back(ins);
     }
     else
     {
@@ -690,65 +702,53 @@ int compiler(const char * bagoFilePath, const char * asmFilePath)
     goto abortLabel;
   }
 
-  // gestion des instructions
-  for (unsigned int i = 0; i < instructionTable.size(); ++i)
+  // Gestion des instructions
+  for (index = 0; index < instruTable.size(); ++index) 
   {
-    instructionTable[i]->set_address(index_ram);
-    whole_file += instructionTable[i]->print_instruction();
-    index_ram += instructionTable[i]->nb_ins;
+    instruTable[index]->set_address(indexRam);
+    wholeFile += instruTable[index]->print_instruction();
+    indexRam += instruTable[index]->nb_ins;
 
-    if (instructionTable[i]->type == FIN_CONDITION)
-    {
-      //we are in a condition
-      char temp1[30] = "";
-      char temp2[30] = "";
-      sprintf(temp1, ":condition(%d)", instructionTable[i]->num);
-      sprintf(temp2, "%05x", index_ram);
-      //printf("replacing: %s by %s .\n", temp1, temp2 );
-      whole_file = replaceAll(whole_file, string(temp1), string(temp2));
+    if (instruTable[index]->type == FIN_CONDITION) {
+      sprintf(tmpStr1, ":condition(%d)", instruTable[index]->num);
+      sprintf(tmpStr2, "%05x", indexRam);
+      wholeFile = replaceAll(wholeFile, string(tmpStr1), string(tmpStr2));
     }
 
-    if (instructionTable[i]->type == FIN_TANT_QUE)
-    {
-      //we are in a condition
-      char temp1[30] = "";
-      char temp2[30] = "";
-      //printf(" numéro de l'instruction: %d\n", instructionTable[i]->num );
-      int toClose = instructionTable[i]->num;
-      sprintf(temp1, ":endloop(%d)", toClose);
-      sprintf(temp2, "%05x", index_ram); //TODO: verify that
-      //printf("replacing: %s by %s .\n", temp1, temp2 );
-      whole_file = replaceAll(whole_file, string(temp1), string(temp2));
-      sprintf(temp1, ":loop(%d)", toClose);
-      sprintf(temp2, "%05x", loop_to_loop(instructionTable, toClose)); //TODO: verify that
-      //printf("replacing: %s by %s .\n", temp1, temp2 );
-      whole_file = replaceAll(whole_file, string(temp1), string(temp2));
+    if (instruTable[index]->type == FIN_TANT_QUE) {
+      int toClose = instruTable[index]->num;
+      
+      sprintf(tmpStr1, ":endloop(%d)", toClose);
+      sprintf(tmpStr2, "%05x", indexRam);
+      wholeFile = replaceAll(wholeFile, string(tmpStr1), string(tmpStr2));
+      
+      sprintf(tmpStr1, ":loop(%d)", toClose);
+      sprintf(tmpStr2, "%05x", loop_to_loop(instruTable, toClose)); 
+      wholeFile = replaceAll(wholeFile, string(tmpStr1), string(tmpStr2));
     }
   }
 
   // fin du programme
-  snprintf(tmpStr, sizeof(tmpStr), "JMP %05x\n", index_ram++);
-  whole_file += tmpStr;
+  snprintf(tmpStr1, sizeof(tmpStr1), "JMP %05x\n", indexRam++);
+  wholeFile += tmpStr1;
 
   // gestion des variables
-  for (size_t i = 0; i < variableTable.size(); ++i) {
-    snprintf(tmpStr, sizeof(tmpStr), "VAR %07x\n", variableTable[i].value & 0x1ffffff);
-    whole_file += tmpStr;
-    variableTable[i].address = index_ram;
-    index_ram++;
+  for (index = 0; index < variableTable.size(); ++index) {
+    snprintf(tmpStr1, sizeof(tmpStr1), "VAR %07x\n", variableTable[index].value & 0x1ffffff);
+    wholeFile += tmpStr1;
+    variableTable[index].address = indexRam;
+    indexRam++;
 
-    if (word_occurence_count(whole_file, variableTable[i].name) < 2) {
-      if (!variableTable[i].is_standard && variableTable[i].value == 0) {
-        _LOG_WARNING("Unused variable \"%s\"", variableTable[i].name.c_str());
+    if (word_occurence_count(wholeFile, variableTable[index].name) < 2) {
+      if (!variableTable[index].is_standard && variableTable[index].value == 0) {
+        _LOG_WARNING("Unused variable \"%s\"", variableTable[index].name.c_str());
       }
     }
 
-    //replacement of the variable name in the program with the address
-    char temp1[30] = "";
-    char temp2[30] = "";
-    sprintf(temp1, ":addr(%s)", variableTable[i].name.c_str());
-    sprintf(temp2, "%05x", variableTable[i].address);
-    whole_file = replaceAll(whole_file, string(temp1), string(temp2));
+    // replacement of the variable name in the program with the address
+    sprintf(tmpStr1, ":addr(%s)", variableTable[index].name.c_str());
+    sprintf(tmpStr2, "%05x", variableTable[index].address);
+    wholeFile = replaceAll(wholeFile, string(tmpStr1), string(tmpStr2));
   }
 
   if (loops.size() < 0) {
@@ -763,11 +763,11 @@ int compiler(const char * bagoFilePath, const char * asmFilePath)
   if (conditions.size() > 0) {
     _LOG_ERROR("%d more condition closed than open", conditions.size() * -1);
   }
-  if (whole_file.find(":addr(") != string::npos) {
-    _LOG_ERROR("Variable not declared: %s", find_between(whole_file, ":addr(", ")").c_str());
+  if (wholeFile.find(":addr(") != string::npos) {
+    _LOG_ERROR("Variable not declared: %s", find_between(wholeFile, ":addr(", ")").c_str());
   }
 
-  retError = write_string_in_file(asmFilePath, whole_file);
+  retError = write_string_in_file(asmFilePath, wholeFile);
 
 abortLabel: 
   bagoFile.close();
@@ -799,32 +799,25 @@ int main(int argc, char const *argv[])
   }
 
   // Check all argument
-  for (index = 1; index < argc; index++)
-  {
-    if (!strncmp(argv[index], "-o", 2))
-    {
-      if (argc - index > 1)
-      {
+  for (index = 1; index < argc; index++) {
+    if (!strncmp(argv[index], "-o", 2)) {
+      if (argc - index > 1) {
         // The next argument is an output file path
         outputFilePath = argv[++index];
       }
-      else
-      {
+      else {
         fprintf(stderr, "-o error: argument missing\n");
         return 1;
       }
     } else if (!strncmp(argv[index], "-k", 2)) {
       keepBagoFileOpt = 1;
     } 
-    else
-    {
+    else {
       // This is an input file
-      if (inputFilePath == NULL)
-      {
+      if (inputFilePath == NULL) {
         inputFilePath = argv[index];
       }
-      else
-      {
+      else {
         LOG_ERROR("Too much input files");
         print_usage();
         return 1;

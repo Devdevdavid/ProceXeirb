@@ -1,4 +1,10 @@
-# TODO
+# ProceXeirb - The next generation of processors is being developped here
+
+![Alt text](doc/ProceXeirb_Logo_B_on_W.png "Logo de ProceXeirb")
+
+## Présentation
+
+ProceXeirb est un projet de conception de processeur en VHDL.
 
 ## Objectifs 
 
