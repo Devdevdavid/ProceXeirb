@@ -4,7 +4,7 @@ SRCDIR          = prog
 OBJDIR          = obj
 BINDIR          = bin
 
-COMPORT         = /dev/cu.usbserial-00002014B
+PORT            = /dev/cu.usbserial-00002014B
 
 OBJTARG         = $(OBJDIR)/$(TARGET)
 BINTARG         = $(BINDIR)/$(TARGET)
@@ -19,7 +19,7 @@ all: $(BINTARG).bytes
 
 # Build ASM file
 $(OBJTARG).asm: $(SOURCES)
-	bag-compiler $(SOURCES) -o $(OBJTARG).asm
+	bag-compiler $(SOURCES) -o $(OBJTARG).asm -k
 
 # Build Bytes file
 $(BINTARG).bytes: $(OBJTARG).asm
@@ -28,7 +28,7 @@ $(BINTARG).bytes: $(OBJTARG).asm
 
 .PHONY: load
 load: all
-	bag-upload $(BINTARG).bytes -p $(COMPORT)
+	bag-upload $(BINTARG).bytes -p $(PORT)
 
 # Build all the tools used by this toolchain
 .PHONY: tools

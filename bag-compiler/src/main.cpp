@@ -793,7 +793,7 @@ int main(int argc, char const *argv[])
   const char *inputFilePath = NULL;
 
   // Arg check
-  if (argc != (3 + 1)) {
+  if (argc < (3 + 1)) {
     print_usage();
     return 1;
   }
@@ -839,9 +839,6 @@ int main(int argc, char const *argv[])
   if (create_bago_file_path(outputFilePath, bagoFilePath, sizeof(bagoFilePath)) != 0) {
     return -1; // LOG_ERROR in the function
   }
-
-  LOG_INFO("Path : %s", bagoFilePath);
-  return 0;
 
   // Preprocessor duty : generate a *.bago file
   if (preprocessor(inputFilePath, bagoFilePath) != 0) {
