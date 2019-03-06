@@ -15,7 +15,6 @@
 
 #include <bag_devlib.h>
 
-#define MAX_RAM_SIZE      8192
 #define CHUNK_SIZE        64      // Size of each chunk sent to FPGA, bigger is slower, but if it's too low, data will get lost
 
 int set_interface_attribs(int fd, int speed, int parity) 
@@ -77,6 +76,14 @@ void set_blocking(int fd, int should_block)
   }
 }
 
+void print_usage(void) 
+{
+  LOG("You should use this program with the following arguments :\n");
+  LOG("\t ./bag-compiler <file.bytes> -p <port>\n");
+  // LOG("Options\n");
+  // LOG("\t -s  : -\n");
+}
+
 int main(int argc, char const *argv[])
 {
   int index;
@@ -90,8 +97,7 @@ int main(int argc, char const *argv[])
 
   // Arg check
   if (argc != (3 + 1)) {
-    LOG("You should use this program with the following arguments :\n");
-    LOG("\t ./bag-compiler <file.bytes> -p <port>\n");
+    print_usage();
     return -1;
   } 
 
@@ -111,6 +117,7 @@ int main(int argc, char const *argv[])
         inputFilePath = argv[index];
       } else {
         LOG_ERROR("Too much input files");
+        print_usage();
         return -1;
       }
     }
@@ -135,8 +142,8 @@ int main(int argc, char const *argv[])
   lseek(binFile, 0L, SEEK_SET);
 
   /** Check the size of the binary */
-  if (binFileLen > MAX_RAM_SIZE) {
-    LOG_ERROR("The binary file is too large for RAM size: %d (max: %d)", binFileLen, MAX_RAM_SIZE);
+  if (binFileLen > HARD_RAM_SIZE) {
+    LOG_ERROR("The binary file is too large for RAM size: %d (max: %d)", binFileLen, HARD_RAM_SIZE);
     return -1;
   }
 

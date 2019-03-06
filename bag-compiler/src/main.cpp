@@ -22,7 +22,8 @@
 #include "instruction.hpp"
 #include "variable.hpp"
 
-#define DEFAULT_FILE_PERM (S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH)
+#define DEFAULT_FILE_PERM       (S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH)
+#define MAX_BAGO_FILE_PATH_LEN  128
 
 // Prototype
 void print_build_finished(struct timeval startTime, int nbError, int nbWarning);
@@ -248,14 +249,89 @@ int word_occurence_count(string const &str, string const &word)
 }
 
 /**
+ * @brief Create a bago file path from the asm file path
+ * 
+ * @param asmFilePath 
+ * @param bagoFilePath 
+ * @param maxPathLen max length of bagoFilePath
+ * @return int 0: OK, 1: error
+ */
+int create_bago_file_path(const char *asmFilePath, char * bagoFilePath, uint16_t maxPathLen) 
+{
+  uint16_t asmFilePathLen = strlen(asmFilePath);
+  uint16_t lastDotIndex;
+  int index;
+
+  bagoFilePath[0] = '\0';
+
+  // Find the last '.'
+  for (index = 0; index < asmFilePathLen; index++) {
+    if (asmFilePath[index] == '.') {
+      lastDotIndex = index;
+    }
+  }
+
+  // Check length
+  if (maxPathLen < (lastDotIndex + 6)) { // +5: '.bago, +1: '\0'
+    LOG_ERROR("File path too long to create *.bago file path : %d max", maxPathLen);
+    return 1;
+  }
+
+  // Copy from the beginning to the last dot
+  strncpy(bagoFilePath, asmFilePath, lastDotIndex);
+  for (index = 0; index < lastDotIndex; index++) {
+    bagoFilePath[index] = asmFilePath[index];
+  }
+  bagoFilePath[index] = '\0';
+
+  // add the extension
+  strncat(bagoFilePath, ".bago", maxPathLen);
+
+  return 0;
+}
+
+/**
+ * @brief Write the content of str inside a new file
+ * 
+ * @param filePath 
+ * @param str 
+ * @return int 0: OK, 1: I/O error
+ */
+int write_string_in_file(const char * filePath, string str) 
+{
+  int fd;
+
+  // Remove existing file
+  remove(filePath);
+
+  // Create the file with specified permission
+  fd = open(filePath, O_WRONLY | O_CREAT, DEFAULT_FILE_PERM);
+  if (fd < 0) {
+    LOG_ERROR("Failed to create *.asm file %s: %s", filePath, strerror(errno));
+    return 1;
+  }
+
+  // Write the whole string content
+  if (write(fd, str.c_str(), str.length()) != str.length()) {
+    LOG_ERROR("Failed to write in file %s: %s", filePath, strerror(errno));
+    close(fd);
+    return 1;
+  }
+
+  close(fd);
+  return 0;
+}
+
+/**
  * @brief Create the *.bago file precompiled
  * 
  * @param bagFilePath 
  * @param bagoFilePath 
- * @return int 0: OK, 1: Error
+ * @return int 0: OK, 1: I/O Error, 2: Syntaxe error
  */
 int preprocessor(const char * bagFilePath, const char * bagoFilePath)
 {
+  int retError = 0;
   int lineCounter = 0;
   ifstream bagFile;
   ofstream bagoFile;
@@ -267,196 +343,142 @@ int preprocessor(const char * bagFilePath, const char * bagoFilePath)
   bagoFile.open(bagoFilePath);
   if (!bagoFile.is_open()) {
     LOG_ERROR("Failed to create .bago file %s: %s\n", bagoFilePath, strerror(errno));
-    return 1;
+    retError = 1;
   }
 
   bagFile.open(bagFilePath);
-  if (!bagoFile.is_open()) {
+  if (!bagFile.is_open()) {
     LOG_ERROR("Failed to open .bag file %s: %s\n", bagFilePath, strerror(errno));
-    return 1;
+    retError = 1;
   }
 
   // First pass: Preprocessor duty
-  while (getline(bagFile, originLine)) {
+  while (getline(bagFile, originLine) && (retError == 0)) {
     ++lineCounter;
     line = replaceAll(originLine, " ", "");
-    line = removeLineComment(line); // Remove text after comment symbole "//"
+    line = removeLineComment(line);         // Remove text after comment symbole "//"
 
+    // Search for new #definition instruction
     if (line.find("#definition") != string::npos) {
+      // Save the name and content
       defineName.push_back(find_between(line, "#definition", "("));
       defineContent.push_back(find_between(line, "(", ")"));
 
+      // Check the name
       if (defineName.back().empty()) {
         _LOG_ERROR("Wrong syntax on line %d: \"%s\"", lineCounter, originLine.c_str());
-        return 1;
+        retError = 2; // Syntaxe Error
       } 
       continue; // Do not copy this line
     }
 
+    // For each line, try to find known definition
     for (size_t index = 0; index < defineName.size(); ++index) {
       if (line.find(defineName[index]) != string::npos) {
         line = replaceAll(line, defineName[index], defineContent[index]);
       }
     }
     
-    if (line.length() > 1) {
-      bagoFile << line << endl;
+    // Ignore empty lines (Have to be done after #definition replacement)
+    if (line.length() <= 1) {
+      continue;
     }
+
+    // Save the line
+    bagoFile << line << endl;
   }
 
+  // Close files 
   bagFile.close();
   bagoFile.close();
 
-  return 0;
+  return retError;
 }
 
-int main(int argc, char const *argv[])
+void addStandardConstant(void)
 {
-  char bagoFilePath[100];
-  struct timeval startTime;
-  int index;
+  var tmpVar;
+
+  tmpVar.name = "0";
+  tmpVar.value = 0;
+  tmpVar.type = INTEGER;
+  tmpVar.is_standard = true;
+  variableTable.push_back(tmpVar);
+
+  tmpVar.name = "0.";
+  tmpVar.value = 0;
+  tmpVar.type = REAL;
+  tmpVar.is_standard = true;
+  variableTable.push_back(tmpVar);
+  
+  tmpVar.name = "1";
+  tmpVar.value = 1;
+  tmpVar.type = INTEGER;
+  tmpVar.is_standard = true;
+  variableTable.push_back(tmpVar);
+  
+  tmpVar.name = "180";
+  tmpVar.value = 0xB4;
+  tmpVar.type = INTEGER;
+  tmpVar.is_standard = true;
+  variableTable.push_back(tmpVar);
+  
+  tmpVar.name = "90";
+  tmpVar.value = 0x5A;
+  tmpVar.type = INTEGER;
+  tmpVar.is_standard = true;
+  variableTable.push_back(tmpVar);
+  
+  tmpVar.name = "FFFFFFF";
+  tmpVar.value = 0xFFFFFFF;
+  tmpVar.type = INTEGER;
+  tmpVar.is_standard = true;
+  variableTable.push_back(tmpVar);
+  
+  tmpVar.name = "SININDEX";
+  tmpVar.value = 0x0003000;
+  tmpVar.type = INTEGER;
+  tmpVar.is_standard = true;
+  variableTable.push_back(tmpVar);
+
+  tmpVar.name = "SHARED_INDEX";
+  tmpVar.value = 0x0002000;
+  tmpVar.is_standard = true;
+  variableTable.push_back(tmpVar);
+
+  tmpVar.name = "DUMMY";
+  tmpVar.value = 0x0000000;
+  tmpVar.is_standard = true;
+  variableTable.push_back(tmpVar);
+}
+
+int compiler(const char * bagoFilePath, const char * asmFilePath) 
+{
+  int retError = 0;
   bool tooMuchErrorAbort = false;
-  const char *outputFilePath = NULL;
-  const char *inputFilePath = NULL;
-
-  // Arg check
-  if (argc != (3 + 1))
-  {
-    printf("You should use this program with the following arguments :\n");
-    printf("\t ./bag-compiler -o <file.asm> <file.bag>\n");
-    return 1;
-  }
-
-  // Check all argument
-  for (index = 1; index < argc; index++)
-  {
-    if (!strncmp(argv[index], "-o", 2))
-    {
-      if (argc - index > 1)
-      {
-        // The next argument is an output file path
-        outputFilePath = argv[++index];
-      }
-      else
-      {
-        fprintf(stderr, "-o error: argument missing\n");
-        return 1;
-      }
-    }
-    else
-    {
-      // This is an input file
-      if (inputFilePath == NULL)
-      {
-        inputFilePath = argv[index];
-      }
-      else
-      {
-        fprintf(stderr, "Too much input files\n");
-        return 1;
-      }
-    }
-  }
-
-  // Save start time
-  gettimeofday(&startTime, NULL);
-
-  // Preprocessor duty : generate a *.bago file
-  snprintf(bagoFilePath, sizeof(bagoFilePath), "%so", inputFilePath);
-  if (preprocessor(inputFilePath, bagoFilePath) != 0) {
-    LOG_ERROR("-- Preprocessor failed --");
-    return -1;
-  }
-
-  // Input file
-  ifstream in_f(bagoFilePath);
-  if (!in_f.is_open()) {
-    fprintf(stderr, "Error %d opening input file %s: %s\n", errno, inputFilePath, strerror(errno));
-    return 1;
-  }
-
-  // Output file
-  remove(outputFilePath);
-  int out_f = open(outputFilePath, O_WRONLY | O_CREAT, DEFAULT_FILE_PERM);
-  if (out_f < 0)
-  {
-    fprintf(stderr, "Error %d opening output file %s: %s\n", errno, outputFilePath, strerror(errno));
-    return 1;
-  }
-
   string line = "";
+  string whole_file = "";
   instruction *ins;
-
+  var * v;
   stack<int> conditions;
   stack<int> loops;
-
   int id_cond = 0;
   int id_loop = 0;
+  uint32_t index_ram = 0;
+  char tmpStr[50];
 
-  /*implementation of standard constants*/
-  var * v;
-  var tmpVar;
-  {
-    // 0
-    tmpVar.name = "0";
-    tmpVar.value = 0;
-    tmpVar.type = INTEGER;
-    tmpVar.is_standard = true;
-    variableTable.push_back(tmpVar);
-
-    tmpVar.name = "0.";
-    tmpVar.value = 0;
-    tmpVar.type = REAL;
-    tmpVar.is_standard = true;
-    variableTable.push_back(tmpVar);
-    // 1
-    tmpVar.name = "1";
-    tmpVar.value = 1;
-    tmpVar.type = INTEGER;
-    tmpVar.is_standard = true;
-    variableTable.push_back(tmpVar);
-    // 180
-    tmpVar.name = "180";
-    tmpVar.value = 0xB4;
-    tmpVar.type = INTEGER;
-    tmpVar.is_standard = true;
-    variableTable.push_back(tmpVar);
-    // 90
-    tmpVar.name = "90";
-    tmpVar.value = 0x5A;
-    tmpVar.type = INTEGER;
-    tmpVar.is_standard = true;
-    variableTable.push_back(tmpVar);
-    // FF
-    tmpVar.name = "FFFFFFF";
-    tmpVar.value = 0xFFFFFFF;
-    tmpVar.type = INTEGER;
-    tmpVar.is_standard = true;
-    variableTable.push_back(tmpVar);
-    // sine index
-    tmpVar.name = "SININDEX";
-    tmpVar.value = 0x0003000;
-    tmpVar.type = INTEGER;
-    tmpVar.is_standard = true;
-    variableTable.push_back(tmpVar);
-
-    // sine index
-    tmpVar.name = "SHARED_INDEX";
-    tmpVar.value = 0x0002000;
-    tmpVar.is_standard = true;
-    variableTable.push_back(tmpVar);
-
-    // dummy index
-    tmpVar.name = "DUMMY";
-    tmpVar.value = 0x0000000;
-    tmpVar.is_standard = true;
-    variableTable.push_back(tmpVar);
-
-    tmpVar.is_standard = false;
+  // Input file
+  ifstream bagoFile(bagoFilePath);
+  if (!bagoFile.is_open()) {
+    LOG_ERROR("Failed to open *.bago file %s: %s\n", bagoFilePath, strerror(errno));
+    retError = 1;
   }
 
+  // Add all constant value in memory
+  addStandardConstant();
+
   //parser
-  while (getline(in_f, line) && (tooMuchErrorAbort == false))
+  while (getline(bagoFile, line) && (tooMuchErrorAbort == false))
   {
     if (line.find("entier") != string::npos)
     {
@@ -664,15 +686,11 @@ int main(int argc, char const *argv[])
     }
   }
 
-  string whole_file = "";
-  uint32_t index_ram = 0;
-  char temp[30];
-
   if (tooMuchErrorAbort) {
     goto abortLabel;
   }
 
-  //gestion des instructions
+  // gestion des instructions
   for (unsigned int i = 0; i < instructionTable.size(); ++i)
   {
     instructionTable[i]->set_address(index_ram);
@@ -708,23 +726,19 @@ int main(int argc, char const *argv[])
     }
   }
 
-  //fin du programme
-  sprintf(temp, "JMP %05x\n", index_ram++);
-  whole_file += temp;
+  // fin du programme
+  snprintf(tmpStr, sizeof(tmpStr), "JMP %05x\n", index_ram++);
+  whole_file += tmpStr;
 
-  //gestion des variables
-  for (size_t i = 0; i < variableTable.size(); ++i)
-  {
-    char temp[30];
-    sprintf(temp, "VAR %07x\n", variableTable[i].value & 0x1ffffff);
-    whole_file += temp;
+  // gestion des variables
+  for (size_t i = 0; i < variableTable.size(); ++i) {
+    snprintf(tmpStr, sizeof(tmpStr), "VAR %07x\n", variableTable[i].value & 0x1ffffff);
+    whole_file += tmpStr;
     variableTable[i].address = index_ram;
     index_ram++;
 
-    if (word_occurence_count(whole_file, variableTable[i].name) < 2)
-    {
-      if (!variableTable[i].is_standard && variableTable[i].value == 0)
-      {
+    if (word_occurence_count(whole_file, variableTable[i].name) < 2) {
+      if (!variableTable[i].is_standard && variableTable[i].value == 0) {
         _LOG_WARNING("Unused variable \"%s\"", variableTable[i].name.c_str());
       }
     }
@@ -737,34 +751,111 @@ int main(int argc, char const *argv[])
     whole_file = replaceAll(whole_file, string(temp1), string(temp2));
   }
 
-  write(out_f, whole_file.c_str(), strlen(whole_file.c_str()));
-
-  if (loops.size() < 0)
-  {
+  if (loops.size() < 0) {
     _LOG_ERROR("%d more loop closed than open", loops.size() * -1);
   }
-  if (loops.size() > 0)
-  {
+  if (loops.size() > 0) {
     _LOG_ERROR("%d more loop closed than open", loops.size() * -1);
   }
-  if (conditions.size() < 0)
-  {
+  if (conditions.size() < 0) {
     _LOG_ERROR("%d more condition closed than open", conditions.size() * -1);
   }
-  if (conditions.size() > 0)
-  {
+  if (conditions.size() > 0) {
     _LOG_ERROR("%d more condition closed than open", conditions.size() * -1);
   }
-  if (whole_file.find(":addr(") != string::npos)
-  {
+  if (whole_file.find(":addr(") != string::npos) {
     _LOG_ERROR("Variable not declared: %s", find_between(whole_file, ":addr(", ")").c_str());
   }
 
+  retError = write_string_in_file(asmFilePath, whole_file);
+
 abortLabel: 
+  bagoFile.close();
+
+  return retError;
+}
+
+void print_usage(void) 
+{
+  LOG("You should use this program with the following arguments :\n");
+  LOG("\t ./bag-compiler -o <file.asm> <file.bag> [-k]\n");
+  LOG("Options\n");
+  LOG("\t -k  : Keep the *.bago file (for debug purpose) \n");
+}
+
+int main(int argc, char const *argv[])
+{
+  char bagoFilePath[MAX_BAGO_FILE_PATH_LEN];
+  struct timeval startTime;
+  int index;
+  uint8_t keepBagoFileOpt = 0;
+  const char *outputFilePath = NULL;
+  const char *inputFilePath = NULL;
+
+  // Arg check
+  if (argc != (3 + 1)) {
+    print_usage();
+    return 1;
+  }
+
+  // Check all argument
+  for (index = 1; index < argc; index++)
+  {
+    if (!strncmp(argv[index], "-o", 2))
+    {
+      if (argc - index > 1)
+      {
+        // The next argument is an output file path
+        outputFilePath = argv[++index];
+      }
+      else
+      {
+        fprintf(stderr, "-o error: argument missing\n");
+        return 1;
+      }
+    } else if (!strncmp(argv[index], "-k", 2)) {
+      keepBagoFileOpt = 1;
+    } 
+    else
+    {
+      // This is an input file
+      if (inputFilePath == NULL)
+      {
+        inputFilePath = argv[index];
+      }
+      else
+      {
+        LOG_ERROR("Too much input files");
+        print_usage();
+        return 1;
+      }
+    }
+  }
+
+  // Save start time
+  gettimeofday(&startTime, NULL);
+
+  // Create the *.bago file
+  if (create_bago_file_path(outputFilePath, bagoFilePath, sizeof(bagoFilePath)) != 0) {
+    return -1; // LOG_ERROR in the function
+  }
+
+  LOG_INFO("Path : %s", bagoFilePath);
+  return 0;
+
+  // Preprocessor duty : generate a *.bago file
+  if (preprocessor(inputFilePath, bagoFilePath) != 0) {
+    LOG_ERROR("-- Preprocessor failed --");
+    return -1;
+  }
+
+  // Compiler duty
+  compiler(bagoFilePath, outputFilePath);
   print_build_finished(startTime, nbErrorDetected, nbWarningDetected);
 
-  in_f.close();
-  close(out_f);
+  if (keepBagoFileOpt == 0) {
+    remove(bagoFilePath);
+  }
 
   // Return 0 only if no error
   return (nbErrorDetected == 0) ? 0 : 1;
@@ -782,13 +873,18 @@ void print_build_finished(struct timeval startTime, int nbError, int nbWarning)
   struct timeval endTime;
   int elapsedTimeSec;
   int elapsedTimeMs;
+  int startTimeMs;
+  int endTimeMs;
 
   // Save end time
   gettimeofday(&endTime, NULL);
 
   // Compute time variable
-  elapsedTimeSec = endTime.tv_sec - startTime.tv_sec;
-  elapsedTimeMs = (endTime.tv_usec - startTime.tv_usec) / 1000;
+  startTimeMs = startTime.tv_sec * 1000 + startTime.tv_usec / 1000;
+  endTimeMs = endTime.tv_sec * 1000 + endTime.tv_usec / 1000;
+
+  elapsedTimeSec = (endTimeMs - startTimeMs) / 1000;
+  elapsedTimeMs = (endTimeMs - startTimeMs) % 1000;
 
   LOG_INFO("Build Finished. %d errors, %d warnings. (took %ds.%03dms)",
            nbError, nbWarning, elapsedTimeSec, elapsedTimeMs);

@@ -1,5 +1,4 @@
 entierretour;
-ecrire_a(1,1092);
 ecrire_a(1,831486);
 retour=lire_a(831486);
 si(retour==1)

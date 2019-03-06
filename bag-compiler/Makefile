@@ -1,8 +1,8 @@
 TARGET          = bag-compiler
 
-SRCDIR          = src
-OBJDIR          = obj
-BINDIR          = bin
+SRCDIR          = ./src
+OBJDIR          = ./obj
+BINDIR          = ./bin
 BAG_LIB_DIR     = ../bag-library/obj
 
 BINTARG         = $(BINDIR)/$(TARGET)

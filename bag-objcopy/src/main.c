@@ -24,8 +24,6 @@
 #define INST_BIT_LENGTH   5     // Bits allocated to Instructions
 #define VALUE_BIT_LENGTH  20    // Bits allocated to Value
 
-#define MAX_RAM_SIZE      8192  // Maximum RAM size
-
 // list of instructions available
 //locical operands
 #define NOR 0x0
@@ -147,6 +145,14 @@ int splitLineArgs(char * line, char ** instStr, char ** valueStr)
   return 0;
 }
 
+void print_usage(void) 
+{
+  LOG("You should use this program with the following arguments :\n");
+  LOG("\t ./bag-objcopy -i <file.asm> -o <file.bytes> [-s]\n");
+  LOG("Options\n");
+  LOG("\t -s  : Print size of the generated file\n");
+}
+
 int main(int argc, char const *argv[])
 {
   FILE * asmFile = NULL;
@@ -170,11 +176,9 @@ int main(int argc, char const *argv[])
 
   uint8_t printSizeOpt = 0;
 
-
   // Arg check
   if (argc < (4 + 1)) {
-    LOG("You should use this program with the following arguments :\n");
-    LOG("\t ./bag-objcopy -i <file.asm> -o <file.bytes> [-s]\n");
+    print_usage();
     return 1;
   } 
 
@@ -200,6 +204,7 @@ int main(int argc, char const *argv[])
       }
     } else {
       LOG_ERROR("Argument error: \"%s\"", argv[index]);
+      print_usage();
       return 1;
     }
   }
@@ -263,7 +268,7 @@ int main(int argc, char const *argv[])
 
   // Complete file by 0 if in binary mode
   output = 0;
-  while (lineCounter++ < MAX_RAM_SIZE) {
+  while (lineCounter++ <= (HARD_RAM_SIZE / sizeof(output))) {
     fwrite(&output, sizeof(output), 1, binFile);
   }
   
@@ -292,7 +297,7 @@ void print_size(uint32_t instructionCounter, uint32_t varCounter)
 
   totalSizeBit = (instructionCounter + varCounter) * (INST_BIT_LENGTH + VALUE_BIT_LENGTH);
   totalSizeByte = (totalSizeBit / 8) + ((totalSizeBit % 8 > 0) ? 1 : 0);
-  percentUsed = (totalSizeByte * 100.0) / (MAX_RAM_SIZE);
+  percentUsed = (totalSizeByte * 100.0) / (HARD_RAM_SIZE);
 
   LOG_INFO("Program   : %4d INST", instructionCounter);
   LOG_INFO("Variables : %4d VAR", varCounter);

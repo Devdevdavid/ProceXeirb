@@ -1,10 +1,10 @@
-TARGET          = test_conditions
+TARGET          = cube
 
 SRCDIR          = prog
 OBJDIR          = obj
 BINDIR          = bin
 
-COMPORT         = COM1
+COMPORT         = /dev/cu.usbserial-00002014B
 
 OBJTARG         = $(OBJDIR)/$(TARGET)
 BINTARG         = $(BINDIR)/$(TARGET)
