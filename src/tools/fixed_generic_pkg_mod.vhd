@@ -47,6 +47,7 @@ use IEEE.STD_LOGIC_1164.all;
 use IEEE.NUMERIC_STD.all;
 use IEEE.fixed_float_types.all;
 
+
 package fixed_generic_pkg_mod is
   -- generic (
     -- Rounding routine to use in fixed point, fixed_round or fixed_truncate
