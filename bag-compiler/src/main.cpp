@@ -21,6 +21,7 @@
 #include "global.hpp"
 #include "instruction.hpp"
 #include "variable.hpp"
+#include "fonction.hpp"
 
 #define DEFAULT_FILE_PERM       (S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH)
 #define MAX_BAGO_FILE_PATH_LEN  128
@@ -29,7 +30,8 @@
 void print_build_finished(struct timeval startTime, int nbError, int nbWarning);
 
 // Global variables
-vector<var> variableTable;
+vector<fonction> fonctionTable;
+vector<var> * variableTable;
 vector<instruction *> instruTable;
 
 string replaceAll(string str, const string &from, const string &to)
@@ -101,7 +103,7 @@ bool isAValidVarName(const string &s)
   return true;
 }
 
-var * declare_var(string name, varType type)
+var * declare_var(vector<var> * variableTable, string name, varType type)
 {
   var * v = new var;
 
@@ -109,7 +111,7 @@ var * declare_var(string name, varType type)
     v->name = name;
     v->type = type;
     v->value = 0;
-    variableTable.push_back(*v);
+    variableTable->push_back(*v);
     return v;
   } else {
     _LOG_ERROR("Invalid name for variable: %s", name.c_str());
@@ -134,7 +136,7 @@ var * declare_const_var(string name)
   }
 
   v->name = name;
-  variableTable.push_back(*v);
+  variableTable->push_back(*v);
 
   return v;
 }
@@ -150,9 +152,9 @@ var * get_or_create_variable(string name)
 {
   uint32_t index;
 
-  for (index = 0; index < variableTable.size(); ++index) {
-    if (variableTable[index].name == name) {
-      return &variableTable[index];             // Return the existing variable
+  for (index = 0; index < variableTable->size(); ++index) {
+    if (variableTable->at(index).name == name) {
+      return &variableTable->at(index);             // Return the existing variable
     }
   }
   
@@ -244,6 +246,95 @@ int word_occurence_count(string const &str, string const &word)
     }
   }
   return count;
+}
+
+vector<string> str_split(string s, string delimiter)
+{
+  size_t pos_start = 0, pos_end, delim_len = delimiter.length();
+  string token;
+  vector<string> res;
+
+  while ((pos_end = s.find(delimiter, pos_start)) != string::npos) {
+    token = s.substr(pos_start, pos_end - pos_start);
+    pos_start = pos_end + delim_len;
+    res.push_back(token);
+  }
+
+  res.push_back(s.substr(pos_start));
+  return res;
+}
+
+int parse_function_declaration(string line)
+{
+  fonction * func = new fonction;
+  string argLine;
+  vector<string> argStrList;
+
+  // Get function name
+  func->name = find_between(line, "fonction", "(");
+  if (func->name.empty()) {
+    _LOG_ERROR("Invalid function name");
+    return -1;
+  }
+
+  argLine = find_between(line, "(", ")");
+  argStrList = str_split(argLine, ",");
+
+  for (string arg : argStrList) {
+    // Add an ending character to be simplify the parse
+    arg += ";";
+    // LOG_DEBUG("%s", arg.c_str());
+    if (arg.find("entier") == 0) {
+      declare_var(&func->variableTable, find_between(arg, "entier", ";"), INTEGER);
+    }
+    else if (arg.find("reel") == 0) {
+      declare_var(&func->variableTable, find_between(arg, "reel", ";"), REAL);
+    }
+  }
+
+  // Declaration is ok, we go in edition mode 
+  func->isBeingEdited = true;
+
+  // Redirect instruction and variables
+  variableTable = &func->variableTable;
+  instruTable = func->instruTable;
+
+  // for (auto vari : func->variableTable) {
+  //   LOG_DEBUG("%s", vari.name.c_str());
+  // }
+
+  // Add the fonction
+  fonctionTable.push_back(*func);
+
+  return 0;
+}
+
+int parse_function_return(string line) 
+{
+  fonction func;
+  string returnStr;
+  var * returnVar;
+  
+  // Check size
+  if (fonctionTable.size() <= 0) {
+    _LOG_ERROR("Got a return fonction without declaration: %s", line.c_str());
+    return -1;
+  }
+
+  // Check if we are inside a function
+  func = fonctionTable.back();
+  if (!func.isBeingEdited) {
+    _LOG_ERROR("Got a return instruction outside function: %s", line.c_str());
+    return -1;
+  }
+
+  returnStr = find_between(line, "retourne", ";");
+  returnVar = get_or_create_variable(returnStr);
+  func.set_return_var(returnVar);
+  
+  func.isBeingEdited = false;
+
+  return 0;
 }
 
 /**
@@ -355,6 +446,7 @@ int preprocessor(const char * bagFilePath, const char * bagoFilePath)
   while (getline(bagFile, originLine) && (retError == 0)) {
     ++lineCounter;
     line = replaceAll(originLine, " ", "");
+    line = replaceAll(line, "\t", "");
     line = removeLineComment(line);         // Remove text after comment symbole "//"
 
     // Search for new #definition instruction
@@ -409,57 +501,60 @@ void addStandardConstant(void)
 {
   var tmpVar;
 
+  // TODO Corriger ca
+  variableTable = new vector<var>;
+
   tmpVar.name = "0";
   tmpVar.value = 0;
   tmpVar.type = INTEGER;
   tmpVar.is_standard = true;
-  variableTable.push_back(tmpVar);
+  variableTable->push_back(tmpVar);
 
   tmpVar.name = "0.";
   tmpVar.value = 0;
   tmpVar.type = REAL;
   tmpVar.is_standard = true;
-  variableTable.push_back(tmpVar);
+  variableTable->push_back(tmpVar);
   
   tmpVar.name = "1";
   tmpVar.value = 1;
   tmpVar.type = INTEGER;
   tmpVar.is_standard = true;
-  variableTable.push_back(tmpVar);
+  variableTable->push_back(tmpVar);
   
   tmpVar.name = "180";
   tmpVar.value = 0xB4;
   tmpVar.type = INTEGER;
   tmpVar.is_standard = true;
-  variableTable.push_back(tmpVar);
+  variableTable->push_back(tmpVar);
   
   tmpVar.name = "90";
   tmpVar.value = 0x5A;
   tmpVar.type = INTEGER;
   tmpVar.is_standard = true;
-  variableTable.push_back(tmpVar);
+  variableTable->push_back(tmpVar);
   
   tmpVar.name = "FFFFFFF";
   tmpVar.value = 0xFFFFFFF;
   tmpVar.type = INTEGER;
   tmpVar.is_standard = true;
-  variableTable.push_back(tmpVar);
+  variableTable->push_back(tmpVar);
   
   tmpVar.name = "SININDEX";
   tmpVar.value = 0x0003000;
   tmpVar.type = INTEGER;
   tmpVar.is_standard = true;
-  variableTable.push_back(tmpVar);
+  variableTable->push_back(tmpVar);
 
   tmpVar.name = "SHARED_INDEX";
   tmpVar.value = 0x0002000;
   tmpVar.is_standard = true;
-  variableTable.push_back(tmpVar);
+  variableTable->push_back(tmpVar);
 
   tmpVar.name = "DUMMY";
   tmpVar.value = 0x0000000;
   tmpVar.is_standard = true;
-  variableTable.push_back(tmpVar);
+  variableTable->push_back(tmpVar);
 }
 
 int compiler(const char * bagoFilePath, const char * asmFilePath) 
@@ -492,13 +587,14 @@ int compiler(const char * bagoFilePath, const char * asmFilePath)
   //parser
   while (getline(bagoFile, line) && (tooMuchErrorAbort == false))
   {
-    if (line.find("entier") != string::npos)
+    // LOG_DEBUG("cur line = %s", line.c_str());
+    if (line.find("entier") == 0)
     {
-      declare_var(find_between(line, "entier", ";"), INTEGER);
+      declare_var(variableTable, find_between(line, "entier", ";"), INTEGER);
     }
-    else if (line.find("reel") != string::npos)
+    else if (line.find("reel") == 0)
     {
-      declare_var(find_between(line, "reel", ";"), REAL);
+      declare_var(variableTable, find_between(line, "reel", ";"), REAL);
     }
     else if (line.find("rve") != string::npos)
     { //real to int
@@ -606,6 +702,14 @@ int compiler(const char * bagoFilePath, const char * asmFilePath)
       ins->num = loops.top();
       loops.pop();
       instruTable.push_back(ins);
+    }
+    else if (line.find("fonction") != string::npos)
+    {
+      parse_function_declaration(line);
+    }
+    else if (line.find("retourne") != string::npos)
+    {
+      parse_function_return(line);
     }
     else if (line.find("sin(") != string::npos)
     {
@@ -733,21 +837,21 @@ int compiler(const char * bagoFilePath, const char * asmFilePath)
   wholeFile += tmpStr1;
 
   // gestion des variables
-  for (index = 0; index < variableTable.size(); ++index) {
-    snprintf(tmpStr1, sizeof(tmpStr1), "VAR %07x\n", variableTable[index].value & 0x1ffffff);
+  for (var variable : (*variableTable)) {
+    snprintf(tmpStr1, sizeof(tmpStr1), "VAR %07x\n", variable.value & 0x1ffffff);
     wholeFile += tmpStr1;
-    variableTable[index].address = indexRam;
+    variable.address = indexRam;
     indexRam++;
 
-    if (word_occurence_count(wholeFile, variableTable[index].name) < 2) {
-      if (!variableTable[index].is_standard && variableTable[index].value == 0) {
-        _LOG_WARNING("Unused variable \"%s\"", variableTable[index].name.c_str());
+    if (word_occurence_count(wholeFile, variable.name) < 2) {
+      if (!variable.is_standard && variable.value == 0) {
+        _LOG_WARNING("Unused variable \"%s\"", variable.name.c_str());
       }
     }
 
     // replacement of the variable name in the program with the address
-    sprintf(tmpStr1, ":addr(%s)", variableTable[index].name.c_str());
-    sprintf(tmpStr2, "%05x", variableTable[index].address);
+    sprintf(tmpStr1, ":addr(%s)", variable.name.c_str());
+    sprintf(tmpStr2, "%05x", variable.address);
     wholeFile = replaceAll(wholeFile, string(tmpStr1), string(tmpStr2));
   }
 
