@@ -1,3 +1,7 @@
 fonction myFunction(entier a, entier b);
 	a = b;
+	tant_que (a < b)
+		a = a + 1;
+	fin_tant_que;
+
 retourne a;

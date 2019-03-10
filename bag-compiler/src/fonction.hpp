@@ -28,13 +28,30 @@ class fonction
     vector<var> variableTable;
     vector<instruction *> instruTable;
 
+    uint16_t loopId;
+    uint16_t condId;
+
     var returnVar;
 
   public:
     void add_argument(var *v);
     void set_return_var(var *v);
 
-    void set_address(uint32_t address);
+    var * get_var(string varName);
+    void add_local_var(var *v);
+
+    void add_instru(instruction *i);
+
+    // Loops and conditions
+    string get_next_loop_id(void);
+    string consume_loop_id(void);
+    uint32_t get_loop_back_address(string loopIdToClose);
+    string get_next_cond_id(void);
+    string consume_cond_id(void);
+    void check_loops_and_cond(void);
+
+  private: 
+    string build_cond_loop_id(uint16_t num);
 };
 
 #endif /* FONCTION_HPP */

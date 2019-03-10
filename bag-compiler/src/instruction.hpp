@@ -50,14 +50,12 @@ public:
   INS_TYPE type;
   int nb_ins;
   //only for conditions and loop
-  int num;
+  string id;
   uint32_t address;
-  bool is_closed;
 
 //protected:
   var a1;
   var a2;
-  var a3;
   var var_;
 
 public :

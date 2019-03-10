@@ -26,13 +26,14 @@
 #define DEFAULT_FILE_PERM       (S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH)
 #define MAX_BAGO_FILE_PATH_LEN  128
 
+#define GLOBAL_CONTEXT          fonctionTable.at(0)
+#define CUR_CONTEXT             fonctionTable.back()
+
 // Prototype
 void print_build_finished(struct timeval startTime, int nbError, int nbWarning);
 
 // Global variables
-vector<fonction> fonctionTable;
-vector<var> * variableTable;
-vector<instruction *> instruTable;
+vector<fonction *> fonctionTable;
 
 string replaceAll(string str, const string &from, const string &to)
 {
@@ -103,15 +104,49 @@ bool isAValidVarName(const string &s)
   return true;
 }
 
-var * declare_var(vector<var> * variableTable, string name, varType type)
+/**
+ * @brief Return the string between start and end
+ * 
+ * @param str 
+ * @param start 
+ * @param end 
+ * @return string 
+ */
+string find_between(string str, string start, string end) 
+{
+  int first = str.find(start) + start.length();
+  int last = str.find(end);
+
+  if ((first == string::npos) || (last == string::npos)) {
+    return "";
+  }
+
+  return str.substr(first, last - first);
+}
+
+var * declare_var(string line)
 {
   var * v = new var;
+  string name;
+  varType type;
+
+  if (line.find("entier") == 0) {
+    name = find_between(line, "entier", ";");
+    type = INTEGER;
+  }
+  else if (line.find("reel") == 0) {
+    name = find_between(line, "reel", ";");
+    type = REAL;
+  } else {
+    _LOG_ERROR("Unknown variable declaration : \"%s\"", line.c_str());
+    return NULL;
+  }
 
   if (isAValidVarName(name)) {
     v->name = name;
     v->type = type;
     v->value = 0;
-    variableTable->push_back(*v);
+    CUR_CONTEXT->add_local_var(v);
     return v;
   } else {
     _LOG_ERROR("Invalid name for variable: %s", name.c_str());
@@ -136,7 +171,7 @@ var * declare_const_var(string name)
   }
 
   v->name = name;
-  variableTable->push_back(*v);
+  GLOBAL_CONTEXT->add_local_var(v);
 
   return v;
 }
@@ -150,35 +185,22 @@ var * declare_const_var(string name)
  */
 var * get_or_create_variable(string name)
 {
-  uint32_t index;
+  var * v;
 
-  for (index = 0; index < variableTable->size(); ++index) {
-    if (variableTable->at(index).name == name) {
-      return &variableTable->at(index);             // Return the existing variable
-    }
+  // Look for the variable in the current context
+  v = CUR_CONTEXT->get_var(name);
+  if (v != NULL) {
+    return v;
+  }
+
+  // If not found, look in the global context
+  v = GLOBAL_CONTEXT->get_var(name);
+  if (v != NULL) {
+    return v;
   }
   
-  return declare_const_var(name); // Declare the new constant variable and return its reference
-}
-
-/**
- * @brief Return the string between start and end
- * 
- * @param str 
- * @param start 
- * @param end 
- * @return string 
- */
-string find_between(string str, string start, string end) 
-{
-  int first = str.find(start) + start.length();
-  int last = str.find(end);
-
-  if ((first == string::npos) || (last == string::npos)) {
-    return "";
-  }
-
-  return str.substr(first, last - first);
+  // If not found, declare it in global context as a numeric constant and return reference
+  return declare_const_var(name);
 }
 
 string variable_to_change(string str)
@@ -202,7 +224,7 @@ void create_operation(instruction * ins, string line, string operatorSymbole)
   v = get_or_create_variable(find_between(line, operatorSymbole, ";"));
   ins->set_argument2(v);
 
-  instruTable.push_back(ins);
+  CUR_CONTEXT->add_instru(ins);
 }
 
 string condition_type(string str)
@@ -217,35 +239,6 @@ string condition_type(string str)
 
   _LOG_ERROR("Unknown condition operator : \"%s\"", str.c_str());
   return "";
-}
-
-int loop_to_loop(vector<instruction *> &instruTable, int toClose)
-{
-  uint32_t index;
-
-  for (index = instruTable.size() - 1; index > 0; index--) {
-    if (instruTable[index]->type == TANT_QUE) {
-      if (instruTable[index]->num == toClose) {
-        instruTable[index]->is_closed = true;
-        return instruTable[index]->address;
-      }
-    }
-  }
-  return 0;
-}
-
-int word_occurence_count(string const &str, string const &word)
-{
-  int count = 0;
-  string::size_type word_pos(0);
-  while (word_pos != string::npos) {
-    word_pos = str.find(word, word_pos);
-    if (word_pos != string::npos) {
-      word_pos += word.length();
-      ++count;
-    }
-  }
-  return count;
 }
 
 vector<string> str_split(string s, string delimiter)
@@ -277,41 +270,28 @@ int parse_function_declaration(string line)
     return -1;
   }
 
+  // Add the fonction (And implicitly set as CUR_CONTEXT)
+  fonctionTable.push_back(func);
+
+  // Extract arg declaration
   argLine = find_between(line, "(", ")");
   argStrList = str_split(argLine, ",");
 
   for (string arg : argStrList) {
     // Add an ending character to be simplify the parse
     arg += ";";
-    // LOG_DEBUG("%s", arg.c_str());
-    if (arg.find("entier") == 0) {
-      declare_var(&func->variableTable, find_between(arg, "entier", ";"), INTEGER);
-    }
-    else if (arg.find("reel") == 0) {
-      declare_var(&func->variableTable, find_between(arg, "reel", ";"), REAL);
-    }
+    declare_var(arg);
   }
 
   // Declaration is ok, we go in edition mode 
   func->isBeingEdited = true;
-
-  // Redirect instruction and variables
-  variableTable = &func->variableTable;
-  instruTable = func->instruTable;
-
-  // for (auto vari : func->variableTable) {
-  //   LOG_DEBUG("%s", vari.name.c_str());
-  // }
-
-  // Add the fonction
-  fonctionTable.push_back(*func);
 
   return 0;
 }
 
 int parse_function_return(string line) 
 {
-  fonction func;
+  fonction * func;
   string returnStr;
   var * returnVar;
   
@@ -323,16 +303,16 @@ int parse_function_return(string line)
 
   // Check if we are inside a function
   func = fonctionTable.back();
-  if (!func.isBeingEdited) {
+  if (!func->isBeingEdited) {
     _LOG_ERROR("Got a return instruction outside function: %s", line.c_str());
     return -1;
   }
 
   returnStr = find_between(line, "retourne", ";");
   returnVar = get_or_create_variable(returnStr);
-  func.set_return_var(returnVar);
+  func->set_return_var(returnVar);
   
-  func.isBeingEdited = false;
+  func->isBeingEdited = false;
 
   return 0;
 }
@@ -497,64 +477,67 @@ void replaceInWholeFile(string wholeFile, const char * name, int id, int ramInde
   wholeFile = replaceAll(wholeFile, string(tmp1), string(tmp2));
 }
 
-void addStandardConstant(void)
+void create_global_context(void)
 {
   var tmpVar;
 
-  // TODO Corriger ca
-  variableTable = new vector<var>;
+  // Create the function for global context
+  fonctionTable.push_back(new fonction); 
+
+  // Add the global context to fonction vector
+  GLOBAL_CONTEXT->name = ".global";
 
   tmpVar.name = "0";
   tmpVar.value = 0;
   tmpVar.type = INTEGER;
   tmpVar.is_standard = true;
-  variableTable->push_back(tmpVar);
+  GLOBAL_CONTEXT->add_local_var(&tmpVar);
 
   tmpVar.name = "0.";
   tmpVar.value = 0;
   tmpVar.type = REAL;
   tmpVar.is_standard = true;
-  variableTable->push_back(tmpVar);
+  GLOBAL_CONTEXT->add_local_var(&tmpVar);
   
   tmpVar.name = "1";
   tmpVar.value = 1;
   tmpVar.type = INTEGER;
   tmpVar.is_standard = true;
-  variableTable->push_back(tmpVar);
+  GLOBAL_CONTEXT->add_local_var(&tmpVar);
   
   tmpVar.name = "180";
   tmpVar.value = 0xB4;
   tmpVar.type = INTEGER;
   tmpVar.is_standard = true;
-  variableTable->push_back(tmpVar);
+  GLOBAL_CONTEXT->add_local_var(&tmpVar);
   
   tmpVar.name = "90";
   tmpVar.value = 0x5A;
   tmpVar.type = INTEGER;
   tmpVar.is_standard = true;
-  variableTable->push_back(tmpVar);
+  GLOBAL_CONTEXT->add_local_var(&tmpVar);
   
   tmpVar.name = "FFFFFFF";
   tmpVar.value = 0xFFFFFFF;
   tmpVar.type = INTEGER;
   tmpVar.is_standard = true;
-  variableTable->push_back(tmpVar);
+  GLOBAL_CONTEXT->add_local_var(&tmpVar);
   
   tmpVar.name = "SININDEX";
   tmpVar.value = 0x0003000;
   tmpVar.type = INTEGER;
   tmpVar.is_standard = true;
-  variableTable->push_back(tmpVar);
+  GLOBAL_CONTEXT->add_local_var(&tmpVar);
 
   tmpVar.name = "SHARED_INDEX";
   tmpVar.value = 0x0002000;
   tmpVar.is_standard = true;
-  variableTable->push_back(tmpVar);
+  GLOBAL_CONTEXT->add_local_var(&tmpVar);
 
   tmpVar.name = "DUMMY";
   tmpVar.value = 0x0000000;
   tmpVar.is_standard = true;
-  variableTable->push_back(tmpVar);
+  GLOBAL_CONTEXT->add_local_var(&tmpVar);
 }
 
 int compiler(const char * bagoFilePath, const char * asmFilePath) 
@@ -565,10 +548,6 @@ int compiler(const char * bagoFilePath, const char * asmFilePath)
   string wholeFile;
   instruction *ins;
   var * v;
-  stack<int> conditions;
-  stack<int> loops;
-  int id_cond = 0;
-  int id_loop = 0;
   uint32_t indexRam = 0;
   uint32_t index = 0;
   char tmpStr1[30] = "";
@@ -582,19 +561,15 @@ int compiler(const char * bagoFilePath, const char * asmFilePath)
   }
 
   // Add all constant value in memory
-  addStandardConstant();
+  create_global_context();
 
   //parser
   while (getline(bagoFile, line) && (tooMuchErrorAbort == false))
   {
     // LOG_DEBUG("cur line = %s", line.c_str());
-    if (line.find("entier") == 0)
+    if ((line.find("entier") == 0) || (line.find("reel") == 0))
     {
-      declare_var(variableTable, find_between(line, "entier", ";"), INTEGER);
-    }
-    else if (line.find("reel") == 0)
-    {
-      declare_var(variableTable, find_between(line, "reel", ";"), REAL);
+      declare_var(line);
     }
     else if (line.find("rve") != string::npos)
     { //real to int
@@ -607,7 +582,7 @@ int compiler(const char * bagoFilePath, const char * asmFilePath)
       v = get_or_create_variable(find_between(line, "(", ")"));
       ins->set_argument1(v);
 
-      instruTable.push_back(ins);
+      CUR_CONTEXT->add_instru(ins);
     }
     else if (line.find("evr") != string::npos)
     { //int to real
@@ -621,7 +596,7 @@ int compiler(const char * bagoFilePath, const char * asmFilePath)
       v = get_or_create_variable(find_between(line, "(", ")"));
       ins->set_argument1(v);
 
-      instruTable.push_back(ins);
+      CUR_CONTEXT->add_instru(ins);
     }
     else if (line.find("|") != string::npos)
     {
@@ -655,13 +630,11 @@ int compiler(const char * bagoFilePath, const char * asmFilePath)
     {
       create_operation(new division, line, "/");
     }
-    else if (line.find("si(") != string::npos)
+    else if (line.find("si(") == 0)
     {
       condition *cond = new condition;
       cond->set_condition_type(condition_type(line));
-      cond->num = id_cond;
-      conditions.push(id_cond);
-      id_cond++;
+      cond->id = CUR_CONTEXT->get_next_cond_id();
 
       v = get_or_create_variable(find_between(line, "(", cond->condition_type));
       cond->set_argument1(v);
@@ -669,23 +642,20 @@ int compiler(const char * bagoFilePath, const char * asmFilePath)
       v = get_or_create_variable(find_between(line, cond->condition_type, ")"));
       cond->set_argument2(v);
 
-      instruTable.push_back(cond);
+      CUR_CONTEXT->add_instru(cond);
     }
-    else if (line.find("fin_si") != string::npos)
+    else if (line.find("fin_si") == 0)
     {
       ins = new endif;
-      ins->num = conditions.top();
-      conditions.pop();
-      instruTable.push_back(ins);
+      ins->id = CUR_CONTEXT->consume_cond_id();
+      CUR_CONTEXT->add_instru(ins);
     }
-    else if (line.find("tant_que(") != string::npos)
+    else if (line.find("tant_que(") == 0)
     {
       loop *lo = new loop;
 
       lo->set_condition_type(condition_type(line));
-      lo->num = id_loop;
-      loops.push(id_loop);
-      id_loop++;
+      lo->id = CUR_CONTEXT->get_next_loop_id();
 
       v = get_or_create_variable(find_between(line, "(", lo->condition_type));
       lo->set_argument1(v);
@@ -693,15 +663,15 @@ int compiler(const char * bagoFilePath, const char * asmFilePath)
       v = get_or_create_variable(find_between(line, lo->condition_type, ")"));
       lo->set_argument2(v);
 
-      instruTable.push_back(lo);
+      CUR_CONTEXT->add_instru(lo);
     }
-    else if (line.find("fin_tant_que") != string::npos)
+    else if (line.find("fin_tant_que") == 0)
     {
       ins = new endloop;
 
-      ins->num = loops.top();
-      loops.pop();
-      instruTable.push_back(ins);
+      ins->id = CUR_CONTEXT->consume_loop_id();
+      
+      CUR_CONTEXT->add_instru(ins);
     }
     else if (line.find("fonction") != string::npos)
     {
@@ -710,6 +680,7 @@ int compiler(const char * bagoFilePath, const char * asmFilePath)
     else if (line.find("retourne") != string::npos)
     {
       parse_function_return(line);
+      CUR_CONTEXT->check_loops_and_cond(); // This will print log if error occured
     }
     else if (line.find("sin(") != string::npos)
     {
@@ -721,7 +692,7 @@ int compiler(const char * bagoFilePath, const char * asmFilePath)
       v = get_or_create_variable(variable_to_change(line));
       cond->set_return_var(v);
 
-      instruTable.push_back(cond);
+      CUR_CONTEXT->add_instru(cond);
     }
     else if (line.find("cos(") != string::npos)
     {
@@ -733,7 +704,7 @@ int compiler(const char * bagoFilePath, const char * asmFilePath)
       v = get_or_create_variable(variable_to_change(line));
       cond->set_return_var(v);
 
-      instruTable.push_back(cond);
+      CUR_CONTEXT->add_instru(cond);
     }
     else if (line.find("afficher_LCD") != string::npos)
     {
@@ -742,7 +713,7 @@ int compiler(const char * bagoFilePath, const char * asmFilePath)
       v = get_or_create_variable(find_between(line, "(", ")"));
       ins->set_argument1(v);
 
-      instruTable.push_back(ins);
+      CUR_CONTEXT->add_instru(ins);
     }
     else if (line.find("ecrire_mem_part") != string::npos)
     {
@@ -754,7 +725,7 @@ int compiler(const char * bagoFilePath, const char * asmFilePath)
       v = get_or_create_variable(find_between(line, ",", ")"));
       ins->set_argument2(v);
 
-      instruTable.push_back(ins);
+      CUR_CONTEXT->add_instru(ins);
     }
     else if (line.find("ecrire_a(") != string::npos)
     {
@@ -766,7 +737,7 @@ int compiler(const char * bagoFilePath, const char * asmFilePath)
       v = get_or_create_variable(find_between(line, ",", ")"));
       ins->set_argument2(v);
 
-      instruTable.push_back(ins);
+      CUR_CONTEXT->add_instru(ins);
     }
     else if (line.find("lire_a") != string::npos)
     {
@@ -778,7 +749,7 @@ int compiler(const char * bagoFilePath, const char * asmFilePath)
       v = get_or_create_variable(find_between(line, "(", ")"));
       ins->set_argument1(v);
 
-      instruTable.push_back(ins);
+      CUR_CONTEXT->add_instru(ins);
     }
     else if (line.find("=") != string::npos)
     {
@@ -790,7 +761,7 @@ int compiler(const char * bagoFilePath, const char * asmFilePath)
       v = get_or_create_variable(find_between(line, "=", ";"));
       ins->set_argument1(v);
 
-      instruTable.push_back(ins);
+      CUR_CONTEXT->add_instru(ins);
     }
     else
     {
@@ -807,28 +778,34 @@ int compiler(const char * bagoFilePath, const char * asmFilePath)
   }
 
   // Gestion des instructions
-  for (index = 0; index < instruTable.size(); ++index) 
-  {
-    instruTable[index]->set_address(indexRam);
-    wholeFile += instruTable[index]->print_instruction();
-    indexRam += instruTable[index]->nb_ins;
+  for (fonction * func : fonctionTable) {
+    vector<instruction *> * instruTable = &func->instruTable;
+    LOG_DEBUG("CONTEXT : %s", func->name.c_str());
+    for (index = 0; index < instruTable->size(); ++index)
+    {
+      LOG_DEBUG("INSTYPE : %d", instruTable->at(index)->type);
 
-    if (instruTable[index]->type == FIN_CONDITION) {
-      sprintf(tmpStr1, ":condition(%d)", instruTable[index]->num);
-      sprintf(tmpStr2, "%05x", indexRam);
-      wholeFile = replaceAll(wholeFile, string(tmpStr1), string(tmpStr2));
-    }
+      instruTable->at(index)->set_address(indexRam);
+      wholeFile += instruTable->at(index)->print_instruction();
+      indexRam += instruTable->at(index)->nb_ins;
 
-    if (instruTable[index]->type == FIN_TANT_QUE) {
-      int toClose = instruTable[index]->num;
-      
-      sprintf(tmpStr1, ":endloop(%d)", toClose);
-      sprintf(tmpStr2, "%05x", indexRam);
-      wholeFile = replaceAll(wholeFile, string(tmpStr1), string(tmpStr2));
-      
-      sprintf(tmpStr1, ":loop(%d)", toClose);
-      sprintf(tmpStr2, "%05x", loop_to_loop(instruTable, toClose)); 
-      wholeFile = replaceAll(wholeFile, string(tmpStr1), string(tmpStr2));
+      if (instruTable->at(index)->type == FIN_CONDITION) {
+        sprintf(tmpStr1, ":condition(%s)", instruTable->at(index)->id.c_str());
+        sprintf(tmpStr2, "%05x", indexRam);
+        wholeFile = replaceAll(wholeFile, string(tmpStr1), string(tmpStr2));
+      }
+
+      if (instruTable->at(index)->type == FIN_TANT_QUE) {
+        string toClose = instruTable->at(index)->id;
+        
+        sprintf(tmpStr1, ":endloop(%s)", toClose.c_str());
+        sprintf(tmpStr2, "%05x", indexRam);
+        wholeFile = replaceAll(wholeFile, string(tmpStr1), string(tmpStr2));
+        
+        sprintf(tmpStr1, ":loop(%s)", toClose.c_str());
+        sprintf(tmpStr2, "%05x", func->get_loop_back_address(toClose.c_str())); 
+        wholeFile = replaceAll(wholeFile, string(tmpStr1), string(tmpStr2));
+      }
     }
   }
 
@@ -837,38 +814,33 @@ int compiler(const char * bagoFilePath, const char * asmFilePath)
   wholeFile += tmpStr1;
 
   // gestion des variables
-  for (var variable : (*variableTable)) {
-    snprintf(tmpStr1, sizeof(tmpStr1), "VAR %07x\n", variable.value & 0x1ffffff);
-    wholeFile += tmpStr1;
-    variable.address = indexRam;
-    indexRam++;
+  for (fonction * func : fonctionTable) {
+    LOG_DEBUG("CONTEXT : %s", func->name.c_str());
+    for (var variable : func->variableTable) {
 
-    if (word_occurence_count(wholeFile, variable.name) < 2) {
-      if (!variable.is_standard && variable.value == 0) {
+      LOG_DEBUG("VAR : %s", variable.id.c_str());
+
+      snprintf(tmpStr1, sizeof(tmpStr1), "VAR %07x\n", variable.value & 0x1ffffff);
+      wholeFile += tmpStr1;
+      variable.address = indexRam;
+      indexRam++;
+
+      if (variable.isUnused()) {
         _LOG_WARNING("Unused variable \"%s\"", variable.name.c_str());
       }
+
+      // replacement of the variable name in the program with the address
+      sprintf(tmpStr1, ":addr(%s)", variable.id.c_str());
+      sprintf(tmpStr2, "%05x", variable.address);
+      wholeFile = replaceAll(wholeFile, string(tmpStr1), string(tmpStr2));
     }
-
-    // replacement of the variable name in the program with the address
-    sprintf(tmpStr1, ":addr(%s)", variable.name.c_str());
-    sprintf(tmpStr2, "%05x", variable.address);
-    wholeFile = replaceAll(wholeFile, string(tmpStr1), string(tmpStr2));
   }
 
-  if (loops.size() < 0) {
-    _LOG_ERROR("%d more loop closed than open", loops.size() * -1);
-  }
-  if (loops.size() > 0) {
-    _LOG_ERROR("%d more loop closed than open", loops.size() * -1);
-  }
-  if (conditions.size() < 0) {
-    _LOG_ERROR("%d more condition closed than open", conditions.size() * -1);
-  }
-  if (conditions.size() > 0) {
-    _LOG_ERROR("%d more condition closed than open", conditions.size() * -1);
-  }
   if (wholeFile.find(":addr(") != string::npos) {
     _LOG_ERROR("Variable not declared: %s", find_between(wholeFile, ":addr(", ")").c_str());
+  }
+  if (GLOBAL_CONTEXT->instruTable.size() > 0) {
+    _LOG_ERROR("Global instructions are not allowed");
   }
 
   retError = write_string_in_file(asmFilePath, wholeFile);
