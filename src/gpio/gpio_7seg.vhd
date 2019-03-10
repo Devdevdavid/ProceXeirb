@@ -55,7 +55,7 @@ clk_gen : process(clk) is
     end if;
   end process clk_gen;
 
- /* Cathodes des segements */
+/* Cathodes des segements */
 with val_digit select
   sevenseg <= 
   "1000000" when x"0",
