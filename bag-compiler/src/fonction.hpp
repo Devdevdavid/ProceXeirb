@@ -31,10 +31,12 @@ class fonction
     uint16_t loopId;
     uint16_t condId;
 
+    vector<var> params;
     var returnVar;
 
   public:
-    void add_argument(var *v);
+    int add_argument(var *v);
+    int link_argument(uint16_t paramIndex, var *v);
     void set_return_var(var *v);
 
     var * get_var(string varName);

@@ -26,14 +26,14 @@
 #define DEFAULT_FILE_PERM       (S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH)
 #define MAX_BAGO_FILE_PATH_LEN  128
 
-#define GLOBAL_CONTEXT          fonctionTable.at(0)
-#define CUR_CONTEXT             fonctionTable.back()
+#define GLOBAL_CONTEXT          fonctionTable.front()
 
 // Prototype
 void print_build_finished(struct timeval startTime, int nbError, int nbWarning);
 
 // Global variables
 vector<fonction *> fonctionTable;
+fonction * CUR_CONTEXT;
 
 string replaceAll(string str, const string &from, const string &to)
 {
@@ -105,6 +105,23 @@ bool isAValidVarName(const string &s)
 }
 
 /**
+ * @brief Look for a function with the name funcName
+ * 
+ * @param funcName 
+ * @return fonction* NULL: Not found, otherwise: the known function
+ */
+fonction * find_fonction(string funcName)
+{
+  for (fonction * func : fonctionTable) {
+    if (func->name == funcName) {
+      return func;
+    }
+  }
+
+  return NULL;
+}
+
+/**
  * @brief Return the string between start and end
  * 
  * @param str 
@@ -166,7 +183,7 @@ var * declare_const_var(string name)
     v->value = atof(name.c_str()) * 256;
     v->type = REAL;
   } else {
-    _LOG_ERROR("Unknonw variable type for \"%s\"", name.c_str());
+    _LOG_ERROR("Unknonw variable \"%s\"", name.c_str());
     return NULL;
   }
 
@@ -262,6 +279,8 @@ int parse_function_declaration(string line)
   fonction * func = new fonction;
   string argLine;
   vector<string> argStrList;
+  var * variable;
+  uint16_t index;
 
   // Get function name
   func->name = find_between(line, "fonction", "(");
@@ -270,17 +289,19 @@ int parse_function_declaration(string line)
     return -1;
   }
 
-  // Add the fonction (And implicitly set as CUR_CONTEXT)
+  // Add the fonction 
   fonctionTable.push_back(func);
+  CUR_CONTEXT = func;
 
   // Extract arg declaration
   argLine = find_between(line, "(", ")");
   argStrList = str_split(argLine, ",");
 
-  for (string arg : argStrList) {
+  
+  for (index = 0; index < argStrList.size(); index++) {
     // Add an ending character to be simplify the parse
-    arg += ";";
-    declare_var(arg);
+    variable = declare_var(argStrList[index] + ";");
+    func->add_argument(variable);
   }
 
   // Declaration is ok, we go in edition mode 
@@ -313,6 +334,50 @@ int parse_function_return(string line)
   func->set_return_var(returnVar);
   
   func->isBeingEdited = false;
+  CUR_CONTEXT = GLOBAL_CONTEXT;
+
+  return 0;
+}
+
+int parse_function_call(string line) 
+{
+  string funcName, argLine;
+  vector<string> argStrList;
+  fonction * funcCalled;
+  var * v;
+  uint16_t argIndex;
+
+  // Is there a return value needed ?
+  if (line.find("=") != string::npos) {
+    funcName = find_between(line, "=", "(");
+    v = get_or_create_variable(variable_to_change(line));
+  } else {
+    funcName = line.substr(0, line.find("("));
+    v = NULL; // Don't care about the reply
+  }
+
+  if ((funcCalled = find_fonction(funcName)) != NULL) {
+    LOG_INFO("A fonction call found here : \"%s\"", funcCalled->name.c_str());
+  } else {
+    _LOG_ERROR("Unknown fonction name : \"%s\"", funcName.c_str());
+    return -1;
+  }
+
+  // v can be NULL to indicate no return value
+  funcCalled->set_return_var(v); 
+
+  // Extract arg declaration
+  argLine = find_between(line, "(", ")");
+  argStrList = str_split(argLine, ",");
+
+  for (argIndex = 0; argIndex < argStrList.size(); argIndex++) {
+    if ((v = get_or_create_variable(argStrList[argIndex])) == NULL) {
+      return -1;
+    }
+    if (funcCalled->link_argument(argIndex, v) != 0) {
+      return -1;
+    }
+  }
 
   return 0;
 }
@@ -751,6 +816,10 @@ int compiler(const char * bagoFilePath, const char * asmFilePath)
 
       CUR_CONTEXT->add_instru(ins);
     }
+    else if (line.find(");") != string::npos) {
+      // This method of function recognition is a bit ugly :)
+      parse_function_call(line);
+    }
     else if (line.find("=") != string::npos)
     {
       ins = new affectation;
@@ -780,10 +849,10 @@ int compiler(const char * bagoFilePath, const char * asmFilePath)
   // Gestion des instructions
   for (fonction * func : fonctionTable) {
     vector<instruction *> * instruTable = &func->instruTable;
-    LOG_DEBUG("CONTEXT : %s", func->name.c_str());
+    // LOG_DEBUG("CONTEXT : %s", func->name.c_str());
     for (index = 0; index < instruTable->size(); ++index)
     {
-      LOG_DEBUG("INSTYPE : %d", instruTable->at(index)->type);
+      // LOG_DEBUG("INSTYPE : %d", instruTable->at(index)->type);
 
       instruTable->at(index)->set_address(indexRam);
       wholeFile += instruTable->at(index)->print_instruction();
@@ -815,10 +884,10 @@ int compiler(const char * bagoFilePath, const char * asmFilePath)
 
   // gestion des variables
   for (fonction * func : fonctionTable) {
-    LOG_DEBUG("CONTEXT : %s", func->name.c_str());
+    // LOG_DEBUG("CONTEXT : %s", func->name.c_str());
     for (var variable : func->variableTable) {
 
-      LOG_DEBUG("VAR : %s", variable.id.c_str());
+      // LOG_DEBUG("VAR : %s", variable.id.c_str());
 
       snprintf(tmpStr1, sizeof(tmpStr1), "VAR %07x\n", variable.value & 0x1ffffff);
       wholeFile += tmpStr1;
@@ -838,9 +907,6 @@ int compiler(const char * bagoFilePath, const char * asmFilePath)
 
   if (wholeFile.find(":addr(") != string::npos) {
     _LOG_ERROR("Variable not declared: %s", find_between(wholeFile, ":addr(", ")").c_str());
-  }
-  if (GLOBAL_CONTEXT->instruTable.size() > 0) {
-    _LOG_ERROR("Global instructions are not allowed");
   }
 
   retError = write_string_in_file(asmFilePath, wholeFile);

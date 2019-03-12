@@ -11,14 +11,31 @@ fonction::~fonction()
 
 }
 
-void fonction::add_argument(var *v) 
+int fonction::add_argument(var *v) 
 {
+    params.push_back(*v);
 
+    return 0;
+}
+
+int fonction::link_argument(uint16_t paramIndex, var *v) 
+{
+    if (paramIndex >= params.size()) {
+        _LOG_ERROR("Too much arguments");
+        return -1;
+    }
+
+    if (params.at(paramIndex).type != v->type) {
+        _LOG_ERROR("Wrong type for argument %d", paramIndex + 1);
+        return -1;
+    }
+
+    return 0;
 }
 
 void fonction::set_return_var(var *v) 
 {
-
+    // if null, no return value
 }
 
 var * fonction::get_var(string varName)
