@@ -1,5 +1,5 @@
-#ifndef INSTRUCTION
-#define INSTRUCTION
+#ifndef INSTRUCTION_HPP
+#define INSTRUCTION_HPP
 
 #include <string>
 #include <fcntl.h>
@@ -9,12 +9,16 @@
 
 #include <sys/types.h>
 #include <sys/stat.h>
-#include <bag_devlib.h>
 
-#include "variable.hpp"
+// Forward declaration : Compiler need this to avoid circular header depedency
+class instruction;
+
 #include "global.hpp"
+#include "variable.hpp"
+#include "fonction.hpp"
 
 typedef enum {
+  FUNCTION_CALL,
   ADDITION,
   SOUSTRACTION,
   MULTIPLICATION,
@@ -48,12 +52,14 @@ public:
 
 public:
   INS_TYPE type;
-  int nb_ins;
   //only for conditions and loop
   string id;
   uint32_t address;
 
-//protected:
+  // Contain all printed instruction of the object
+  string instBuffer;
+  int nbInstrucLine;
+
   var a1;
   var a2;
   var var_;
@@ -63,9 +69,27 @@ public :
   void set_argument2  (var * v);
   void set_return_var (var * v);
 
+  void write_and_count_inst(string str);
   void set_address (uint32_t address);
 
   virtual std::string print_instruction() = 0;
+};
+
+class functionCall : public instruction
+{
+public:
+  functionCall();
+  ~functionCall();
+
+  int link_argument(var *v);
+  int link_returned_var(var *v);
+
+  void print_push(var * varToPush);
+
+  fonction * func;
+  vector<var *> params; // Sorted list of function argument 
+
+  std::string print_instruction();
 };
 
 class addition : public instruction
@@ -244,5 +268,5 @@ public:
   std::string print_instruction();
 };
 
-#endif
+#endif /* INSTRUCTION_HPP */
 

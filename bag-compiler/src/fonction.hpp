@@ -7,11 +7,12 @@
 #include <cstdint>
 #include <vector>
 
-#include <bag_devlib.h>
+// Forward declaration : Compiler need this to avoid circular header depedency
+class fonction;
 
+#include "global.hpp"
 #include "variable.hpp"
 #include "instruction.hpp"
-#include "global.hpp"
 
 using namespace std;
 
@@ -31,20 +32,25 @@ class fonction
     uint16_t loopId;
     uint16_t condId;
 
+    // Not (var *) : These are not real variable, just used for type compliance
     vector<var> params;
-    var returnVar;
+
+    // If NULL, this mean no returned variable
+    var * returnVar;
+
+    int startRamAddress; // Indicates where the function is located in the RAM
 
   public:
     int add_argument(var *v);
-    int link_argument(uint16_t paramIndex, var *v);
-    void set_return_var(var *v);
+    int set_return_var(var *v);
+    bool is_argument_valid(uint16_t paramIndex, var *v);
+    bool is_returned_var_valid(var *v);
 
     var * get_var(string varName);
     void add_local_var(var *v);
-
     void add_instru(instruction *i);
 
-    // Loops and conditions
+    // Loops and conditions management
     string get_next_loop_id(void);
     string consume_loop_id(void);
     uint32_t get_loop_back_address(string loopIdToClose);

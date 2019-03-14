@@ -184,8 +184,13 @@ var * declare_const_var(string name)
     v->type = REAL;
   } else {
     _LOG_ERROR("Unknonw variable \"%s\"", name.c_str());
+    delete v;
     return NULL;
   }
+
+  // Constant cannot be "unused" so we set these flags
+  v->isUsedAsRead = true;
+  v->isUsedAsWrite = true;
 
   v->name = name;
   GLOBAL_CONTEXT->add_local_var(v);
@@ -341,6 +346,7 @@ int parse_function_return(string line)
 
 int parse_function_call(string line) 
 {
+  functionCall * ins;
   string funcName, argLine;
   vector<string> argStrList;
   fonction * funcCalled;
@@ -363,8 +369,14 @@ int parse_function_call(string line)
     return -1;
   }
 
+  // Create the object
+  ins = new functionCall;
+
+  // Link the instruction to the function called
+  ins->func = funcCalled;
+
   // v can be NULL to indicate no return value
-  funcCalled->set_return_var(v); 
+  ins->link_returned_var(v); 
 
   // Extract arg declaration
   argLine = find_between(line, "(", ")");
@@ -374,10 +386,12 @@ int parse_function_call(string line)
     if ((v = get_or_create_variable(argStrList[argIndex])) == NULL) {
       return -1;
     }
-    if (funcCalled->link_argument(argIndex, v) != 0) {
+    if (ins->link_argument(v) != 0) {
       return -1;
     }
   }
+
+  CUR_CONTEXT->add_instru(ins);
 
   return 0;
 }
@@ -596,6 +610,11 @@ void create_global_context(void)
 
   tmpVar.name = "SHARED_INDEX";
   tmpVar.value = 0x0002000;
+  tmpVar.is_standard = true;
+  GLOBAL_CONTEXT->add_local_var(&tmpVar);
+
+  tmpVar.name = "STACK_POINTER_ADDR";
+  tmpVar.value = 0x0002000; // To update
   tmpVar.is_standard = true;
   GLOBAL_CONTEXT->add_local_var(&tmpVar);
 
@@ -849,6 +868,8 @@ int compiler(const char * bagoFilePath, const char * asmFilePath)
   // Gestion des instructions
   for (fonction * func : fonctionTable) {
     vector<instruction *> * instruTable = &func->instruTable;
+    func->startRamAddress = indexRam;
+
     // LOG_DEBUG("CONTEXT : %s", func->name.c_str());
     for (index = 0; index < instruTable->size(); ++index)
     {
@@ -856,7 +877,7 @@ int compiler(const char * bagoFilePath, const char * asmFilePath)
 
       instruTable->at(index)->set_address(indexRam);
       wholeFile += instruTable->at(index)->print_instruction();
-      indexRam += instruTable->at(index)->nb_ins;
+      indexRam += instruTable->at(index)->nbInstrucLine;
 
       if (instruTable->at(index)->type == FIN_CONDITION) {
         sprintf(tmpStr1, ":condition(%s)", instruTable->at(index)->id.c_str());
@@ -878,16 +899,23 @@ int compiler(const char * bagoFilePath, const char * asmFilePath)
     }
   }
 
+  // Replace call address
+  for (fonction * func : fonctionTable) {
+    sprintf(tmpStr1, ":call(%s)", func->name.c_str());
+    sprintf(tmpStr2, "%05x", func->startRamAddress);
+    wholeFile = replaceAll(wholeFile, string(tmpStr1), string(tmpStr2));
+  }
+
   // fin du programme
   snprintf(tmpStr1, sizeof(tmpStr1), "JMP %05x\n", indexRam++);
   wholeFile += tmpStr1;
 
   // gestion des variables
   for (fonction * func : fonctionTable) {
-    // LOG_DEBUG("CONTEXT : %s", func->name.c_str());
+    LOG_DEBUG("CONTEXT : %s", func->name.c_str());
     for (var variable : func->variableTable) {
 
-      // LOG_DEBUG("VAR : %s", variable.id.c_str());
+      LOG_DEBUG("VAR : %s", variable.id.c_str());
 
       snprintf(tmpStr1, sizeof(tmpStr1), "VAR %07x\n", variable.value & 0x1ffffff);
       wholeFile += tmpStr1;

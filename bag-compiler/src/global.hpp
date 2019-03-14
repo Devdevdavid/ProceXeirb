@@ -3,9 +3,6 @@
 
 #include <bag_devlib.h>
 
-/* CONSTANT */
-#define MAX_RAM             8192
-
 /* MACRO */
 #define _LOG_ERROR(format, ...)   LOG_ERROR(format, ##__VA_ARGS__); nbErrorDetected++;
 #define _LOG_WARNING(format, ...) LOG_WARNING(format, ##__VA_ARGS__); nbWarningDetected++;

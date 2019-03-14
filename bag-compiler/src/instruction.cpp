@@ -35,121 +35,186 @@ void instruction::set_return_var(var * v)
   this->var_ = *v;
 }
 
+void instruction::write_and_count_inst(string str)
+{
+  ++nbInstrucLine;
+  instBuffer += str;
+}
+
 void instruction::set_address(uint32_t address)
 {
   this->address = address;
 }
 
+functionCall::functionCall()
+{
+  type = FUNCTION_CALL;
+  func = NULL;
+}
+
+/**
+ * @brief Link argument to a function call 
+ * with validity check. Argument should be linked in the same 
+ * order as the function arguments to match
+ * 
+ * @param v 
+ * @return -1: Error, 0: OK
+ */
+int functionCall::link_argument(var *v)
+{
+  if (func == NULL) { return -1; }
+
+  if (func->is_argument_valid(params.size(), v) == false) {
+    return -1; // A log is already displayed inside
+  }
+
+  // Variable is valid, add it to the sorted list
+  params.push_back(v);
+
+  return 0;
+}
+
+/**
+ * @brief Link the returned value to the function with a validity check
+ * 
+ * @param v 
+ * @return int -1: Error, 0: OK
+ */
+int functionCall::link_returned_var(var *v)
+{
+  if (func == NULL) { return -1; }
+
+  if (func->is_returned_var_valid(v) == false) {
+    return -1; // A log is already displayed inside
+  }
+
+  // Variable is valid, add it to the sorted list
+  set_return_var(v);
+
+  return 0;
+}
+
+void functionCall::print_push(var * varToPush)
+{
+  write_and_count_inst("GET :addr(" + varToPush->id + ")\n");
+  //write_and_count_inst("++StackPointer\n");
+  write_and_count_inst("SAD :addr(STACK_POINTER_ADDR)\n");
+}
+
+string functionCall::print_instruction()
+{
+  for (int index = params.size() - 1; index >= 0; index--) {
+    print_push(params.at(index));
+  }
+
+  // TODO: push return address
+
+
+  write_and_count_inst("JMP :call(" + func->name + ")\n");
+  
+  return instBuffer;
+}
+
 addition::addition()
 {
-  nb_ins = 3;
   type = ADDITION;
 }
 
 string addition::print_instruction()
 {
-  string instructions = "";
   if (a1.type == INTEGER && a2.type == INTEGER) {
-    instructions += "GET :addr(" + a1.id   + ")\n";
-    instructions += "ADD :addr(" + a2.id   + ")\n";
-    instructions += "STA :addr(" + var_.id + ")\n";
+    write_and_count_inst("GET :addr(" + a1.id   + ")\n");
+    write_and_count_inst("ADD :addr(" + a2.id   + ")\n");
+    write_and_count_inst("STA :addr(" + var_.id + ")\n");
   } else if (a1.type == REAL && a2.type == REAL) {
-    instructions += "GET :addr(" + a1.id   + ")\n";
-    instructions += "FAD :addr(" + a2.id   + ")\n";
-    instructions += "STA :addr(" + var_.id + ")\n";
+    write_and_count_inst("GET :addr(" + a1.id   + ")\n");
+    write_and_count_inst("FAD :addr(" + a2.id   + ")\n");
+    write_and_count_inst("STA :addr(" + var_.id + ")\n");
   } else {
     _LOG_ERROR("You can only add variable with the same type: %s + %s", a1.id.c_str(), a2.id.c_str());
   }
-  return instructions;
+
+  return instBuffer;
 }
 
 division::division()
 {
-  nb_ins = 3;
   type = DIVISION;
 }
 
 string division::print_instruction()
 {
-  string instructions = "";
-  if (a1.type == INTEGER && a2.type == INTEGER)
-{
-    instructions += "GET :addr(" + a1.id   + ")\n";
-    instructions += "DIV :addr(" + a2.id   + ")\n";
-    instructions += "STA :addr(" + var_.id + ")\n";
+  if (a1.type == INTEGER && a2.type == INTEGER) {
+    write_and_count_inst("GET :addr(" + a1.id   + ")\n");
+    write_and_count_inst("DIV :addr(" + a2.id   + ")\n");
+    write_and_count_inst("STA :addr(" + var_.id + ")\n");
   } else if (a1.type == REAL && a2.type == REAL) {
-    instructions += "GET :addr(" + a1.id   + ")\n";
-    instructions += "FDI :addr(" + a2.id   + ")\n";
-    instructions += "STA :addr(" + var_.id + ")\n";
+    write_and_count_inst("GET :addr(" + a1.id   + ")\n");
+    write_and_count_inst("FDI :addr(" + a2.id   + ")\n");
+    write_and_count_inst("STA :addr(" + var_.id + ")\n");
   } else {
     _LOG_ERROR("You can only add variable with the same type: %s + %s", a1.id.c_str(), a2.id.c_str());
   }
-  return instructions;
+  return instBuffer;
 }
 
 affectation::affectation()
 {
-  nb_ins = 2;
   type = AFFECTATION;
 }
 
 string affectation::print_instruction()
 {
-  string instructions = "";
-  instructions += "GET :addr(" + a1.id   + ")\n";
-  instructions += "STA :addr(" + var_.id + ")\n";
-  return instructions;
+  write_and_count_inst("GET :addr(" + a1.id   + ")\n");
+  write_and_count_inst("STA :addr(" + var_.id + ")\n");
+
+  return instBuffer;
 }
 
 soustraction::soustraction()
 {
-  nb_ins = 3;
   type = SOUSTRACTION;
 }
 
 string soustraction::print_instruction()
 {
-  string instructions = "";
   if (a1.type == INTEGER && a2.type == INTEGER) {
-    instructions += "GET :addr(" + a1.id   + ")\n";
-    instructions += "SUB :addr(" + a2.id   + ")\n";
-    instructions += "STA :addr(" + var_.id + ")\n";
+    write_and_count_inst("GET :addr(" + a1.id   + ")\n");
+    write_and_count_inst("SUB :addr(" + a2.id   + ")\n");
+    write_and_count_inst("STA :addr(" + var_.id + ")\n");
   } else if (a1.type == REAL && a2.type == REAL) {
-    instructions += "GET :addr(" + a1.id   + ")\n";
-    instructions += "SUB :addr(" + a2.id   + ")\n";
-    instructions += "STA :addr(" + var_.id + ")\n";
+    write_and_count_inst("GET :addr(" + a1.id   + ")\n");
+    write_and_count_inst("SUB :addr(" + a2.id   + ")\n");
+    write_and_count_inst("STA :addr(" + var_.id + ")\n");
   } else {
     _LOG_ERROR("You can only substract variable with the same type: %s - %s", a1.id.c_str(), a2.id.c_str());
   }
-  return instructions;
+  return instBuffer;
 }
 
 multiplication::multiplication()
 {
-  nb_ins = 3;
   type = MULTIPLICATION;
 }
 
 string multiplication::print_instruction()
 {
-  string instructions = "";
-  if (a1.type == INTEGER && a2.type == INTEGER) {
-    instructions += "GET :addr(" + a1.id   + ")\n";
-    instructions += "MUL :addr(" + a2.id   + ")\n";
-    instructions += "STA :addr(" + var_.id + ")\n";
+    if (a1.type == INTEGER && a2.type == INTEGER) {
+    write_and_count_inst("GET :addr(" + a1.id   + ")\n");
+    write_and_count_inst("MUL :addr(" + a2.id   + ")\n");
+    write_and_count_inst("STA :addr(" + var_.id + ")\n");
   } else if (a1.type == REAL && a2.type == REAL) {
-    instructions += "GET :addr(" + a1.id   + ")\n";
-    instructions += "FMU :addr(" + a2.id   + ")\n";
-    instructions += "STA :addr(" + var_.id + ")\n";
+    write_and_count_inst("GET :addr(" + a1.id   + ")\n");
+    write_and_count_inst("FMU :addr(" + a2.id   + ")\n");
+    write_and_count_inst("STA :addr(" + var_.id + ")\n");
   } else {
     _LOG_ERROR("You can only multiply variable with the same type: %s * %s", a1.id.c_str(), a2.id.c_str());
   }
-  return instructions;
+  return instBuffer;
 }
 
 condition::condition()
 {
-  nb_ins = 3;
   type = CONDITION;
 }
 
@@ -160,22 +225,20 @@ void condition::set_condition_type(string type)
 
 string condition::print_instruction()
 {
-  string instructions = "";
-  instructions += "GET :addr(" + a1.id + ")\n";
+    write_and_count_inst("GET :addr(" + a1.id + ")\n");
   if (condition_type == "<") {
-    instructions += "TLT :addr(" + a2.id + ")\n";
+    write_and_count_inst("TLT :addr(" + a2.id + ")\n");
   } else if (condition_type == ">") {
-    instructions += "TGT :addr(" + a2.id + ")\n";
+    write_and_count_inst("TGT :addr(" + a2.id + ")\n");
   } else if (condition_type ==  "==") {
-    instructions += "TEQ :addr(" + a2.id + ")\n";
+    write_and_count_inst("TEQ :addr(" + a2.id + ")\n");
   } 
-  instructions += "JCC :condition(" + id + ")\n";
-  return instructions;
+  write_and_count_inst("JCC :condition(" + id + ")\n");
+  return instBuffer;
 }
 
 endif::endif()
 {
-  nb_ins = 0;
   type = FIN_CONDITION;
 }
 
@@ -186,7 +249,6 @@ string endif::print_instruction()
 
 loop::loop()
 {
-  nb_ins = 3;
   type = TANT_QUE;
 }
 
@@ -197,214 +259,188 @@ void loop::set_condition_type(string type)
 
 string loop::print_instruction()
 {
-  string instructions = "";
-  instructions += "GET :addr(" + a1.id + ")\n";
+  write_and_count_inst("GET :addr(" + a1.id + ")\n");
   if (condition_type == ">") {
-    instructions += "TGT :addr(" + a2.id + ")\n";
+    write_and_count_inst("TGT :addr(" + a2.id + ")\n");
   } else if (condition_type == "<") {
-    instructions += "TLT :addr(" + a2.id + ")\n";
+    write_and_count_inst("TLT :addr(" + a2.id + ")\n");
   } else if (condition_type ==  "==") {
-    instructions += "TEQ :addr(" + a2.id + ")\n";
+    write_and_count_inst("TEQ :addr(" + a2.id + ")\n");
   }
-  instructions += "JCC :endloop(" + id + ")\n";
-  return instructions;
+  write_and_count_inst("JCC :endloop(" + id + ")\n");
+  return instBuffer;
 }
 
 endloop::endloop()
 {
-  nb_ins = 1;
   type = FIN_TANT_QUE;
 }
 
 string endloop::print_instruction()
 {
-//we print the JCC twice to be sure that we correctly jump
-  string instructions = "";
+  write_and_count_inst("JMP :loop(" + id + ")\n");
 
-  instructions += "JMP :loop(" + id + ")\n";
-
-  return instructions;
+  return instBuffer;
 }
 
 disp_LCD::disp_LCD()
 {
-  nb_ins = 2;
   type = AFFICHAGE_LCD;
 }
 
 string disp_LCD::print_instruction()
 {
-  string instructions = "";
-  instructions += "GET :addr(" + a1.id + ")\n";
-  instructions += "STA 80001\n";
-  return instructions;
+  write_and_count_inst("GET :addr(" + a1.id + ")\n");
+  write_and_count_inst("STA 80001\n");
+  return instBuffer;
 }
 
 write_to_shared::write_to_shared()
 {
-  nb_ins = 3;
   type = ECRITURE_MEMOIRE;
 }
 
 string write_to_shared::print_instruction()
 {
-  string instructions = "";
-  instructions += "GET :addr(" + a1.id + ")\n";
-  instructions += "ADD :addr(SHARED_INDEX)\n";
-  instructions += "SAD :addr(" + a2.id + ")\n";
-  return instructions;
+  write_and_count_inst("GET :addr(" + a1.id + ")\n");
+  write_and_count_inst("ADD :addr(SHARED_INDEX)\n");
+  write_and_count_inst("SAD :addr(" + a2.id + ")\n");
+
+  return instBuffer;
 }
 
 sine::sine()
 {
-  nb_ins = 5;
   type = SIN;
 }
 
 string sine::print_instruction()
 {
-  string instructions = "";
-  instructions += "GET :addr(" + a1.id + ")\n";
-  instructions += "ADD :addr(SININDEX)\n";
-  instructions += "STA :addr(DUMMY)\n";
-  instructions += "GAD :addr(DUMMY)\n"; //get @ address
-  instructions += "STA :addr(" + var_.id + ")\n"; //store in the return var
-  return instructions;
+  write_and_count_inst("GET :addr(" + a1.id + ")\n");
+  write_and_count_inst("ADD :addr(SININDEX)\n");
+  write_and_count_inst("STA :addr(DUMMY)\n");
+  write_and_count_inst("GAD :addr(DUMMY)\n"); //get @ address
+  write_and_count_inst("STA :addr(" + var_.id + ")\n"); //store in the return var
+
+  return instBuffer;
 }
 
 cos::cos()
 {
-  nb_ins = 6;
   type = COS;
 }
 
 string cos::print_instruction()
 {
-  string instructions = "";
-  instructions += "GET :addr(" + a1.id + ")\n";
-  instructions += "ADD :addr(90)\n";
-  instructions += "ADD :addr(SININDEX)\n";
-  instructions += "STA :addr(DUMMY)\n";
-  instructions += "GAD :addr(DUMMY)\n"; //get @ address
-  instructions += "STA :addr(" + var_.id + ")\n"; //store in the return var
-  return instructions;
+  write_and_count_inst("GET :addr(" + a1.id + ")\n");
+  write_and_count_inst("ADD :addr(90)\n");
+  write_and_count_inst("ADD :addr(SININDEX)\n");
+  write_and_count_inst("STA :addr(DUMMY)\n");
+  write_and_count_inst("GAD :addr(DUMMY)\n"); //get @ address
+  write_and_count_inst("STA :addr(" + var_.id + ")\n"); //store in the return var
+  
+  return instBuffer;
 }
 
 write_at::write_at()
 {
-  nb_ins = 2;
   type = WRITE_AT;
 }
 
 string write_at::print_instruction()
 {
-  string instructions = "";
-  instructions += "GET :addr(" + a1.id + ")\n";
-  instructions += "SAD :addr(" + a2.id + ")\n"; //set @ address
-  return instructions;
+  write_and_count_inst("GET :addr(" + a1.id + ")\n");
+  write_and_count_inst("SAD :addr(" + a2.id + ")\n"); //set @ address // Ceci est du au double buffer de VGA
+  return instBuffer;
 }
 
 read_at::read_at()
 {
-  nb_ins = 2;
   type = READ_AT;
 }
 
 string read_at::print_instruction()
 {
-  string instructions = "";
-  instructions += "GAD :addr(" + a1.id + ")\n"; //get @ address
-  instructions += "STA :addr(" + var_.id + ")\n"; //store in the return var
-  return instructions;
+  write_and_count_inst("GAD :addr(" + a1.id + ")\n"); //get @ address
+  write_and_count_inst("STA :addr(" + var_.id + ")\n"); //store in the return var
+  return instBuffer;
 }
 
 ins_or::ins_or()
 {
-  nb_ins = 3;
   type = OR;
 }
 
 string ins_or::print_instruction()
 {
-  string instructions = "";
-  instructions += "GET :addr(" + a1.id   + ")\n";
-  instructions += "LOR :addr(" + a2.id   + ")\n";
-  instructions += "STA :addr(" + var_.id + ")\n";
-  return instructions;
+  write_and_count_inst("GET :addr(" + a1.id   + ")\n");
+  write_and_count_inst("LOR :addr(" + a2.id   + ")\n");
+  write_and_count_inst("STA :addr(" + var_.id + ")\n");
+  return instBuffer;
 }
 
 ins_nor::ins_nor()
 {
-  nb_ins = 3;
   type = OR;
 }
 
 string ins_nor::print_instruction()
 {
-  string instructions = "";
-  instructions += "GET :addr(" + a1.id   + ")\n";
-  instructions += "NOR :addr(" + a2.id   + ")\n";
-  instructions += "STA :addr(" + var_.id + ")\n";
-  return instructions;
+  write_and_count_inst("GET :addr(" + a1.id   + ")\n");
+  write_and_count_inst("NOR :addr(" + a2.id   + ")\n");
+  write_and_count_inst("STA :addr(" + var_.id + ")\n");
+  return instBuffer;
 }
 
 ins_xor::ins_xor()
 {
-  nb_ins = 3;
   type = OR;
 }
 
 string ins_xor::print_instruction()
 {
-  string instructions = "";
-  instructions += "GET :addr(" + a1.id   + ")\n";
-  instructions += "XOR :addr(" + a2.id   + ")\n";
-  instructions += "STA :addr(" + var_.id + ")\n";
-  return instructions;
+  write_and_count_inst("GET :addr(" + a1.id   + ")\n");
+  write_and_count_inst("XOR :addr(" + a2.id   + ")\n");
+  write_and_count_inst("STA :addr(" + var_.id + ")\n");
+  return instBuffer;
 }
 
 ins_and::ins_and()
 {
-  nb_ins = 3;
   type = OR;
 }
 
 string ins_and::print_instruction()
 {
-  string instructions = "";
-  instructions += "GET :addr(" + a1.id   + ")\n";
-  instructions += "AND :addr(" + a2.id   + ")\n";
-  instructions += "STA :addr(" + var_.id + ")\n";
-  return instructions;
+  write_and_count_inst("GET :addr(" + a1.id   + ")\n");
+  write_and_count_inst("AND :addr(" + a2.id   + ")\n");
+  write_and_count_inst("STA :addr(" + var_.id + ")\n");
+  return instBuffer;
 }
 
 
 ins_fti::ins_fti()
 {
-  nb_ins = 2;
   type = FTI;
 }
 
 string ins_fti::print_instruction()
 {
-  string instructions = "";
-  instructions += "FTI :addr(" + a1.id   + ")\n";
-  instructions += "STA :addr(" + var_.id + ")\n";
-  return instructions;
+  write_and_count_inst("FTI :addr(" + a1.id   + ")\n");
+  write_and_count_inst("STA :addr(" + var_.id + ")\n");
+  return instBuffer;
 }
 
 ins_itf::ins_itf()
 {
-  nb_ins = 2;
   type = ITF;
 }
 
 string ins_itf::print_instruction()
 {
-  string instructions = "";
-  instructions += "ITF :addr(" + a1.id   + ")\n";
-  instructions += "STA :addr(" + var_.id + ")\n";
-  return instructions;
+  write_and_count_inst("ITF :addr(" + a1.id   + ")\n");
+  write_and_count_inst("STA :addr(" + var_.id + ")\n");
+  return instBuffer;
 }
 
 

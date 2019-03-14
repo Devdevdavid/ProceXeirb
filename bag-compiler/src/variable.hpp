@@ -1,5 +1,5 @@
-#ifndef VARIABLE
-#define VARIABLE
+#ifndef VARIABLE_HPP
+#define VARIABLE_HPP
 
 #include <string>
 #include <fcntl.h>
@@ -32,5 +32,5 @@ public:
   uint32_t address;
 };
 
-#endif
+#endif /* VARIABLE_HPP */
 
