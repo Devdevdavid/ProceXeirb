@@ -4,6 +4,7 @@ fonction::fonction()
 {
     this->loopId = 0;
     this->condId = 0;
+    this->varCount = 0;
 }
 
 fonction::~fonction() 
@@ -70,11 +71,27 @@ bool fonction::is_argument_valid(uint16_t paramIndex, var *v)
 /**
  * @brief Check if the specified variable is valid for
  * the returned value of the function
- * @param v 
+ * @param v : NULL indicate void
  * @return boolean 
  */
-bool fonction::is_returned_var_valid(var *v) 
+bool fonction::is_returned_var_valid(var * v)
 {
+    if (returnVar == NULL) {
+        if (v == NULL) {
+            // Function is void and nothing as return value
+            return true;
+        } else {
+            _LOG_ERROR("Returned value of function \"%s\" is void", this->name.c_str());
+            return false;
+        }
+    } else {
+        if (v == NULL) {
+            // Function return something but we don't care
+            return true;
+        }
+    }
+    
+    // We care about the returned value, check type
     if (returnVar->type != v->type) {
         _LOG_ERROR("Wrong type for returned value");
         return false;
@@ -106,11 +123,8 @@ var * fonction::get_var(string varName)
  */
 void fonction::add_local_var(var *v) 
 {
-    if (v->is_standard) {
-        v->id = v->name;
-    } else {
-        v->id = this->name + "::" + v->name;
-    }
+    v->id = this->name + "::" + v->name;
+    v->contextOffset = varCount++;
     variableTable.push_back(*v);
 }
 

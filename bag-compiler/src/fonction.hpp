@@ -31,6 +31,8 @@ class fonction
 
     uint16_t loopId;
     uint16_t condId;
+    
+    uint16_t varCount;      // Number of declared variable in the function
 
     // Not (var *) : These are not real variable, just used for type compliance
     vector<var> params;

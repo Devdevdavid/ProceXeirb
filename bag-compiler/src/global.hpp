@@ -7,6 +7,14 @@
 #define _LOG_ERROR(format, ...)   LOG_ERROR(format, ##__VA_ARGS__); nbErrorDetected++;
 #define _LOG_WARNING(format, ...) LOG_WARNING(format, ##__VA_ARGS__); nbWarningDetected++;
 
+/* CONSTANT ADDRESSES */
+// The define below are hexadecimal value on 5 digits
+#define DUMMY_FLASH_ADDR        "00000"
+#define SIN_TABLE_ADDR          "03000"
+#define SHARED_MEM_ADDR         "02000"
+#define STACK_POINTER_ADDR      "02000" // To update
+#define DYN_ADDI_ADDR           "02000" // To update
+
 // Global variable 
 #ifdef MAIN_CPP
 uint16_t nbErrorDetected = 0;               // Number of error detected during compilation

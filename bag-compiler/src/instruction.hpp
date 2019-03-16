@@ -60,9 +60,9 @@ public:
   string instBuffer;
   int nbInstrucLine;
 
-  var a1;
-  var a2;
-  var var_;
+  var * a1;
+  var * a2;
+  var * var_;
 
 public :
   void set_argument1  (var * v);
@@ -70,6 +70,7 @@ public :
   void set_return_var (var * v);
 
   void write_and_count_inst(string str);
+  void print_get_inst_for_var(var *v);
   void set_address (uint32_t address);
 
   virtual std::string print_instruction() = 0;

@@ -4,10 +4,11 @@
     id = "Undefined";
     isUsedAsWrite = false;
     isUsedAsRead = false;
+    contextOffset = 0;
   }
   var::~var() {}
 
   bool var::isUnused(void) 
   {
-    return (!is_standard) && ((isUsedAsWrite == false) || (isUsedAsRead == false));
+    return (isUsedAsWrite == false) || (isUsedAsRead == false);
   }

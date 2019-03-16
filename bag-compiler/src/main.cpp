@@ -35,7 +35,7 @@ void print_build_finished(struct timeval startTime, int nbError, int nbWarning);
 vector<fonction *> fonctionTable;
 fonction * CUR_CONTEXT;
 
-string replaceAll(string str, const string &from, const string &to)
+string replace_all(string str, const string &from, const string &to)
 {
   size_t start_pos = 0;
   while ((start_pos = str.find(from, start_pos)) != string::npos)
@@ -46,7 +46,7 @@ string replaceAll(string str, const string &from, const string &to)
   return str;
 }
 
-string removeLineComment(string str)
+string remove_line_comment(string str)
 {
   bool isInsideQuote = false;
   for (int index = 0; index < str.length(); index++)
@@ -85,7 +85,7 @@ bool isReal(const string &s)
 {
   if (s.find(".") != string::npos) {
     string t1 = s;
-    t1 = replaceAll(t1, ".", "");
+    t1 = replace_all(t1, ".", "");
     
     return isInteger(t1);
   } else {
@@ -335,7 +335,11 @@ int parse_function_return(string line)
   }
 
   returnStr = find_between(line, "retourne", ";");
-  returnVar = get_or_create_variable(returnStr);
+  if (!returnStr.empty()) {
+    returnVar = get_or_create_variable(returnStr);
+  } else {
+    returnVar = NULL;
+  }
   func->set_return_var(returnVar);
   
   func->isBeingEdited = false;
@@ -359,7 +363,7 @@ int parse_function_call(string line)
     v = get_or_create_variable(variable_to_change(line));
   } else {
     funcName = line.substr(0, line.find("("));
-    v = NULL; // Don't care about the reply
+    v = NULL; // Don't care about the returned value
   }
 
   if ((funcCalled = find_fonction(funcName)) != NULL) {
@@ -384,10 +388,10 @@ int parse_function_call(string line)
 
   for (argIndex = 0; argIndex < argStrList.size(); argIndex++) {
     if ((v = get_or_create_variable(argStrList[argIndex])) == NULL) {
-      return -1;
+      continue;
     }
     if (ins->link_argument(v) != 0) {
-      return -1;
+      continue;
     }
   }
 
@@ -504,9 +508,9 @@ int preprocessor(const char * bagFilePath, const char * bagoFilePath)
   // First pass: Preprocessor duty
   while (getline(bagFile, originLine) && (retError == 0)) {
     ++lineCounter;
-    line = replaceAll(originLine, " ", "");
-    line = replaceAll(line, "\t", "");
-    line = removeLineComment(line);         // Remove text after comment symbole "//"
+    line = replace_all(originLine, " ", "");
+    line = replace_all(line, "\t", "");
+    line = remove_line_comment(line);         // Remove text after comment symbole "//"
 
     // Search for new #definition instruction
     if (line.find("#definition") != string::npos) {
@@ -525,7 +529,7 @@ int preprocessor(const char * bagFilePath, const char * bagoFilePath)
     // For each line, try to find known definition
     for (index = 0; index < defineName.size(); ++index) {
       if (line.find(defineName[index]) != string::npos) {
-        line = replaceAll(line, defineName[index], defineContent[index]);
+        line = replace_all(line, defineName[index], defineContent[index]);
       }
     }
     
@@ -545,7 +549,7 @@ int preprocessor(const char * bagFilePath, const char * bagoFilePath)
   return retError;
 }
 
-void replaceInWholeFile(string wholeFile, const char * name, int id, int ramIndex)
+void replace_in_whole_file(string wholeFile, const char * name, int id, int ramIndex)
 {
   char tmp1[30] = "";
   char tmp2[30] = "";
@@ -553,75 +557,16 @@ void replaceInWholeFile(string wholeFile, const char * name, int id, int ramInde
   sprintf(tmp1, ":%s(%d)", name, id);
   sprintf(tmp2, "%05x", ramIndex);
 
-  wholeFile = replaceAll(wholeFile, string(tmp1), string(tmp2));
+  wholeFile = replace_all(wholeFile, string(tmp1), string(tmp2));
 }
 
 void create_global_context(void)
 {
-  var tmpVar;
-
   // Create the function for global context
   fonctionTable.push_back(new fonction); 
 
-  // Add the global context to fonction vector
+  // Name the global context
   GLOBAL_CONTEXT->name = ".global";
-
-  tmpVar.name = "0";
-  tmpVar.value = 0;
-  tmpVar.type = INTEGER;
-  tmpVar.is_standard = true;
-  GLOBAL_CONTEXT->add_local_var(&tmpVar);
-
-  tmpVar.name = "0.";
-  tmpVar.value = 0;
-  tmpVar.type = REAL;
-  tmpVar.is_standard = true;
-  GLOBAL_CONTEXT->add_local_var(&tmpVar);
-  
-  tmpVar.name = "1";
-  tmpVar.value = 1;
-  tmpVar.type = INTEGER;
-  tmpVar.is_standard = true;
-  GLOBAL_CONTEXT->add_local_var(&tmpVar);
-  
-  tmpVar.name = "180";
-  tmpVar.value = 0xB4;
-  tmpVar.type = INTEGER;
-  tmpVar.is_standard = true;
-  GLOBAL_CONTEXT->add_local_var(&tmpVar);
-  
-  tmpVar.name = "90";
-  tmpVar.value = 0x5A;
-  tmpVar.type = INTEGER;
-  tmpVar.is_standard = true;
-  GLOBAL_CONTEXT->add_local_var(&tmpVar);
-  
-  tmpVar.name = "FFFFFFF";
-  tmpVar.value = 0xFFFFFFF;
-  tmpVar.type = INTEGER;
-  tmpVar.is_standard = true;
-  GLOBAL_CONTEXT->add_local_var(&tmpVar);
-  
-  tmpVar.name = "SININDEX";
-  tmpVar.value = 0x0003000;
-  tmpVar.type = INTEGER;
-  tmpVar.is_standard = true;
-  GLOBAL_CONTEXT->add_local_var(&tmpVar);
-
-  tmpVar.name = "SHARED_INDEX";
-  tmpVar.value = 0x0002000;
-  tmpVar.is_standard = true;
-  GLOBAL_CONTEXT->add_local_var(&tmpVar);
-
-  tmpVar.name = "STACK_POINTER_ADDR";
-  tmpVar.value = 0x0002000; // To update
-  tmpVar.is_standard = true;
-  GLOBAL_CONTEXT->add_local_var(&tmpVar);
-
-  tmpVar.name = "DUMMY";
-  tmpVar.value = 0x0000000;
-  tmpVar.is_standard = true;
-  GLOBAL_CONTEXT->add_local_var(&tmpVar);
 }
 
 int compiler(const char * bagoFilePath, const char * asmFilePath) 
@@ -870,6 +815,10 @@ int compiler(const char * bagoFilePath, const char * asmFilePath)
     vector<instruction *> * instruTable = &func->instruTable;
     func->startRamAddress = indexRam;
 
+    if (func->isBeingEdited) {
+      _LOG_ERROR("Function \"%s\" is never closed", func->name.c_str());
+    }
+
     // LOG_DEBUG("CONTEXT : %s", func->name.c_str());
     for (index = 0; index < instruTable->size(); ++index)
     {
@@ -882,7 +831,7 @@ int compiler(const char * bagoFilePath, const char * asmFilePath)
       if (instruTable->at(index)->type == FIN_CONDITION) {
         sprintf(tmpStr1, ":condition(%s)", instruTable->at(index)->id.c_str());
         sprintf(tmpStr2, "%05x", indexRam);
-        wholeFile = replaceAll(wholeFile, string(tmpStr1), string(tmpStr2));
+        //wholeFile = replace_all(wholeFile, string(tmpStr1), string(tmpStr2));
       }
 
       if (instruTable->at(index)->type == FIN_TANT_QUE) {
@@ -890,20 +839,20 @@ int compiler(const char * bagoFilePath, const char * asmFilePath)
         
         sprintf(tmpStr1, ":endloop(%s)", toClose.c_str());
         sprintf(tmpStr2, "%05x", indexRam);
-        wholeFile = replaceAll(wholeFile, string(tmpStr1), string(tmpStr2));
+        //wholeFile = replace_all(wholeFile, string(tmpStr1), string(tmpStr2));
         
         sprintf(tmpStr1, ":loop(%s)", toClose.c_str());
         sprintf(tmpStr2, "%05x", func->get_loop_back_address(toClose.c_str())); 
-        wholeFile = replaceAll(wholeFile, string(tmpStr1), string(tmpStr2));
+        //wholeFile = replace_all(wholeFile, string(tmpStr1), string(tmpStr2));
       }
     }
   }
 
-  // Replace call address
+  // Replace address call
   for (fonction * func : fonctionTable) {
     sprintf(tmpStr1, ":call(%s)", func->name.c_str());
     sprintf(tmpStr2, "%05x", func->startRamAddress);
-    wholeFile = replaceAll(wholeFile, string(tmpStr1), string(tmpStr2));
+    //wholeFile = replace_all(wholeFile, string(tmpStr1), string(tmpStr2));
   }
 
   // fin du programme
@@ -923,13 +872,14 @@ int compiler(const char * bagoFilePath, const char * asmFilePath)
       indexRam++;
 
       if (variable.isUnused()) {
-        _LOG_WARNING("Unused variable \"%s\"", variable.name.c_str());
+        _LOG_WARNING("Unused variable \"%s\" (R: %d, W: %d)", 
+          variable.name.c_str(), variable.isUsedAsRead, variable.isUsedAsWrite);
       }
 
       // replacement of the variable name in the program with the address
       sprintf(tmpStr1, ":addr(%s)", variable.id.c_str());
       sprintf(tmpStr2, "%05x", variable.address);
-      wholeFile = replaceAll(wholeFile, string(tmpStr1), string(tmpStr2));
+      //wholeFile = replace_all(wholeFile, string(tmpStr1), string(tmpStr2));
     }
   }
 
