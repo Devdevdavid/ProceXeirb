@@ -3,6 +3,8 @@
 
 #include <bag_devlib.h>
 
+#define APP_VERSION     "2.0.0"
+
 /* MACRO */
 #define _LOG_ERROR(format, ...)   LOG_ERROR(format, ##__VA_ARGS__); nbErrorDetected++;
 #define _LOG_WARNING(format, ...) LOG_WARNING(format, ##__VA_ARGS__); nbWarningDetected++;

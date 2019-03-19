@@ -62,7 +62,7 @@ public:
 
   var * a1;
   var * a2;
-  var * var_;
+  var * retVar;
 
 public :
   void set_argument1(var * v);
@@ -72,8 +72,10 @@ public :
   void write_and_count_inst(string str);
   void print_get_local_var(var *v);
   void print_get_inst_for_var(var *v);
+  void print_save_accu(void);
   void set_address (uint32_t address);
   void print_operation(string opInstStr);
+  void print_operation_and_store(string opInstStr);
 
   virtual string print_instruction() = 0;
 };

@@ -44,7 +44,7 @@ void instruction::set_argument2(var * v)
 
 void instruction::set_return_var(var * v)
 {
-  this->var_ = v;
+  this->retVar = v;
 
   if (v != NULL) {
     v->isUsedAsWrite = true;
@@ -89,6 +89,19 @@ void instruction::print_get_inst_for_var(var *v)
   }
 }
 
+void instruction::print_save_accu(void)
+{
+  if (retVar->isLocal) {
+    string constIdStr = get_const_var_id(to_string(retVar->contextOffset));
+    // Compute the dynamique address of the local variable
+    write_and_count_inst("CSA :addr(" + constIdStr + ")\n");
+    // Move the accu to the content pointed by the dynamic address
+    write_and_count_inst("SAD " DYN_ADDI_ADDR "\n");
+  } else {
+    write_and_count_inst("STA :addr(" + retVar->id + ")\n");
+  }
+}
+
 void instruction::set_address(uint32_t address)
 {
   this->address = address;
@@ -115,8 +128,12 @@ void instruction::print_operation(string opInstStr)
     print_get_inst_for_var(a1);
     write_and_count_inst(opInstStr + " :addr(" + a2->id + ")\n");
   }
+}
 
-  write_and_count_inst("STA :addr(" + var_->id + ")\n");
+void instruction::print_operation_and_store(string opInstStr)
+{
+  print_operation(opInstStr);
+  print_save_accu();
 }
 
 // ===========================
@@ -130,9 +147,9 @@ addition::addition()
 string addition::print_instruction()
 {
   if (a1->type == INTEGER) {
-    print_operation("ADD");
+    print_operation_and_store("ADD");
   } else {
-    print_operation("FDD");
+    print_operation_and_store("FDD");
   }
   return instBuffer;
 }
@@ -143,7 +160,7 @@ soustraction::soustraction()
 }
 string soustraction::print_instruction()
 {
-  print_operation("SUB");
+  print_operation_and_store("SUB");
   return instBuffer;
 }
 
@@ -154,9 +171,9 @@ multiplication::multiplication()
 string multiplication::print_instruction()
 {
   if (a1->type == INTEGER) {
-    print_operation("MUL");
+    print_operation_and_store("MUL");
   } else {
-    print_operation("FMU");
+    print_operation_and_store("FMU");
   }
   return instBuffer;
 }
@@ -168,9 +185,9 @@ division::division()
 string division::print_instruction()
 {
   if (a1->type == INTEGER) {
-    print_operation("DIV");
+    print_operation_and_store("DIV");
   } else {
-    print_operation("FDI");
+    print_operation_and_store("FDI");
   }
   return instBuffer;
 }
@@ -181,7 +198,7 @@ ins_or::ins_or()
 }
 string ins_or::print_instruction()
 {
-  print_operation("LOR");
+  print_operation_and_store("LOR");
   return instBuffer;
 }
 
@@ -191,7 +208,7 @@ ins_nor::ins_nor()
 }
 string ins_nor::print_instruction()
 {
-  print_operation("NOR");
+  print_operation_and_store("NOR");
   return instBuffer;
 }
 
@@ -201,7 +218,7 @@ ins_xor::ins_xor()
 }
 string ins_xor::print_instruction()
 {
-  print_operation("XOR");
+  print_operation_and_store("XOR");
   return instBuffer;
 }
 
@@ -211,7 +228,7 @@ ins_and::ins_and()
 }
 string ins_and::print_instruction()
 {
-  print_operation("AND");
+  print_operation_and_store("AND");
   return instBuffer;
 }
 
@@ -227,7 +244,7 @@ affectation::affectation()
 string affectation::print_instruction()
 {
   print_get_inst_for_var(a1);
-  write_and_count_inst("STA :addr(" + var_->id + ")\n");
+  print_save_accu();
 
   return instBuffer;
 }
@@ -248,13 +265,12 @@ void condition::set_condition_type(string type)
 
 string condition::print_instruction()
 {
-  write_and_count_inst("GET :addr(" + a1->id + ")\n");
-  if (condition_type == "<") {
-    write_and_count_inst("TLT :addr(" + a2->id + ")\n");
-  } else if (condition_type == ">") {
-    write_and_count_inst("TGT :addr(" + a2->id + ")\n");
+  if (condition_type == ">") {
+    print_operation("TGT");
+  } else if (condition_type == "<") {
+    print_operation("TLT");
   } else if (condition_type ==  "==") {
-    write_and_count_inst("TEQ :addr(" + a2->id + ")\n");
+    print_operation("TEQ");
   } 
   write_and_count_inst("JCC :condition(" + id + ")\n");
   return instBuffer;
@@ -282,13 +298,12 @@ void loop::set_condition_type(string type)
 
 string loop::print_instruction()
 {
-  write_and_count_inst("GET :addr(" + a1->id + ")\n");
   if (condition_type == ">") {
-    write_and_count_inst("TGT :addr(" + a2->id + ")\n");
+    print_operation("TGT");
   } else if (condition_type == "<") {
-    write_and_count_inst("TLT :addr(" + a2->id + ")\n");
+    print_operation("TLT");
   } else if (condition_type ==  "==") {
-    write_and_count_inst("TEQ :addr(" + a2->id + ")\n");
+    print_operation("TEQ");
   }
   write_and_count_inst("JCC :endloop(" + id + ")\n");
   
@@ -333,7 +348,13 @@ string write_to_shared::print_instruction()
 {
   print_get_inst_for_var(a1);
   write_and_count_inst("ADD " SHARED_MEM_ADDR "\n");
-  write_and_count_inst("SAD :addr(" + a2->id + ")\n");
+  if (a2->isLocal) {
+    print_get_local_var(a2);
+    write_and_count_inst("STA " DUMMY_FLASH_ADDR "\n");
+    write_and_count_inst("SAD " DUMMY_FLASH_ADDR "\n");
+  } else {
+    write_and_count_inst("SAD :addr(" + a2->id + ")\n");
+  }
 
   return instBuffer;
 }
@@ -349,7 +370,7 @@ string sine::print_instruction()
   write_and_count_inst("ADD " SIN_TABLE_ADDR "\n");
   write_and_count_inst("STA " DUMMY_FLASH_ADDR "\n");
   write_and_count_inst("GAD " DUMMY_FLASH_ADDR "\n"); //get @ address
-  write_and_count_inst("STA :addr(" + var_->id + ")\n"); //store in the return var
+  print_save_accu(); //store in the return var
 
   return instBuffer;
 }
@@ -366,7 +387,7 @@ string cos::print_instruction()
   write_and_count_inst("ADD " SIN_TABLE_ADDR "\n");
   write_and_count_inst("STA " DUMMY_FLASH_ADDR "\n");
   write_and_count_inst("GAD " DUMMY_FLASH_ADDR "\n"); //get @ address
-  write_and_count_inst("STA :addr(" + var_->id + ")\n"); //store in the return var
+  print_save_accu(); //store in the return var
   
   return instBuffer;
 }
@@ -405,7 +426,7 @@ string read_at::print_instruction()
   } else {
     write_and_count_inst("GAD :addr(" + a1->id + ")\n");
   }
-  write_and_count_inst("STA :addr(" + var_->id + ")\n"); 
+  print_save_accu(); 
   return instBuffer;
 }
 
@@ -427,7 +448,7 @@ string ins_fti::print_instruction()
   } else {
     write_and_count_inst("FTI :addr(" + a1->id   + ")\n");
   }
-  write_and_count_inst("STA :addr(" + var_->id + ")\n");
+  print_save_accu();
 
   return instBuffer;
 }
@@ -446,7 +467,7 @@ string ins_itf::print_instruction()
   } else {
     write_and_count_inst("ITF :addr(" + a1->id   + ")\n");
   }
-  write_and_count_inst("STA :addr(" + var_->id + ")\n");
+  print_save_accu();
 
   return instBuffer;
 }

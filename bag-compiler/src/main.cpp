@@ -93,14 +93,27 @@ bool isReal(const string &s)
   }
 }
 
-bool isAValidVarName(const string &s)
+bool is_a_valid_var_name(const string &s)
 {
   if (s.empty()) {
+    _LOG_ERROR("Variable name is empty");
     return false;
   }
   if (isdigit(s[0])) {
+    _LOG_ERROR("Variable name cannot start with a digit: \"%s\"", s.c_str());
     return false;
   }
+
+  // Look if the variable name is already used
+  if (CUR_CONTEXT->get_var(s) != NULL) {
+    _LOG_ERROR("Variable name is already used in the function context: \"%s\"", s.c_str());
+    return false;
+  }
+  if (GLOBAL_CONTEXT->get_var(s) != NULL) {
+    _LOG_ERROR("Variable name is already used in the global context: \"%s\"", s.c_str());
+    return false;
+  }
+
   return true;
 }
 
@@ -159,8 +172,7 @@ var * declare_var(string line)
     return NULL;
   }
 
-  if (!isAValidVarName(name)) {
-    _LOG_ERROR("Invalid name for variable: %s", name.c_str());
+  if (!is_a_valid_var_name(name)) {
     return NULL;
   }
 
@@ -569,6 +581,8 @@ void create_global_context(void)
 
   // Name the global context
   GLOBAL_CONTEXT->name = ".global";
+
+  CUR_CONTEXT = GLOBAL_CONTEXT;
 }
 
 int compiler(const char * bagoFilePath, const char * asmFilePath) 
@@ -835,7 +849,7 @@ int compiler(const char * bagoFilePath, const char * asmFilePath)
       if (instruTable->at(index)->type == FIN_CONDITION) {
         sprintf(tmpStr1, ":condition(%s)", instruTable->at(index)->id.c_str());
         sprintf(tmpStr2, "%05x", indexRam);
-        //wholeFile = replace_all(wholeFile, string(tmpStr1), string(tmpStr2));
+        wholeFile = replace_all(wholeFile, string(tmpStr1), string(tmpStr2));
       }
 
       if (instruTable->at(index)->type == FIN_TANT_QUE) {
@@ -843,11 +857,11 @@ int compiler(const char * bagoFilePath, const char * asmFilePath)
         
         sprintf(tmpStr1, ":endloop(%s)", toClose.c_str());
         sprintf(tmpStr2, "%05x", indexRam);
-        //wholeFile = replace_all(wholeFile, string(tmpStr1), string(tmpStr2));
+        wholeFile = replace_all(wholeFile, string(tmpStr1), string(tmpStr2));
         
         sprintf(tmpStr1, ":loop(%s)", toClose.c_str());
         sprintf(tmpStr2, "%05x", func->get_loop_back_address(toClose.c_str())); 
-        //wholeFile = replace_all(wholeFile, string(tmpStr1), string(tmpStr2));
+        wholeFile = replace_all(wholeFile, string(tmpStr1), string(tmpStr2));
       }
     }
   }
@@ -856,7 +870,7 @@ int compiler(const char * bagoFilePath, const char * asmFilePath)
   for (fonction * func : fonctionTable) {
     sprintf(tmpStr1, ":call(%s)", func->name.c_str());
     sprintf(tmpStr2, "%05x", func->startRamAddress);
-    //wholeFile = replace_all(wholeFile, string(tmpStr1), string(tmpStr2));
+    wholeFile = replace_all(wholeFile, string(tmpStr1), string(tmpStr2));
   }
 
   // fin du programme
@@ -870,8 +884,13 @@ int compiler(const char * bagoFilePath, const char * asmFilePath)
       LOG_DEBUG("VAR : %s", variable->id.c_str());
 
       if (variable->isUnused()) {
-        _LOG_WARNING("Unused variable \"%s\" (R: %d, W: %d)", 
-          variable->name.c_str(), variable->isUsedAsRead, variable->isUsedAsWrite);
+        if (!variable->isUsedAsRead && !variable->isUsedAsWrite) {
+          _LOG_WARNING("Variable \"%s\" is not used", variable->id.c_str());
+        } else if (!variable->isUsedAsWrite) {
+          _LOG_WARNING("Variable \"%s\" is not set", variable->id.c_str());
+        } else if (!variable->isUsedAsRead) {
+          _LOG_WARNING("Variable \"%s\" is set but never used", variable->id.c_str());
+        }
       }
 
       // Declare as variable in the flash only the global constant
@@ -884,7 +903,7 @@ int compiler(const char * bagoFilePath, const char * asmFilePath)
         // replacement of the variable name in the program with the address
         sprintf(tmpStr1, ":addr(%s)", variable->id.c_str());
         sprintf(tmpStr2, "%05x", variable->address);
-        //wholeFile = replace_all(wholeFile, string(tmpStr1), string(tmpStr2));
+        wholeFile = replace_all(wholeFile, string(tmpStr1), string(tmpStr2));
       }
     }
   }
@@ -918,8 +937,7 @@ int main(int argc, char const *argv[])
   const char *outputFilePath = NULL;
   const char *inputFilePath = NULL;
 
-  // Arg check
-  if (argc < (3 + 1)) {
+  if (argc < 2) {
     print_usage();
     return 1;
   }
@@ -932,11 +950,14 @@ int main(int argc, char const *argv[])
         outputFilePath = argv[++index];
       }
       else {
-        fprintf(stderr, "-o error: argument missing\n");
+        LOG_ERROR("-o error: argument missing");
         return 1;
       }
     } else if (!strncmp(argv[index], "-k", 2)) {
       keepBagoFileOpt = 1;
+    } else if (!strncmp(argv[index], "-v", 2)) {
+      LOG_INFO("bag-compiler v%s - %s", APP_VERSION, __DATE__);
+      return 0;
     } 
     else {
       // This is an input file
