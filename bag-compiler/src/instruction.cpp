@@ -269,7 +269,7 @@ string condition::print_instruction()
     print_operation("TGT");
   } else if (condition_type == "<") {
     print_operation("TLT");
-  } else if (condition_type ==  "==") {
+  } else if (condition_type == "==") {
     print_operation("TEQ");
   } 
   write_and_count_inst("JCC :condition(" + id + ")\n");

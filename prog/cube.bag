@@ -2521,4 +2521,3 @@ tant_que(1 < 2)
     led_i = 0;
   fin_si
 fin_tant_que;
-

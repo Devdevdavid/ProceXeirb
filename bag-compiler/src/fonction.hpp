@@ -6,6 +6,7 @@
 #include <cstdlib>
 #include <cstdint>
 #include <vector>
+#include <stack>
 
 // Forward declaration : Compiler need this to avoid circular header depedency
 class fonction;
@@ -30,7 +31,9 @@ class fonction
     vector<instruction *> instruTable;
 
     uint16_t loopId;
+    stack<uint16_t> loopStack;
     uint16_t condId;
+    stack<uint16_t> condStack;
     
     uint16_t varCount;      // Number of declared variable in the function
 

@@ -2,9 +2,16 @@
 
 fonction::fonction() 
 {
-    this->loopId = 0;
-    this->condId = 0;
-    this->varCount = 0;
+    isBeingEdited = false;
+    name = "";
+    variableTable.clear();
+    instruTable.clear();
+    loopId = 0;
+    condId = 0;
+    varCount = 0;
+    params.clear();
+    returnVar = NULL;
+    startRamAddress = 0;
 }
 
 fonction::~fonction() 
@@ -144,19 +151,21 @@ void fonction::add_instru(instruction *i)
 
 string fonction::build_cond_loop_id(uint16_t num)
 {
-    return this->name + "::" + to_string(num);
+    return this->name + "#" + to_string(num);
 }
 
 string fonction::get_next_loop_id(void)
 {
-    ++this->loopId;
-    return build_cond_loop_id(this->loopId);
+    loopStack.push(++this->loopId);
+    return build_cond_loop_id(loopStack.top());
 }
 
 string fonction::consume_loop_id(void)
 {
-    if (this->loopId > 0) {
-        return build_cond_loop_id(this->loopId--);
+    if (loopStack.size() > 0) {
+        string id = build_cond_loop_id(loopStack.top());
+        loopStack.pop();
+        return id;
     } else {
         _LOG_ERROR("No loop to close here");
         return "";
@@ -179,14 +188,16 @@ uint32_t fonction::get_loop_back_address(string loopIdToClose)
 
 string fonction::get_next_cond_id(void)
 {
-    ++this->condId;
-    return build_cond_loop_id(this->condId);
+    condStack.push(++this->condId);
+    return build_cond_loop_id(condStack.top());
 }
 
 string fonction::consume_cond_id(void)
 {
-    if (this->condId > 0) {
-        return build_cond_loop_id(this->condId--);
+    if (condStack.size() > 0) {
+        string id = build_cond_loop_id(condStack.top());
+        condStack.pop();
+        return id;
     } else {
         _LOG_ERROR("No condition to close here");
         return "";
@@ -195,11 +206,11 @@ string fonction::consume_cond_id(void)
 
 void fonction::check_loops_and_cond(void)
 {
-    if (this->condId > 0) {
+    if (condStack.size() > 0) {
         _LOG_ERROR("All conditions are not closed");
     }
 
-    if (this->loopId > 0) {
+    if (loopStack.size() > 0) {
         _LOG_ERROR("All loops are not closed");
     }
 }

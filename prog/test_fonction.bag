@@ -1,6 +1,15 @@
-fonction myFunction(entier a, entier b);
+entier choixCPUGPU;
 
-retourne a;
+choixCPUGPU = 3;
 
-entier a;
-a = myFunction(1, 2);
+tant_que (choixCPUGPU == 1)
+	choixCPUGPU = 2;
+fin_tant_que;
+tant_que (choixCPUGPU == 1)
+	choixCPUGPU = 2;
+	tant_que (choixCPUGPU == 1)
+		choixCPUGPU = 2;
+	fin_tant_que;
+fin_tant_que;
+
+choixCPUGPU = 4;

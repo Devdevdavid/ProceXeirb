@@ -835,7 +835,9 @@ int compiler(const char * bagoFilePath, const char * asmFilePath)
       _LOG_ERROR("Function \"%s\" is never closed", func->name.c_str());
     }
 
-    // TODO: Ajouter les PUSH pour les variables locales ici
+    if (func != GLOBAL_CONTEXT) {
+      // TODO: Ajouter les PUSH pour les variables locales ici
+    }
 
     // LOG_DEBUG("CONTEXT : %s", func->name.c_str());
     for (index = 0; index < instruTable->size(); ++index)
@@ -849,7 +851,7 @@ int compiler(const char * bagoFilePath, const char * asmFilePath)
       if (instruTable->at(index)->type == FIN_CONDITION) {
         sprintf(tmpStr1, ":condition(%s)", instruTable->at(index)->id.c_str());
         sprintf(tmpStr2, "%05x", indexRam);
-        wholeFile = replace_all(wholeFile, string(tmpStr1), string(tmpStr2));
+        //wholeFile = replace_all(wholeFile, string(tmpStr1), string(tmpStr2));
       }
 
       if (instruTable->at(index)->type == FIN_TANT_QUE) {
@@ -857,11 +859,11 @@ int compiler(const char * bagoFilePath, const char * asmFilePath)
         
         sprintf(tmpStr1, ":endloop(%s)", toClose.c_str());
         sprintf(tmpStr2, "%05x", indexRam);
-        wholeFile = replace_all(wholeFile, string(tmpStr1), string(tmpStr2));
+        //wholeFile = replace_all(wholeFile, string(tmpStr1), string(tmpStr2));
         
         sprintf(tmpStr1, ":loop(%s)", toClose.c_str());
         sprintf(tmpStr2, "%05x", func->get_loop_back_address(toClose.c_str())); 
-        wholeFile = replace_all(wholeFile, string(tmpStr1), string(tmpStr2));
+        //wholeFile = replace_all(wholeFile, string(tmpStr1), string(tmpStr2));
       }
     }
   }
@@ -870,7 +872,7 @@ int compiler(const char * bagoFilePath, const char * asmFilePath)
   for (fonction * func : fonctionTable) {
     sprintf(tmpStr1, ":call(%s)", func->name.c_str());
     sprintf(tmpStr2, "%05x", func->startRamAddress);
-    wholeFile = replace_all(wholeFile, string(tmpStr1), string(tmpStr2));
+    //wholeFile = replace_all(wholeFile, string(tmpStr1), string(tmpStr2));
   }
 
   // fin du programme
@@ -881,8 +883,8 @@ int compiler(const char * bagoFilePath, const char * asmFilePath)
   for (fonction * func : fonctionTable) {
     LOG_DEBUG("CONTEXT : %s", func->name.c_str());
     for (var * variable : func->variableTable) {
-      LOG_DEBUG("VAR : %s", variable->id.c_str());
-
+      //LOG_DEBUG("VAR : %s", variable->id.c_str());
+      
       if (variable->isUnused()) {
         if (!variable->isUsedAsRead && !variable->isUsedAsWrite) {
           _LOG_WARNING("Variable \"%s\" is not used", variable->id.c_str());
@@ -903,7 +905,7 @@ int compiler(const char * bagoFilePath, const char * asmFilePath)
         // replacement of the variable name in the program with the address
         sprintf(tmpStr1, ":addr(%s)", variable->id.c_str());
         sprintf(tmpStr2, "%05x", variable->address);
-        wholeFile = replace_all(wholeFile, string(tmpStr1), string(tmpStr2));
+        //wholeFile = replace_all(wholeFile, string(tmpStr1), string(tmpStr2));
       }
     }
   }
