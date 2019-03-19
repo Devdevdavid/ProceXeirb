@@ -110,8 +110,8 @@ var * fonction::get_var(string varName)
 {
     uint32_t index;
     for (index = 0; index < variableTable.size(); ++index) {
-        if (variableTable.at(index).name == varName) {
-            return &variableTable.at(index); // Return the existing variable
+        if (variableTable.at(index)->name == varName) {
+            return variableTable.at(index); // Return the existing variable
         }
     }
     return NULL;
@@ -121,11 +121,11 @@ var * fonction::get_var(string varName)
  * @brief Add a new local variable to the function context
  * @param v 
  */
-void fonction::add_local_var(var *v) 
+void fonction::add_var(var *v)
 {
     v->id = this->name + "::" + v->name;
     v->contextOffset = varCount++;
-    variableTable.push_back(*v);
+    variableTable.push_back(v);
 }
 
 /**

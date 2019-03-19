@@ -26,7 +26,7 @@ class fonction
 
     string name;
 
-    vector<var> variableTable;
+    vector<var *> variableTable;
     vector<instruction *> instruTable;
 
     uint16_t loopId;
@@ -49,7 +49,7 @@ class fonction
     bool is_returned_var_valid(var *v);
 
     var * get_var(string varName);
-    void add_local_var(var *v);
+    void add_var(var *v);
     void add_instru(instruction *i);
 
     // Loops and conditions management

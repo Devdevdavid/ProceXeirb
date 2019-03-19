@@ -159,16 +159,19 @@ var * declare_var(string line)
     return NULL;
   }
 
-  if (isAValidVarName(name)) {
-    v->name = name;
-    v->type = type;
-    v->value = 0;
-    CUR_CONTEXT->add_local_var(v);
-    return v;
-  } else {
+  if (!isAValidVarName(name)) {
     _LOG_ERROR("Invalid name for variable: %s", name.c_str());
     return NULL;
   }
+
+  v->name = name;
+  v->type = type;
+  v->value = 0;
+  if (CUR_CONTEXT != GLOBAL_CONTEXT) {
+    v->isLocal = true;
+  }
+  CUR_CONTEXT->add_var(v);
+  return v;
 }
 
 var * declare_const_var(string name)
@@ -193,7 +196,7 @@ var * declare_const_var(string name)
   v->isUsedAsWrite = true;
 
   v->name = name;
-  GLOBAL_CONTEXT->add_local_var(v);
+  GLOBAL_CONTEXT->add_var(v);
 
   return v;
 }
@@ -301,7 +304,6 @@ int parse_function_declaration(string line)
   // Extract arg declaration
   argLine = find_between(line, "(", ")");
   argStrList = str_split(argLine, ",");
-
   
   for (index = 0; index < argStrList.size(); index++) {
     // Add an ending character to be simplify the parse
@@ -819,6 +821,8 @@ int compiler(const char * bagoFilePath, const char * asmFilePath)
       _LOG_ERROR("Function \"%s\" is never closed", func->name.c_str());
     }
 
+    // TODO: Ajouter les PUSH pour les variables locales ici
+
     // LOG_DEBUG("CONTEXT : %s", func->name.c_str());
     for (index = 0; index < instruTable->size(); ++index)
     {
@@ -862,24 +866,26 @@ int compiler(const char * bagoFilePath, const char * asmFilePath)
   // gestion des variables
   for (fonction * func : fonctionTable) {
     LOG_DEBUG("CONTEXT : %s", func->name.c_str());
-    for (var variable : func->variableTable) {
+    for (var * variable : func->variableTable) {
+      LOG_DEBUG("VAR : %s", variable->id.c_str());
 
-      LOG_DEBUG("VAR : %s", variable.id.c_str());
-
-      snprintf(tmpStr1, sizeof(tmpStr1), "VAR %07x\n", variable.value & 0x1ffffff);
-      wholeFile += tmpStr1;
-      variable.address = indexRam;
-      indexRam++;
-
-      if (variable.isUnused()) {
+      if (variable->isUnused()) {
         _LOG_WARNING("Unused variable \"%s\" (R: %d, W: %d)", 
-          variable.name.c_str(), variable.isUsedAsRead, variable.isUsedAsWrite);
+          variable->name.c_str(), variable->isUsedAsRead, variable->isUsedAsWrite);
       }
 
-      // replacement of the variable name in the program with the address
-      sprintf(tmpStr1, ":addr(%s)", variable.id.c_str());
-      sprintf(tmpStr2, "%05x", variable.address);
-      //wholeFile = replace_all(wholeFile, string(tmpStr1), string(tmpStr2));
+      // Declare as variable in the flash only the global constant
+      if (!variable->isLocal) {
+        snprintf(tmpStr1, sizeof(tmpStr1), "VAR %07x\n", variable->value & 0x1ffffff);
+        wholeFile += tmpStr1;
+        variable->address = indexRam;
+        indexRam++;
+
+        // replacement of the variable name in the program with the address
+        sprintf(tmpStr1, ":addr(%s)", variable->id.c_str());
+        sprintf(tmpStr2, "%05x", variable->address);
+        //wholeFile = replace_all(wholeFile, string(tmpStr1), string(tmpStr2));
+      }
     }
   }
 

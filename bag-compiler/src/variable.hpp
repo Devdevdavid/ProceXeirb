@@ -9,6 +9,8 @@
 
 #include <string.h>
 
+using namespace std;
+
 typedef enum {
   INTEGER,
   REAL
@@ -22,8 +24,8 @@ public:
   bool isUnused(void);
 
 public: 
-  std::string name;         // Name of the variable
-  std::string id;           // Identifier of the variable of type <ContextName>::<varName>
+  string name;         // Name of the variable
+  string id;           // Identifier of the variable of type <ContextName>::<varName>
   varType type;             // Type of the variable : REAL or INTEGER
   bool isUsedAsWrite;       // Flag to tell if the variable is write at least one time
   bool isUsedAsRead;        // Flag to tell if the variable is read at least one time
