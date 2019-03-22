@@ -65,6 +65,9 @@ public:
   var * retVar;
 
 public :
+  // Constructor 
+  instruction(void);
+  
   void set_argument1(var * v);
   void set_argument2(var * v);
   void set_return_var(var * v);

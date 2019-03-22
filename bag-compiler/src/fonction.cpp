@@ -1,5 +1,7 @@
 #include "fonction.hpp"
 
+extern uint32_t fileLineCounter;          // Index of the line currently analysed (Preprocessor and compiler)
+
 fonction::fonction() 
 {
     isBeingEdited = false;

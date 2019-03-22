@@ -1,5 +1,7 @@
 #include "instruction.hpp"
 
+extern uint32_t fileLineCounter;          // Index of the line currently analysed (Preprocessor and compiler)
+
 // Arrhh, you drive me crazy with this line of code...
 // Instruction needs to access to this function 
 // to use constant varaibles in asm
@@ -23,6 +25,11 @@ string get_const_var_id(string constVarName)
 // ===========================
 //       INSTRUCTION
 // ===========================
+
+instruction::instruction(void)
+{
+  this->nbInstrucLine = 0;
+}
 
 void instruction::set_argument1(var * v)
 {

@@ -34,6 +34,7 @@ void print_build_finished(struct timeval startTime, int nbError, int nbWarning);
 // Global variables
 vector<fonction *> fonctionTable;
 fonction * CUR_CONTEXT;
+uint32_t fileLineCounter;                  // Index of the line currently analysed (Preprocessor and compiler)
 
 string replace_all(string str, const string &from, const string &to)
 {
@@ -65,7 +66,7 @@ string remove_line_comment(string str)
   return str;
 }
 
-bool isInteger(const string &s)
+bool is_integer(const string &s)
 {
   char * p;
 
@@ -81,13 +82,13 @@ bool isInteger(const string &s)
   return (*p == 0);
 }
 
-bool isReal(const string &s)
+bool is_real(const string &s)
 {
   if (s.find(".") != string::npos) {
     string t1 = s;
     t1 = replace_all(t1, ".", "");
     
-    return isInteger(t1);
+    return is_integer(t1);
   } else {
     return false;
   }
@@ -190,11 +191,11 @@ var * declare_const_var(string name)
 {
   var * v = new var;
 
-  if (isInteger(name)) {
+  if (is_integer(name)) {
     v->value = atol(name.c_str());
     v->type = INTEGER;
   }
-  else if (isReal(name)) {
+  else if (is_real(name)) {
     v->value = atof(name.c_str()) * 256;
     v->type = REAL;
   } else {
@@ -245,19 +246,24 @@ string variable_to_change(string str)
   return str.substr(0, str.find("="));
 }
 
+/**
+ * @brief Find the return value and 2 argument in a line with the following format
+ *      ret = arg1 <operatorSymbole> arg2
+ * 
+ * @param ins: Pointer of the operation created
+ * @param line: line to parse
+ * @param operatorSymbole: symbole to use
+ */
 void create_operation(instruction * ins, string line, string operatorSymbole) 
 {
-  var * v;    // Pointer on a lambda variable
+  var * v;
 
-  //first, find the variable to update
   v = get_or_create_variable(variable_to_change(line));
   ins->set_return_var(v);
 
-  //Argument 1
   v = get_or_create_variable(find_between(line, "=", operatorSymbole));
   ins->set_argument1(v);
 
-  //Argument 2
   v = get_or_create_variable(find_between(line, operatorSymbole, ";"));
   ins->set_argument2(v);
 
@@ -278,34 +284,50 @@ string condition_type(string str)
   return "";
 }
 
-vector<string> str_split(string s, string delimiter)
+/**
+ * @brief Split a string by looking for delimiter
+ * 
+ * @param str : String to split
+ * @param delimiter : string to find in str
+ * @return vector<string> : each piece of string found in str
+ */
+vector<string> str_split(string str, string delimiter)
 {
-  size_t pos_start = 0, pos_end, delim_len = delimiter.length();
-  string token;
+  size_t pos_start = 0, pos_end;
+  size_t delim_len = delimiter.length();
   vector<string> res;
+  string token;
 
-  while ((pos_end = s.find(delimiter, pos_start)) != string::npos) {
-    token = s.substr(pos_start, pos_end - pos_start);
+  while ((pos_end = str.find(delimiter, pos_start)) != string::npos) {
+    token = str.substr(pos_start, pos_end - pos_start);
     pos_start = pos_end + delim_len;
     res.push_back(token);
   }
 
-  res.push_back(s.substr(pos_start));
+  res.push_back(str.substr(pos_start));
   return res;
 }
 
+/**
+ * @brief Create a fonction object by 
+ * parsing the declaration line
+ * 
+ * @param line 
+ * @return int : 0: OK, -1: Error
+ */
 int parse_function_declaration(string line)
 {
-  fonction * func = new fonction;
-  string argLine;
-  vector<string> argStrList;
-  var * variable;
+  fonction * func = new fonction;       // The object function
+  vector<string> argStrList;            // List of argument found in the fonction declaration
+  string argLine;                       // Extracted string with all arguments 
+  var * variable;                       // Temporary variable pointer
   uint16_t index;
 
   // Get function name
   func->name = find_between(line, "fonction", "(");
   if (func->name.empty()) {
     _LOG_ERROR("Invalid function name");
+    delete func;
     return -1;
   }
 
@@ -329,6 +351,13 @@ int parse_function_declaration(string line)
   return 0;
 }
 
+/**
+ * @brief Close the fonction currently edited and link the
+ * returned variable
+ * 
+ * @param line 
+ * @return int: 0: OK, -1: Error
+ */
 int parse_function_return(string line) 
 {
   fonction * func;
@@ -348,28 +377,39 @@ int parse_function_return(string line)
     return -1;
   }
 
+  // Find the variable to return (if there is one)
   returnStr = find_between(line, "retourne", ";");
   if (!returnStr.empty()) {
     returnVar = get_or_create_variable(returnStr);
   } else {
-    returnVar = NULL;
+    returnVar = NULL; // NULL is equivalent to void type
   }
   func->set_return_var(returnVar);
   
+  // The function is not edited anymore
   func->isBeingEdited = false;
+
+  // Go back to the global context
   CUR_CONTEXT = GLOBAL_CONTEXT;
 
   return 0;
 }
 
+/**
+ * @brief Create a fonctionCall Object by parsing the 
+ * call line. 
+ * 
+ * @param line 
+ * @return int: 0: OK, -1: Error
+ */
 int parse_function_call(string line) 
 {
   functionCall * ins;
   string funcName, argLine;
   vector<string> argStrList;
   fonction * funcCalled;
-  var * v;
   uint16_t argIndex;
+  var * v;
 
   // Is there a return value needed ?
   if (line.find("=") != string::npos) {
@@ -377,7 +417,7 @@ int parse_function_call(string line)
     v = get_or_create_variable(variable_to_change(line));
   } else {
     funcName = line.substr(0, line.find("("));
-    v = NULL; // Don't care about the returned value
+    v = NULL; // NULL is equivalent to void type
   }
 
   if ((funcCalled = find_fonction(funcName)) != NULL) {
@@ -420,7 +460,7 @@ int parse_function_call(string line)
  * @param asmFilePath 
  * @param bagoFilePath 
  * @param maxPathLen max length of bagoFilePath
- * @return int 0: OK, 1: error
+ * @return int: 0: OK, 1: error
  */
 int create_bago_file_path(const char *asmFilePath, char * bagoFilePath, uint16_t maxPathLen) 
 {
@@ -497,14 +537,13 @@ int write_string_in_file(const char * filePath, string str)
  */
 int preprocessor(const char * bagFilePath, const char * bagoFilePath)
 {
-  int retError = 0;
-  int lineCounter = 0;
+  int retError = 0;                     // Returned value of the function
   uint32_t index;
   ifstream bagFile;
   ofstream bagoFile;
   string line, originLine, defineTmp;
-  vector<string> defineContent;
-  vector<string> defineName;
+  vector<string> defineName;            // List of all define name found
+  vector<string> defineContent;         // List of all define content found
 
   remove(bagoFilePath);
   bagoFile.open(bagoFilePath);
@@ -519,9 +558,12 @@ int preprocessor(const char * bagFilePath, const char * bagoFilePath)
     retError = 1;
   }
 
+  // Init the counter to 0
+  fileLineCounter = 0;
+
   // First pass: Preprocessor duty
   while (getline(bagFile, originLine) && (retError == 0)) {
-    ++lineCounter;
+    ++fileLineCounter;
     line = replace_all(originLine, " ", "");
     line = replace_all(line, "\t", "");
     line = remove_line_comment(line);         // Remove text after comment symbole "//"
@@ -534,13 +576,13 @@ int preprocessor(const char * bagFilePath, const char * bagoFilePath)
 
       // Check the name
       if (defineName.back().empty()) {
-        _LOG_ERROR("Wrong syntax on line %d: \"%s\"", lineCounter, originLine.c_str());
+        _LOG_ERROR("Wrong syntax on line %d: \"%s\"", fileLineCounter, originLine.c_str());
         retError = 2; // Syntaxe Error
       } 
-      continue; // Do not copy this line
+      continue; // Do not copy tthe line of the #definition
     }
 
-    // For each line, try to find known definition
+    // Try to find in the line a known definition
     for (index = 0; index < defineName.size(); ++index) {
       if (line.find(defineName[index]) != string::npos) {
         line = replace_all(line, defineName[index], defineContent[index]);
@@ -552,7 +594,7 @@ int preprocessor(const char * bagFilePath, const char * bagoFilePath)
       continue;
     }
 
-    // Save the line
+    // Save the line into output file
     bagoFile << line << endl;
   }
 
@@ -563,17 +605,10 @@ int preprocessor(const char * bagFilePath, const char * bagoFilePath)
   return retError;
 }
 
-void replace_in_whole_file(string wholeFile, const char * name, int id, int ramIndex)
-{
-  char tmp1[30] = "";
-  char tmp2[30] = "";
-
-  sprintf(tmp1, ":%s(%d)", name, id);
-  sprintf(tmp2, "%05x", ramIndex);
-
-  wholeFile = replace_all(wholeFile, string(tmp1), string(tmp2));
-}
-
+/**
+ * @brief Create the global context
+ * 
+ */
 void create_global_context(void)
 {
   // Create the function for global context
@@ -582,21 +617,28 @@ void create_global_context(void)
   // Name the global context
   GLOBAL_CONTEXT->name = ".global";
 
+  // Set the default context to global
   CUR_CONTEXT = GLOBAL_CONTEXT;
 }
 
+/**
+ * @brief Entry point of the compiler
+ * 
+ * @param bagoFilePath : Input file from the preprocessor
+ * @param asmFilePath : Output file of the compiler
+ * @return int: 0: OK, 1: Error
+ */
 int compiler(const char * bagoFilePath, const char * asmFilePath) 
 {
   int retError = 0;
-  bool tooMuchErrorAbort = false;
-  string line = "";
-  string wholeFile;
-  instruction *ins;
-  var * v;
-  uint32_t indexRam = 0;
-  uint32_t index = 0;
-  char tmpStr1[30] = "";
-  char tmpStr2[30] = "";
+  bool tooMuchErrorAbort = false;     // Flag to stop the compilation process in case of too much errors
+  string line = "";                   // Line currently analysed
+  string wholeFile;                   // Intermediate buffer before adresses link
+  instruction *ins;                   // Temporary pointer for instruction declaration
+  var * v;                            // Temporary pointer for variable declaration
+  uint32_t index = 0;                 
+  char tmpStr1[30] = "";              // Temporary buffer for sprintf purpose
+  char tmpStr2[30] = "";              // Temporary buffer for sprintf purpose
 
   // Input file
   ifstream bagoFile(bagoFilePath);
@@ -605,39 +647,41 @@ int compiler(const char * bagoFilePath, const char * asmFilePath)
     retError = 1;
   }
 
-  // Add all constant value in memory
+  // Create the context and set it as default
   create_global_context();
 
-  //parser
+  // Init the counter to 0
+  fileLineCounter = 0;
+
+  // For all lines of the file, parse it !
   while (getline(bagoFile, line) && (tooMuchErrorAbort == false))
   {
+    ++fileLineCounter;
     // LOG_DEBUG("cur line = %s", line.c_str());
-    if ((line.find("entier") == 0) || (line.find("reel") == 0))
-    {
+    if ((line.find("entier") == 0) || (line.find("reel") == 0)) {
       declare_var(line);
     }
     else if (line.find("rve") != string::npos)
-    { //real to int
+    { 
+      // Real to int
       ins = new ins_fti;
 
       v = get_or_create_variable(variable_to_change(line));
       ins->set_return_var(v);
 
-      //Argument 1
       v = get_or_create_variable(find_between(line, "(", ")"));
       ins->set_argument1(v);
 
       CUR_CONTEXT->add_instru(ins);
     }
     else if (line.find("evr") != string::npos)
-    { //int to real
+    { 
+      // int to real
       ins = new ins_itf;
 
-      //first, find the variable to update
       v = get_or_create_variable(variable_to_change(line));
       ins->set_return_var(v);
 
-      //Argument 1
       v = get_or_create_variable(find_between(line, "(", ")"));
       ins->set_argument1(v);
 
@@ -665,6 +709,7 @@ int compiler(const char * bagoFilePath, const char * asmFilePath)
     }
     else if (line.find("-") != string::npos && line.find("=-") == string::npos)
     {
+      // Here is a difficulties: we need to avoid the case ret = -a - b
       create_operation(new soustraction, line, "-");
     }
     else if (line.find("*") != string::npos)
@@ -817,6 +862,7 @@ int compiler(const char * bagoFilePath, const char * asmFilePath)
       _LOG_ERROR("Unkown instruction: %s", line.c_str());
     }
 
+    // Stop compilation process for 5 errors and more
     if (nbErrorDetected >= 5) {
       tooMuchErrorAbort = true;
     }
@@ -826,10 +872,13 @@ int compiler(const char * bagoFilePath, const char * asmFilePath)
     goto abortLabel;
   }
 
+  // Restart the counter for the RAM output
+  fileLineCounter = 0;
+
   // Gestion des instructions
   for (fonction * func : fonctionTable) {
     vector<instruction *> * instruTable = &func->instruTable;
-    func->startRamAddress = indexRam;
+    func->startRamAddress = fileLineCounter;
 
     if (func->isBeingEdited) {
       _LOG_ERROR("Function \"%s\" is never closed", func->name.c_str());
@@ -844,13 +893,13 @@ int compiler(const char * bagoFilePath, const char * asmFilePath)
     {
       // LOG_DEBUG("INSTYPE : %d", instruTable->at(index)->type);
 
-      instruTable->at(index)->set_address(indexRam);
+      instruTable->at(index)->set_address(fileLineCounter);
       wholeFile += instruTable->at(index)->print_instruction();
-      indexRam += instruTable->at(index)->nbInstrucLine;
+      fileLineCounter += instruTable->at(index)->nbInstrucLine;
 
       if (instruTable->at(index)->type == FIN_CONDITION) {
         sprintf(tmpStr1, ":condition(%s)", instruTable->at(index)->id.c_str());
-        sprintf(tmpStr2, "%05x", indexRam);
+        sprintf(tmpStr2, "%05x", fileLineCounter);
         //wholeFile = replace_all(wholeFile, string(tmpStr1), string(tmpStr2));
       }
 
@@ -858,7 +907,7 @@ int compiler(const char * bagoFilePath, const char * asmFilePath)
         string toClose = instruTable->at(index)->id;
         
         sprintf(tmpStr1, ":endloop(%s)", toClose.c_str());
-        sprintf(tmpStr2, "%05x", indexRam);
+        sprintf(tmpStr2, "%05x", fileLineCounter);
         //wholeFile = replace_all(wholeFile, string(tmpStr1), string(tmpStr2));
         
         sprintf(tmpStr1, ":loop(%s)", toClose.c_str());
@@ -876,7 +925,7 @@ int compiler(const char * bagoFilePath, const char * asmFilePath)
   }
 
   // fin du programme
-  snprintf(tmpStr1, sizeof(tmpStr1), "JMP %05x\n", indexRam++);
+  snprintf(tmpStr1, sizeof(tmpStr1), "JMP %05x\n", fileLineCounter++);
   wholeFile += tmpStr1;
 
   // gestion des variables
@@ -899,8 +948,8 @@ int compiler(const char * bagoFilePath, const char * asmFilePath)
       if (!variable->isLocal) {
         snprintf(tmpStr1, sizeof(tmpStr1), "VAR %07x\n", variable->value & 0x1ffffff);
         wholeFile += tmpStr1;
-        variable->address = indexRam;
-        indexRam++;
+        variable->address = fileLineCounter;
+        ++fileLineCounter;
 
         // replacement of the variable name in the program with the address
         sprintf(tmpStr1, ":addr(%s)", variable->id.c_str());

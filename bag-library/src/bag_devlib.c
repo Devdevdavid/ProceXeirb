@@ -31,6 +31,8 @@ void lib_log(FILE *output, uint8_t level, const char funcName[], uint32_t lineNu
 		// Display line and function name only for debug level
 		if (level == LOG_LVL_DEBUG) {
 			pPrefixStr += sprintf(pPrefixStr, ANSI_COLOR_GRAY "%s() (L.%d) " ANSI_COLOR_RESET, funcName, lineNum);
+		} else if (((level == LOG_LVL_WARNING) || (level == LOG_LVL_ERROR)) && (lineNum != 0)) {
+			pPrefixStr += sprintf(pPrefixStr, ANSI_COLOR_GRAY "Line %d " ANSI_COLOR_RESET, lineNum);
 		}
 	}
 
@@ -44,52 +46,4 @@ void lib_log(FILE *output, uint8_t level, const char funcName[], uint32_t lineNu
 	}
 
 	fflush(output);
-}
-
-int8_t get_args(struct args_t *args, int argc, char *argv[])
-{
-	uint8_t argsIndex = 0; // Ignore first arg which is exe path
-	uint8_t curArg = 1;
-	uint16_t curIndex = 1;
-	bool isPreviousValue = false;
-
-	memset(args, 0, sizeof(struct args_t));
-
-	while (curArg < argc) {
-		// Length check
-		if (strlen(argv[curArg]) >= ARGS_STR_BUFF_MAX_LENGTH) {
-			LOG_ERROR("The arg %d is too long (%d char)", curArg, strlen(argv[curArg]));
-			return ERROR;
-		}
-		if (isPreviousValue) {
-			isPreviousValue = false;
-			if (argv[curArg][0] == '-') {
-				LOG_ERROR("A value was needed for previous arg -%s", args->table[argsIndex].key);
-				return ERROR;
-			}
-			strcpy(args->table[argsIndex].strValue, argv[curArg]);
-			++argsIndex;
-		}
-		else if (argv[curArg][0] == '-') { // If is a option
-			strcpy(args->table[argsIndex].key, argv[curArg] + 1); // +1: Don't copy the '-'
-			if ((argv[curArg][1] >= 'A') && (argv[curArg][1] <= 'Z')) {
-				isPreviousValue = true; // A value is needed
-			} else {
-				++argsIndex;
-			}
-		}
-		else {
-			strcpy(args->table[argsIndex].key, argv[curArg]);
-			args->table[argsIndex].index = curIndex++;
-			++argsIndex;
-		}
-		curArg += 1;
-	}
-	if (isPreviousValue) {
-		LOG_ERROR("The value of -%s is missing",  args->table[argsIndex].key);
-		return ERROR;
-	}
-	args->count = argsIndex;
-
-	return SUCCESS;
 }

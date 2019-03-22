@@ -16,7 +16,7 @@
 #include <stdbool.h>
 #include <string.h>
 
-#define DEVLIB_VERSION "DevLib v1.0.1"
+#define DEVLIB_VERSION "DevLib v1.2"
 
 /* ========================================
  * 
@@ -72,36 +72,13 @@
 #else
 #define LOG_DEBUG(format, ...)
 #endif
-#define LOG_WARNING(format, ...) 	lib_log(stderr, LOG_LVL_WARNING, __FUNCTION__, __LINE__, format, ##__VA_ARGS__)
-#define LOG_ERROR(format, ...) 		lib_log(stderr, LOG_LVL_ERROR, __FUNCTION__, __LINE__, format, ##__VA_ARGS__)
-#define LOG_INFO(format, ...) 		lib_log(stdout, LOG_LVL_INFO, __FUNCTION__, __LINE__, format, ##__VA_ARGS__)
-#define LOG(format, ...) 			lib_log(stdout, LOG_LVL_NO_PREFIX, __FUNCTION__, __LINE__, format, ##__VA_ARGS__)
+#define LOG_WARNING(format, ...) 	        lib_log(stderr, LOG_LVL_WARNING, __FUNCTION__, 0, format, ##__VA_ARGS__)
+#define LOG_ERROR(format, ...) 	            lib_log(stderr, LOG_LVL_ERROR, __FUNCTION__, 0, format, ##__VA_ARGS__)
+#define LOG_WARNING_L(format, line, ...)    lib_log(stderr, LOG_LVL_WARNING, __FUNCTION__, line, format, ##__VA_ARGS__)
+#define LOG_ERROR_L(format, line, ...) 	    lib_log(stderr, LOG_LVL_ERROR, __FUNCTION__, line, format, ##__VA_ARGS__)
+#define LOG_INFO(format, ...) 			    lib_log(stdout, LOG_LVL_INFO, __FUNCTION__, __LINE__, format, ##__VA_ARGS__)
+#define LOG(format, ...) 				    lib_log(stdout, LOG_LVL_NO_PREFIX, __FUNCTION__, __LINE__, format, ##__VA_ARGS__)
 
 void lib_log(FILE *output, uint8_t level, const char funcName[], uint32_t lineNum, const char format[], ...);
-
-/* ========================================
- * ARGUMENTS
- * ========================================
- */
-
-#define ARGS_STR_BUFF_MAX_LENGTH 100
-
-struct arg_t {
-	uint16_t index;
-	char key[ARGS_STR_BUFF_MAX_LENGTH];
-	char strValue[ARGS_STR_BUFF_MAX_LENGTH];
-	uint32_t u32Value;
-};
-
-#ifndef ARGS_MAX_NUMBER
-#define ARGS_MAX_NUMBER 10
-#endif
-struct args_t {
-	struct arg_t table[ARGS_MAX_NUMBER];
-	uint8_t count;
-};
-
-int8_t get_args(struct args_t *args, int argc, char *argv[]);
-
 
 #endif /* SRC_BAG_DEVLIB_H_ */

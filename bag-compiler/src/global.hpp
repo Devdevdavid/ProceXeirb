@@ -3,11 +3,11 @@
 
 #include <bag_devlib.h>
 
-#define APP_VERSION     "2.0.0"
+#define APP_VERSION     "2.0.29-devantd"
 
-/* MACRO */
-#define _LOG_ERROR(format, ...)   LOG_ERROR(format, ##__VA_ARGS__); nbErrorDetected++;
-#define _LOG_WARNING(format, ...) LOG_WARNING(format, ##__VA_ARGS__); nbWarningDetected++;
+/* MACRO: Each ERROR/WARNING are counted */
+#define _LOG_ERROR(format, ...)   LOG_ERROR_L(format, fileLineCounter, ##__VA_ARGS__); nbErrorDetected++;
+#define _LOG_WARNING(format, ...) LOG_WARNING_L(format, fileLineCounter, ##__VA_ARGS__); nbWarningDetected++;
 
 /* CONSTANT ADDRESSES */
 // The define below are hexadecimal value on 5 digits

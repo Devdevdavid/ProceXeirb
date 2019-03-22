@@ -22,7 +22,7 @@ BAG_LIB_CFLAG   = -DLOG_SUPPORT_COLOR
 
 RM 				= rm -f
 
-all: library $(BINTARG)
+all: updtVersion library $(BINTARG)
 
 debug: CFLAGS += -DDEBUG -g
 debug: BAG_LIB_CFLAG += -DDEBUG -g
@@ -36,6 +36,9 @@ $(BINTARG): $(OBJECTS) $(addsuffix .o, $(BAG_LIB_DIR)/$(BAG_LIB))
 
 $(OBJECTS): $(OBJDIR)/%.o : $(SRCDIR)/%.cpp
 	$(CC) $(CFLAGS) -c $< -o $@
+
+updtVersion:
+	SESVersionIncrementer -i ./src/global.hpp -d APP_VERSION
 
 .PHONY:	clean
 clean:
