@@ -298,6 +298,11 @@ vector<string> str_split(string str, string delimiter)
   vector<string> res;
   string token;
 
+  // Return empty vector if size = 0
+  if (str.empty()) {
+    return res;
+  }
+
   while ((pos_end = str.find(delimiter, pos_start)) != string::npos) {
     token = str.substr(pos_start, pos_end - pos_start);
     pos_start = pos_end + delim_len;
@@ -338,7 +343,7 @@ int parse_function_declaration(string line)
   // Extract arg declaration
   argLine = find_between(line, "(", ")");
   argStrList = str_split(argLine, ",");
-  
+
   for (index = 0; index < argStrList.size(); index++) {
     // Add an ending character to be simplify the parse
     variable = declare_var(argStrList[index] + ";");
@@ -420,9 +425,7 @@ int parse_function_call(string line)
     v = NULL; // NULL is equivalent to void type
   }
 
-  if ((funcCalled = find_fonction(funcName)) != NULL) {
-    LOG_INFO("A fonction call found here : \"%s\"", funcCalled->name.c_str());
-  } else {
+  if ((funcCalled = find_fonction(funcName)) == NULL) {
     _LOG_ERROR("Unknown fonction name : \"%s\"", funcName.c_str());
     return -1;
   }
@@ -431,7 +434,7 @@ int parse_function_call(string line)
   ins = new functionCall;
 
   // Link the instruction to the function called
-  ins->func = funcCalled;
+  ins->link_function(funcCalled);
 
   // v can be NULL to indicate no return value
   ins->link_returned_var(v); 
@@ -439,6 +442,13 @@ int parse_function_call(string line)
   // Extract arg declaration
   argLine = find_between(line, "(", ")");
   argStrList = str_split(argLine, ",");
+
+  if (argStrList.size() != funcCalled->params.size()) {
+    _LOG_ERROR("Function \"%s\" needs %d arguments, %d given", 
+      funcCalled->params.size(), argStrList.size());
+    delete ins;
+    return -1;
+  }
 
   for (argIndex = 0; argIndex < argStrList.size(); argIndex++) {
     if ((v = get_or_create_variable(argStrList[argIndex])) == NULL) {
@@ -617,6 +627,9 @@ void create_global_context(void)
   // Name the global context
   GLOBAL_CONTEXT->name = ".global";
 
+  // The Global Context never called (Here we avoid warning)
+  GLOBAL_CONTEXT->isCalledAtLeastOnce = true;
+
   // Set the default context to global
   CUR_CONTEXT = GLOBAL_CONTEXT;
 }
@@ -631,7 +644,6 @@ void create_global_context(void)
 int compiler(const char * bagoFilePath, const char * asmFilePath) 
 {
   int retError = 0;
-  bool tooMuchErrorAbort = false;     // Flag to stop the compilation process in case of too much errors
   string line = "";                   // Line currently analysed
   string wholeFile;                   // Intermediate buffer before adresses link
   instruction *ins;                   // Temporary pointer for instruction declaration
@@ -654,7 +666,7 @@ int compiler(const char * bagoFilePath, const char * asmFilePath)
   fileLineCounter = 0;
 
   // For all lines of the file, parse it !
-  while (getline(bagoFile, line) && (tooMuchErrorAbort == false))
+  while (getline(bagoFile, line) && (nbErrorDetected < 5))
   {
     ++fileLineCounter;
     // LOG_DEBUG("cur line = %s", line.c_str());
@@ -861,14 +873,9 @@ int compiler(const char * bagoFilePath, const char * asmFilePath)
     {
       _LOG_ERROR("Unkown instruction: %s", line.c_str());
     }
-
-    // Stop compilation process for 5 errors and more
-    if (nbErrorDetected >= 5) {
-      tooMuchErrorAbort = true;
-    }
   }
 
-  if (tooMuchErrorAbort) {
+  if (nbErrorDetected != 0) {
     goto abortLabel;
   }
 
@@ -882,6 +889,9 @@ int compiler(const char * bagoFilePath, const char * asmFilePath)
 
     if (func->isBeingEdited) {
       _LOG_ERROR("Function \"%s\" is never closed", func->name.c_str());
+    } 
+    if (func->is_unused()) {
+      _LOG_WARNING("The function \"%s\" is not used", func->name.c_str());
     }
 
     if (func != GLOBAL_CONTEXT) {
@@ -960,7 +970,8 @@ int compiler(const char * bagoFilePath, const char * asmFilePath)
   }
 
   if (wholeFile.find(":addr(") != string::npos) {
-    _LOG_ERROR("Variable not declared: %s", find_between(wholeFile, ":addr(", ")").c_str());
+    // Should be decomment for release
+    //_LOG_ERROR("Variable not declared: %s", find_between(wholeFile, ":addr(", ")").c_str());
   }
 
   retError = write_string_in_file(asmFilePath, wholeFile);

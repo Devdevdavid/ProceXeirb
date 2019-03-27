@@ -7,6 +7,11 @@ bag-objcopy/obj/*
 bag-upload/obj/*
 bag-library/obj/*
 
+bag-compiler/bin/*
+bag-objcopy/bin/*
+bag-upload/bin/*
+bag-library/bin/*
+
 */*.bytes
 */*.asm
 main.o
@@ -14,3 +19,4 @@ main.o
 
 doc/Conception-de-circuit-numériques-BESSE-_-JOUBERT.pdf
 ProceXeirb.code-workspace
+.vscode/*

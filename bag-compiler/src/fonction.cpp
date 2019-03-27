@@ -110,6 +110,16 @@ bool fonction::is_returned_var_valid(var * v)
 }
 
 /**
+ * @brief Tell if the function is not used in the program
+ * 
+ * @return bool 
+ */
+bool fonction::is_unused()
+{
+    return (isCalledAtLeastOnce == false);
+}
+
+/**
  * @brief Find a variable in the context by looking 
  * by its name
  * @param varName 

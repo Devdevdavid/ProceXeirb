@@ -267,11 +267,13 @@ class functionCall : public instruction
 public:
   functionCall();
 
+  int link_function(fonction * pFunc);
   int link_argument(var *v);
   int link_returned_var(var *v);
 
   void print_push(var * varToPush);
 
+private:
   fonction * func;
   vector<var *> params; // Sorted list of function argument 
 

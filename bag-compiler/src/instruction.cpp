@@ -490,6 +490,33 @@ functionCall::functionCall()
 }
 
 /**
+ * @brief Link a fonction to the functionCall Object
+ * 
+ * @param pFunc : function to link
+ * @return 0: OK, -1: Error
+ */
+int functionCall::link_function(fonction * pFunc)
+{
+  if (pFunc == NULL) {
+    _LOG_ERROR("[INTERNAL] Undefined function for functionCall");
+    return -1;
+  }
+
+  if (pFunc->isBeingEdited) {
+    _LOG_ERROR("Recurcive call for function \"%s\" is not supported", pFunc->name.c_str());
+    return -1;
+  }
+
+  // Update flag
+  pFunc->isCalledAtLeastOnce = true;
+
+  // Link the function
+  func = pFunc;
+
+  return 0;
+}
+
+/**
  * @brief Link argument to a function call 
  * with validity check. Argument should be linked in the same 
  * order as the function arguments to match

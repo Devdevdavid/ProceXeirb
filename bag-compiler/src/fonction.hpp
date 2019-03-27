@@ -24,12 +24,14 @@ class fonction
     ~fonction();
 
     bool isBeingEdited;     // Tell to the compiler if the function is being edited
+    bool isCalledAtLeastOnce; // Tell if the fonction is called at least one time
 
-    string name;
+    string name;            // name of the function
 
     vector<var *> variableTable;
     vector<instruction *> instruTable;
 
+    // Loop and condition management
     uint16_t loopId;
     stack<uint16_t> loopStack;
     uint16_t condId;
@@ -50,6 +52,7 @@ class fonction
     int set_return_var(var *v);
     bool is_argument_valid(uint16_t paramIndex, var *v);
     bool is_returned_var_valid(var *v);
+    bool is_unused();
 
     var * get_var(string varName);
     void add_var(var *v);
