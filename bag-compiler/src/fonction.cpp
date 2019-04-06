@@ -48,6 +48,9 @@ int fonction::add_argument(var *v)
  */
 int fonction::set_return_var(var *v) 
 {
+    // Flag the used as read 
+    v->isUsedAsRead = true;
+
     // Copy the object
     returnVar = v;
 

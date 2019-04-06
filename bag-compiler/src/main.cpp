@@ -28,6 +28,12 @@
 
 #define GLOBAL_CONTEXT          fonctionTable.front()
 
+#ifdef DEBUG
+#define MACRO_REPLACE_ALL_OCCUR
+#else
+#define MACRO_REPLACE_ALL_OCCUR  wholeFile = replace_all(wholeFile, string(tmpStr1), string(tmpStr2));
+#endif 
+
 // Prototype
 void print_build_finished(struct timeval startTime, int nbError, int nbWarning);
 
@@ -430,6 +436,16 @@ int parse_function_call(string line)
     return -1;
   }
 
+  // Extract arg declaration
+  argLine = find_between(line, "(", ")");
+  argStrList = str_split(argLine, ",");
+
+  if (argStrList.size() != funcCalled->params.size()) {
+    _LOG_ERROR("Function \"%s\" needs %d arguments, %d given", 
+      funcCalled->params.size(), argStrList.size());
+    return -1;
+  }
+
   // Create the object
   ins = new functionCall;
 
@@ -438,17 +454,6 @@ int parse_function_call(string line)
 
   // v can be NULL to indicate no return value
   ins->link_returned_var(v); 
-
-  // Extract arg declaration
-  argLine = find_between(line, "(", ")");
-  argStrList = str_split(argLine, ",");
-
-  if (argStrList.size() != funcCalled->params.size()) {
-    _LOG_ERROR("Function \"%s\" needs %d arguments, %d given", 
-      funcCalled->params.size(), argStrList.size());
-    delete ins;
-    return -1;
-  }
 
   for (argIndex = 0; argIndex < argStrList.size(); argIndex++) {
     if ((v = get_or_create_variable(argStrList[argIndex])) == NULL) {
@@ -649,8 +654,8 @@ int compiler(const char * bagoFilePath, const char * asmFilePath)
   instruction *ins;                   // Temporary pointer for instruction declaration
   var * v;                            // Temporary pointer for variable declaration
   uint32_t index = 0;                 
-  char tmpStr1[30] = "";              // Temporary buffer for sprintf purpose
-  char tmpStr2[30] = "";              // Temporary buffer for sprintf purpose
+  char tmpStr1[40] = "";              // Temporary buffer for sprintf purpose
+  char tmpStr2[40] = "";              // Temporary buffer for sprintf purpose
 
   // Input file
   ifstream bagoFile(bagoFilePath);
@@ -910,7 +915,7 @@ int compiler(const char * bagoFilePath, const char * asmFilePath)
       if (instruTable->at(index)->type == FIN_CONDITION) {
         sprintf(tmpStr1, ":condition(%s)", instruTable->at(index)->id.c_str());
         sprintf(tmpStr2, "%05x", fileLineCounter);
-        //wholeFile = replace_all(wholeFile, string(tmpStr1), string(tmpStr2));
+        MACRO_REPLACE_ALL_OCCUR
       }
 
       if (instruTable->at(index)->type == FIN_TANT_QUE) {
@@ -918,11 +923,11 @@ int compiler(const char * bagoFilePath, const char * asmFilePath)
         
         sprintf(tmpStr1, ":endloop(%s)", toClose.c_str());
         sprintf(tmpStr2, "%05x", fileLineCounter);
-        //wholeFile = replace_all(wholeFile, string(tmpStr1), string(tmpStr2));
+        MACRO_REPLACE_ALL_OCCUR
         
         sprintf(tmpStr1, ":loop(%s)", toClose.c_str());
         sprintf(tmpStr2, "%05x", func->get_loop_back_address(toClose.c_str())); 
-        //wholeFile = replace_all(wholeFile, string(tmpStr1), string(tmpStr2));
+        MACRO_REPLACE_ALL_OCCUR
       }
     }
   }
@@ -931,7 +936,7 @@ int compiler(const char * bagoFilePath, const char * asmFilePath)
   for (fonction * func : fonctionTable) {
     sprintf(tmpStr1, ":call(%s)", func->name.c_str());
     sprintf(tmpStr2, "%05x", func->startRamAddress);
-    //wholeFile = replace_all(wholeFile, string(tmpStr1), string(tmpStr2));
+    MACRO_REPLACE_ALL_OCCUR
   }
 
   // fin du programme
@@ -956,7 +961,11 @@ int compiler(const char * bagoFilePath, const char * asmFilePath)
 
       // Declare as variable in the flash only the global constant
       if (!variable->isLocal) {
+#ifdef DEBUG
+        snprintf(tmpStr1, sizeof(tmpStr1), "VAR %07x // %s\n", variable->value & 0x1ffffff, variable->id.c_str());
+#else
         snprintf(tmpStr1, sizeof(tmpStr1), "VAR %07x\n", variable->value & 0x1ffffff);
+#endif
         wholeFile += tmpStr1;
         variable->address = fileLineCounter;
         ++fileLineCounter;
@@ -964,15 +973,16 @@ int compiler(const char * bagoFilePath, const char * asmFilePath)
         // replacement of the variable name in the program with the address
         sprintf(tmpStr1, ":addr(%s)", variable->id.c_str());
         sprintf(tmpStr2, "%05x", variable->address);
-        //wholeFile = replace_all(wholeFile, string(tmpStr1), string(tmpStr2));
+        MACRO_REPLACE_ALL_OCCUR;
       }
     }
   }
 
+#ifndef DEBUG
   if (wholeFile.find(":addr(") != string::npos) {
-    // Should be decomment for release
-    //_LOG_ERROR("Variable not declared: %s", find_between(wholeFile, ":addr(", ")").c_str());
+    _LOG_ERROR("Variable not declared: %s", find_between(wholeFile, ":addr(", ")").c_str());
   }
+#endif
 
   retError = write_string_in_file(asmFilePath, wholeFile);
 

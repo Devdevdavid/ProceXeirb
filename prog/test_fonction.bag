@@ -1,13 +1,11 @@
-entier choixCPUGPU;
+// Return the power of a
+fonction power2(entier a)
+	entier p;
 
-choixCPUGPU = 3;
+	p = a * a;
 
-tant_que (choixCPUGPU == 1)
-	choixCPUGPU = 2;
-fin_tant_que;
-tant_que (choixCPUGPU == 1)
-	choixCPUGPU = 2;
-	tant_que (choixCPUGPU == 1)
-		choixCPUGPU = 2;
-	fin_tant_que;
-fin_tant_que;
+retourne p;
+
+entier myResult;
+
+myResult = power2(3);
