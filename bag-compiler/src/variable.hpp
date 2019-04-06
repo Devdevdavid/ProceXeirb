@@ -12,6 +12,7 @@
 using namespace std;
 
 typedef enum {
+  UNDEFINED,
   INTEGER,
   REAL
 } varType;

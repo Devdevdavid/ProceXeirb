@@ -102,13 +102,23 @@ bool is_real(const string &s)
 
 bool is_a_valid_var_name(const string &s)
 {
+  uint16_t index;
+
   if (s.empty()) {
     _LOG_ERROR("Variable name is empty");
     return false;
   }
   if (isdigit(s[0])) {
-    _LOG_ERROR("Variable name cannot start with a digit: \"%s\"", s.c_str());
+    _LOG_ERROR("Variable name cannot start with a number: \"%s\"", s.c_str());
     return false;
+  }
+
+  // Check for special characters
+  for (index = 0; index < s.size(); index++) {
+    if (!isdigit(s[index]) && !isalpha(s[index]) && (s[index] != '_')) {
+      _LOG_ERROR("Variable name contain unauthorized character: \"%s\"", s.c_str());
+      return false;
+    }
   }
 
   // Look if the variable name is already used
@@ -161,50 +171,92 @@ string find_between(string str, string start, string end)
   return str.substr(first, last - first);
 }
 
+int set_var_init_value(var * v, string valueStr)
+{
+  varType type;
+  int32_t value;
+
+  if (is_integer(valueStr)) {
+    value = atol(valueStr.c_str());
+    type = INTEGER;
+  }
+  else if (is_real(valueStr)) {
+    value = atof(valueStr.c_str()) * 256;
+    type = REAL;
+  } else {
+    return 1;
+  }
+
+  if (v->type == UNDEFINED) {
+    v->type = type;
+  } else {
+    if (v->type != type) {
+      return 1; // The type of value and variable are different
+    }
+  }
+
+  // Copy value if all is right
+  v->value = value;
+
+  return 0;
+}
+
 var * declare_var(string line)
 {
   var * v = new var;
-  string name;
-  varType type;
+  string delimNameChar = ";";
+  string initValueStr = "";
+
+  // Do we have a initial value ?
+  if (line.find("=") != string::npos) {
+    delimNameChar = "=";
+    initValueStr = find_between(line, "=", ";");
+    // Initiated variable are considered used as write
+    v->isUsedAsWrite = true;
+  }
 
   if (line.find("entier") == 0) {
-    name = find_between(line, "entier", ";");
-    type = INTEGER;
+    v->name = find_between(line, "entier", delimNameChar);
+    v->type = INTEGER;
   }
   else if (line.find("reel") == 0) {
-    name = find_between(line, "reel", ";");
-    type = REAL;
+    v->name = find_between(line, "reel", delimNameChar);
+    v->type = REAL;
   } else {
     _LOG_ERROR("Unknown variable declaration : \"%s\"", line.c_str());
-    return NULL;
+    goto funcFailed;
   }
 
-  if (!is_a_valid_var_name(name)) {
-    return NULL;
+  if (!is_a_valid_var_name(v->name)) {
+    goto funcFailed; // _LOG_ERROR inside
   }
 
-  v->name = name;
-  v->type = type;
-  v->value = 0;
+  // if there is a init value, use it, otherwise, set to 0
+  if (!initValueStr.empty()) {
+    if (set_var_init_value(v, initValueStr) != 0) {
+      _LOG_ERROR("Wrong initial value for declaration: \"%s\"", line.c_str());
+      goto funcFailed;
+    }
+  } else {
+    v->value = 0;
+  }
+
   if (CUR_CONTEXT != GLOBAL_CONTEXT) {
     v->isLocal = true;
   }
   CUR_CONTEXT->add_var(v);
   return v;
+
+funcFailed:
+  delete v;
+  return NULL;
 }
 
 var * declare_const_var(string name)
 {
   var * v = new var;
 
-  if (is_integer(name)) {
-    v->value = atol(name.c_str());
-    v->type = INTEGER;
-  }
-  else if (is_real(name)) {
-    v->value = atof(name.c_str()) * 256;
-    v->type = REAL;
-  } else {
+  if (set_var_init_value(v, name) != 0) {
     _LOG_ERROR("Unknonw variable \"%s\"", name.c_str());
     delete v;
     return NULL;
@@ -898,6 +950,12 @@ int compiler(const char * bagoFilePath, const char * asmFilePath)
     if (func->is_unused()) {
       _LOG_WARNING("The function \"%s\" is not used", func->name.c_str());
     }
+
+    #ifdef DEBUG
+    wholeFile += "// ";
+    wholeFile += func->name.c_str();
+    wholeFile += "\n";
+    #endif
 
     if (func != GLOBAL_CONTEXT) {
       // TODO: Ajouter les PUSH pour les variables locales ici

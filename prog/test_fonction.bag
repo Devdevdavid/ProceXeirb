@@ -9,3 +9,5 @@ retourne p;
 entier myResult;
 
 myResult = power2(3);
+
+

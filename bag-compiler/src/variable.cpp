@@ -3,7 +3,7 @@
   var::var() {
     name = "noName";
     id = "Undefined";
-    type = INTEGER;
+    type = UNDEFINED;
     isUsedAsWrite = false;
     isUsedAsRead = false;
     isLocal = false;
