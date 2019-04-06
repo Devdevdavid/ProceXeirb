@@ -53,6 +53,12 @@ string replace_all(string str, const string &from, const string &to)
   return str;
 }
 
+/**
+ * @brief Remove all the comment "//" of a line
+ * 
+ * @param str : input line 
+ * @return string : output line without comment
+ */
 string remove_line_comment(string str)
 {
   bool isInsideQuote = false;
@@ -72,6 +78,12 @@ string remove_line_comment(string str)
   return str;
 }
 
+/**
+ * @brief Tell if "s" is representing a integer or not
+ * 
+ * @param s 
+ * @return bool 
+ */
 bool is_integer(const string &s)
 {
   char * p;
@@ -88,6 +100,12 @@ bool is_integer(const string &s)
   return (*p == 0);
 }
 
+/**
+ * @brief Tell if s is representing a real or not
+ * 
+ * @param s 
+ * @return bool 
+ */
 bool is_real(const string &s)
 {
   if (s.find(".") != string::npos) {
@@ -100,6 +118,13 @@ bool is_real(const string &s)
   }
 }
 
+/**
+ * @brief Tell if s is a correct variable name
+ * 
+ * @param s 
+ * @return true 
+ * @return false 
+ */
 bool is_a_valid_var_name(const string &s)
 {
   uint16_t index;
@@ -171,6 +196,16 @@ string find_between(string str, string start, string end)
   return str.substr(first, last - first);
 }
 
+/**
+ * @brief Set the value of v according to valueStr
+ * If input variable type is undefined, it is set 
+ * to the type of the value
+ * otherwise, types are checked
+ * 
+ * @param v 
+ * @param valueStr 
+ * @return int : 0: OK, 1: Error
+ */
 int set_var_init_value(var * v, string valueStr)
 {
   varType type;
@@ -187,6 +222,7 @@ int set_var_init_value(var * v, string valueStr)
     return 1;
   }
 
+  // Set or Check
   if (v->type == UNDEFINED) {
     v->type = type;
   } else {
@@ -201,6 +237,12 @@ int set_var_init_value(var * v, string valueStr)
   return 0;
 }
 
+/**
+ * @brief Declare a new variable with or not initial value
+ * 
+ * @param line : declaration line of the variable
+ * @return var* : Pointer on the variable freshly created
+ */
 var * declare_var(string line)
 {
   var * v = new var;
@@ -252,6 +294,12 @@ funcFailed:
   return NULL;
 }
 
+/**
+ * @brief Declare a new constant variable
+ * 
+ * @param name 
+ * @return var* 
+ */
 var * declare_const_var(string name)
 {
   var * v = new var;
