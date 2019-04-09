@@ -190,7 +190,7 @@ string fonction::consume_loop_id(void)
 uint32_t fonction::get_loop_back_address(string loopIdToClose)
 {
     // begin by the end to get speed
-    for (int index = instruTable.size() - 1; index > 0; index--) {
+    for (int index = instruTable.size() - 1; index >= 0; index--) {
         if (instruTable.at(index)->type == TANT_QUE) {
             if (instruTable.at(index)->id == loopIdToClose) {
                 return instruTable.at(index)->address;

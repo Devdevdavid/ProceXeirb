@@ -21,6 +21,10 @@ string get_const_var_id(string constVarName)
   constVar->isUsedAsRead = true;
   return constVar->id;
 }
+string get_const_var_value(uint32_t constVarValue)
+{
+  return get_const_var_id(to_string(constVarValue));
+}
 
 // ===========================
 //       INSTRUCTION
@@ -156,7 +160,7 @@ string addition::print_instruction()
   if (a1->type == INTEGER) {
     print_operation_and_store("ADD");
   } else {
-    print_operation_and_store("FDD");
+    print_operation_and_store("FAD");
   }
   return instBuffer;
 }
@@ -354,7 +358,7 @@ write_to_shared::write_to_shared()
 string write_to_shared::print_instruction()
 {
   print_get_inst_for_var(a1);
-  write_and_count_inst("ADD " SHARED_MEM_ADDR "\n");
+  write_and_count_inst("ADD :addr(" + get_const_var_value(SHARED_MEM_ADDR) + ")\n");
   if (a2->isLocal) {
     print_get_local_var(a2);
     write_and_count_inst("STA " DUMMY_FLASH_ADDR "\n");
@@ -374,9 +378,9 @@ sine::sine()
 string sine::print_instruction()
 {
   print_get_inst_for_var(a1);
-  write_and_count_inst("ADD " SIN_TABLE_ADDR "\n");
+  write_and_count_inst("ADD :addr(" + get_const_var_value(SIN_TABLE_ADDR) + ")\n");
   write_and_count_inst("STA " DUMMY_FLASH_ADDR "\n");
-  write_and_count_inst("GAD " DUMMY_FLASH_ADDR "\n"); //get @ address
+  write_and_count_inst("GAD " DUMMY_FLASH_ADDR "\n");
   print_save_accu(); //store in the return var
 
   return instBuffer;
@@ -390,8 +394,7 @@ cos::cos()
 string cos::print_instruction()
 {
   print_get_inst_for_var(a1);
-  write_and_count_inst("ADD :addr(" + get_const_var_id("90") + ")\n");
-  write_and_count_inst("ADD " SIN_TABLE_ADDR "\n");
+  write_and_count_inst("ADD :addr(" + get_const_var_value(COS_TABLE_ADDR) + ")\n");
   write_and_count_inst("STA " DUMMY_FLASH_ADDR "\n");
   write_and_count_inst("GAD " DUMMY_FLASH_ADDR "\n"); //get @ address
   print_save_accu(); //store in the return var
