@@ -318,12 +318,37 @@ funcFailed:
  */
 varCell * declare_const_var(string name)
 {
+  string refVarName;
+  var * refVar;
   var * v = new var;
 
-  if (set_var_init_value(v, name) != 0) {
-    _LOG_ERROR("Unknonw variable \"%s\"", name.c_str());
-    delete v;
-    return NULL;
+  // Is it a reference to a variable ?
+  if (name.find("@") == 0) {
+    // Remove first character
+    refVarName = name.substr(1, name.length() - 1);
+    // Look for the variable
+    refVar = GLOBAL_CONTEXT->get_var(refVarName);
+    if (refVar != NULL) {
+      // Set the link between them
+      v->referencedVar = refVar;
+
+      // We don't know how the pointer will be use so set those flags
+      refVar->isUsedAsRead = true;
+      refVar->isUsedAsWrite = true;
+
+      // Variable address are integer
+      v->type = INTEGER;
+    } else {
+      _LOG_ERROR("Reference failed: \"%s\" was not found in global context", refVarName.c_str());
+      delete v;
+      return NULL;
+    }
+  } else {
+    if (set_var_init_value(v, name) != 0) {
+      _LOG_ERROR("Unknonw variable \"%s\"", name.c_str());
+      delete v;
+      return NULL;
+    }
   }
 
   // Constant cannot be "unused" so we set these flags
@@ -792,8 +817,8 @@ int compiler(const char * bagoFilePath, const char * asmFilePath)
   instruction *ins;                   // Temporary pointer for instruction declaration
   varCell * vc;                       // Temporary pointer for variable declaration
   uint32_t index = 0;                 
-  char tmpStr1[40] = "";              // Temporary buffer for sprintf purpose
-  char tmpStr2[40] = "";              // Temporary buffer for sprintf purpose
+  char tmpStr1[64] = "";              // Temporary buffer for sprintf purpose
+  char tmpStr2[64] = "";              // Temporary buffer for sprintf purpose
 
   // Input file
   ifstream bagoFile(bagoFilePath);
@@ -1105,22 +1130,43 @@ int compiler(const char * bagoFilePath, const char * asmFilePath)
 
       // Declare as variable in the flash only the global constant
       if (!variable->isLocal) {
-        variable->set_base_address(fileLineCounter++);
+        variable->set_base_address(fileLineCounter);
 
         for(index = 0; index < variable->arraySize; index++) {
-          varCell * vc = variable->get_var_cell(index);
-#ifdef DEBUG
-          snprintf(tmpStr1, sizeof(tmpStr1), "VAR %07x // %s\n", variable->value & 0x1ffffff, vc->get_id().c_str());
-#else
-          snprintf(tmpStr1, sizeof(tmpStr1), "VAR %07x\n", variable->value & 0x1ffffff);
-#endif
-          wholeFile += tmpStr1;
+          vc = variable->get_var_cell(index);
 
-          // Replacement of the variable name in the program with the address
-          sprintf(tmpStr1, ":addr(%s)", vc->get_id().c_str());
-          sprintf(tmpStr2, "%05x", vc->get_address());
-          MACRO_REPLACE_ALL_OCCUR;
+          if (variable->referencedVar != NULL) {
+#ifdef DEBUG
+            snprintf(tmpStr1, sizeof(tmpStr1), "VAR 00:addr(%s) // %s\n", 
+              variable->referencedVar->get_var_cell(0)->get_id().c_str(), vc->get_id().c_str());
+#else
+            snprintf(tmpStr1, sizeof(tmpStr1), "VAR 00:addr(%s)\n", 
+              variable->referencedVar->get_var_cell(0)->get_id().c_str());
+#endif
+          } else {
+#ifdef DEBUG
+            snprintf(tmpStr1, sizeof(tmpStr1), "VAR %07x // %s\n", variable->value & 0x1ffffff, vc->get_id().c_str());
+#else
+            snprintf(tmpStr1, sizeof(tmpStr1), "VAR %07x\n", variable->value & 0x1ffffff);
+#endif
+          }
+          wholeFile += tmpStr1;
         }
+
+        // Count all line of the variable
+        fileLineCounter += variable->arraySize;
+      }
+    }
+  }
+
+  for (fonction * func : fonctionTable) {
+    for (var * variable : func->variableTable) {
+      for(index = 0; index < variable->arraySize; index++) {
+        vc = variable->get_var_cell(index);
+        // Replacement of the variable name in the program with the address
+        sprintf(tmpStr1, ":addr(%s)", vc->get_id().c_str());
+        sprintf(tmpStr2, "%05x", vc->get_address());
+        MACRO_REPLACE_ALL_OCCUR;
       }
     }
   }

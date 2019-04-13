@@ -11,6 +11,7 @@ var::var()
   value = 0;
   address = 0;
   contextOffset = 0;
+  referencedVar = NULL;
 }
 var::~var() {}
 

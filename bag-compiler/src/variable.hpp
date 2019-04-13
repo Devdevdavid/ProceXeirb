@@ -44,6 +44,8 @@ public:
   uint16_t arraySize;
   varCell * varCellArray;  
 
+  var * referencedVar;      // Pointer on the referenced variable (To get its address as a init value)
+
 private: 
   string id;                // Identifier of the variable of type <ContextName>::<varName>
 };

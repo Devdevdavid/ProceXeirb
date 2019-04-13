@@ -1,3 +1,14 @@
-entiera=4;
-entierb=4;
-a=cos(b);
+entierp;
+entierindex=0;
+entiermyTab[8];
+entierout;
+p=@myTab;
+tant_que(index<8)
+out=index*2;
+ecrire_a(out,p);
+index=index+1;
+p=p+1;
+fin_tant_que;
+p=@myTab+1;
+out=lire_a(p);
+afficher_LCD(out);

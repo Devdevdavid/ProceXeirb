@@ -2126,38 +2126,23 @@ si (retour1 == 1)
   fin_tant_que 
 fin_si
 
+#definition CUBE_DECAL_X (320.0)
+#definition CUBE_DECAL_Y (240.0)
+
 entier a_cos; 
 entier a_sin; 
 entier a;
 entier b; 
 entier c;
 
-reel decalage_x; 
-reel decalage_y; 
-reel x1_o; 
-reel y1_o;
-reel z1_o;
-reel x2_o; 
-reel y2_o;
-reel z2_o;
-reel x3_o; 
-reel y3_o;
-reel z3_o;
-reel x4_o; 
-reel y4_o;
-reel z4_o;
-reel x5_o; 
-reel y5_o;
-reel z5_o;
-reel x6_o; 
-reel y6_o;
-reel z6_o;
-reel x7_o; 
-reel y7_o;
-reel z7_o;
-reel x8_o; 
-reel y8_o;
-reel z8_o;
+reel som1[3]; // 0: x, 1: y, 2: z
+reel som2[3];
+reel som3[3];
+reel som4[3];
+reel som5[3];
+reel som6[3];
+reel som7[3];
+reel som8[3];
 reel x1; 
 reel y1;
 reel x2; 
@@ -2192,37 +2177,37 @@ entier retour3;
 
 retour3 = 1;
 
-x1_o = 90.; 
-y1_o = 90.;
-z1_o = -90.;
+som1[0] = 90.; 
+som1[1] = 90.;
+som1[2] = -90.;
 
-x2_o = 90.;
-y2_o = 90.;
-z2_o = 90.;
+som2[0] = 90.;
+som2[1] = 90.;
+som2[2] = 90.;
 
-x3_o = -90.;
-y3_o = 90.;
-z3_o = 90.;
+som3[0] = -90.;
+som3[1] = 90.;
+som3[2] = 90.;
 
-x4_o = -90.;
-y4_o = 90.;
-z4_o = -90.;
+som4[0] = -90.;
+som4[1] = 90.;
+som4[2] = -90.;
 
-x5_o = 90.;
-y5_o = -90.;
-z5_o = -90.;
+som5[0] = 90.;
+som5[1] = -90.;
+som5[2] = -90.;
 
-x6_o = 90.;
-y6_o = -90.;
-z6_o = 90.;
+som6[0] = 90.;
+som6[1] = -90.;
+som6[2] = 90.;
 
-x7_o = -90.;
-y7_o = -90.;
-z7_o = 90.;
+som7[0] = -90.;
+som7[1] = -90.;
+som7[2] = 90.;
 
-x8_o = -90.;
-y8_o = -90.;
-z8_o = -90.;
+som8[0] = -90.;
+som8[1] = -90.;
+som8[2] = -90.;
 
 retour3 = 1;
 
@@ -2258,8 +2243,6 @@ tant_que(1 < 2)
 
   b = 20;
   c = 5;
-  decalage_x = 320.; 
-  decalage_y = 240.; 
 
   sa = sin(a_sin); 
   sb = sin(b); 
@@ -2295,118 +2278,118 @@ tant_que(1 < 2)
   zy    = cc * cb;    
   zy    = zy * cb;
   
-  x1    = x1_o * xx; 
-  temp1 = y1_o * yx;
+  x1    = som1[0] * xx; 
+  temp1 = som1[1] * yx;
   x1    = x1 + temp1;
-  temp1 = z1_o * zx;
+  temp1 = som1[2] * zx;
   x1    = x1 + temp1;
   
-  y1    = x1_o * xy;
-  temp1 = y1_o * yy;
+  y1    = som1[0] * xy;
+  temp1 = som1[1] * yy;
   y1    = y1 + temp1;
-  temp1 = z1_o * zy;
+  temp1 = som1[2] * zy;
   y1    = y1 + temp1;
   
-  x2    = x2_o * xx; 
-  temp1 = y2_o * yx;
+  x2    = som2[0] * xx; 
+  temp1 = som2[1] * yx;
   x2    = x2 + temp1;
-  temp1 = z2_o * zx;
+  temp1 = som2[2] * zx;
   x2    = x2 + temp1;
 
-  y2    = x2_o * xy;
-  temp1 = y2_o * yy;
+  y2    = som2[0] * xy;
+  temp1 = som2[1] * yy;
   y2    = y2 + temp1;
-  temp1 = z2_o * zy;
+  temp1 = som2[2] * zy;
   y2    = y2 + temp1;
   
-  x3    = x3_o * xx; 
-  temp1 = y3_o * yx;
+  x3    = som3[0] * xx; 
+  temp1 = som3[1] * yx;
   x3    = x3 + temp1;
-  temp1 = z3_o * zx;
+  temp1 = som3[2] * zx;
   x3    = x3 + temp1;
 
-  y3    = x3_o * xy;
-  temp1 = y3_o * yy;
+  y3    = som3[0] * xy;
+  temp1 = som3[1] * yy;
   y3    = y3 + temp1;
-  temp1 = z3_o * zy;
+  temp1 = som3[2] * zy;
   y3    = y3 + temp1;
   
-  x4    = x4_o * xx; 
-  temp1 = y4_o * yx;
+  x4    = som4[0] * xx; 
+  temp1 = som4[1] * yx;
   x4    = x4 + temp1;
-  temp1 = z4_o * zx;
+  temp1 = som4[2] * zx;
   x4    = x4 + temp1;
   
-  y4    = x4_o * xy;
-  temp1 = y4_o * yy;
+  y4    = som4[0] * xy;
+  temp1 = som4[1] * yy;
   y4    = y4 + temp1;
-  temp1 = z4_o * zy;
+  temp1 = som4[2] * zy;
   y4    = y4 + temp1;
   
-  x5    = x5_o * xx; 
-  temp1 = y5_o * yx;
+  x5    = som5[0] * xx; 
+  temp1 = som5[1] * yx;
   x5    = x5 + temp1;
-  temp1 = z5_o * zx;
+  temp1 = som5[2] * zx;
   x5    = x5 + temp1;
   
-  y5    = x5_o * xy;
-  temp1 = y5_o * yy;
+  y5    = som5[0] * xy;
+  temp1 = som5[1] * yy;
   y5    = y5 + temp1;
-  temp1 = z5_o * zy;
+  temp1 = som5[2] * zy;
   y5    = y5 + temp1;
   
-  x6    = x6_o * xx;
-  temp1 = y6_o * yx;
+  x6    = som6[0] * xx;
+  temp1 = som6[1] * yx;
   x6    = x6 + temp1;
-  temp1 = z6_o * zx;
+  temp1 = som6[2] * zx;
   x6    = x6 + temp1;
   
-  y6    = x6_o * xy;
-  temp1 = y6_o * yy;
+  y6    = som6[0] * xy;
+  temp1 = som6[1] * yy;
   y6    = y6 + temp1;
-  temp1 = z6_o * zy;
+  temp1 = som6[2] * zy;
   y6    = y6 + temp1;
   
-  x7    = x7_o * xx; 
-  temp1 = y7_o * yx;
+  x7    = som7[0] * xx; 
+  temp1 = som7[1] * yx;
   x7    = x7 + temp1;
-  temp1 = z7_o * zx;
+  temp1 = som7[2] * zx;
   x7    = x7 + temp1;
   
-  y7    = x7_o * xy;
-  temp1 = y7_o * yy;
+  y7    = som7[0] * xy;
+  temp1 = som7[1] * yy;
   y7    = y7 + temp1;
-  temp1 = z7_o * zy;
+  temp1 = som7[2] * zy;
   y7    = y7 + temp1;
   
-  x8    = x8_o * xx; 
-  temp1 = y8_o * yx;
+  x8    = som8[0] * xx; 
+  temp1 = som8[1] * yx;
   x8    = x8 + temp1;
-  temp1 = z8_o * zx;
+  temp1 = som8[2] * zx;
   x8    = x8 + temp1;
   
-  y8    = x8_o * xy;
-  temp1 = y8_o * yy;
+  y8    = som8[0] * xy;
+  temp1 = som8[1] * yy;
   y8    = y8 + temp1;
-  temp1 = z8_o * zy;
+  temp1 = som8[2] * zy;
   y8    = y8 + temp1;
 
-  x1 = x1 + decalage_x; 
-  y1 = y1 + decalage_y;
-  x2 = x2 + decalage_x;
-  y2 = y2 + decalage_y;
-  x3 = x3 + decalage_x;
-  y3 = y3 + decalage_y;
-  x4 = x4 + decalage_x;
-  y4 = y4 + decalage_y;
-  x5 = x5 + decalage_x;
-  y5 = y5 + decalage_y;
-  x6 = x6 + decalage_x;
-  y6 = y6 + decalage_y;
-  x7 = x7 + decalage_x;
-  y7 = y7 + decalage_y;
-  x8 = x8 + decalage_x;
-  y8 = y8 + decalage_y;
+  x1 = x1 + CUBE_DECAL_X; 
+  y1 = y1 + CUBE_DECAL_Y;
+  x2 = x2 + CUBE_DECAL_X;
+  y2 = y2 + CUBE_DECAL_Y;
+  x3 = x3 + CUBE_DECAL_X;
+  y3 = y3 + CUBE_DECAL_Y;
+  x4 = x4 + CUBE_DECAL_X;
+  y4 = y4 + CUBE_DECAL_Y;
+  x5 = x5 + CUBE_DECAL_X;
+  y5 = y5 + CUBE_DECAL_Y;
+  x6 = x6 + CUBE_DECAL_X;
+  y6 = y6 + CUBE_DECAL_Y;
+  x7 = x7 + CUBE_DECAL_X;
+  y7 = y7 + CUBE_DECAL_Y;
+  x8 = x8 + CUBE_DECAL_X;
+  y8 = y8 + CUBE_DECAL_Y;
 
   ecrire_a (12, 8192);
 
