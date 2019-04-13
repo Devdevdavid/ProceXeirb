@@ -246,6 +246,8 @@ int set_var_init_value(var * v, string valueStr)
 var * declare_var(string line)
 {
   var * v = new var;
+  uint16_t varCellCount = 1;
+  string arraySizeStr = "";
   string delimNameChar = ";";
   string initValueStr = "";
 
@@ -255,6 +257,17 @@ var * declare_var(string line)
     initValueStr = find_between(line, "=", ";");
     // Initiated variable are considered used as write
     v->isUsedAsWrite = true;
+  }
+
+  // Is it an array ?
+  if (line.find("[") != string::npos) {
+    delimNameChar = '[';
+    arraySizeStr = find_between(line, "[", "]");
+    varCellCount = atol(arraySizeStr.c_str());
+    if ((varCellCount < 1) || (varCellCount > ARRAY_MAX_SIZE)) {
+      _LOG_ERROR("Invalid array size %d (max: %d) here: : \"%s\"", varCellCount, ARRAY_MAX_SIZE, line.c_str());
+      goto funcFailed;
+    }
   }
 
   if (line.find("entier") == 0) {
@@ -283,6 +296,9 @@ var * declare_var(string line)
     v->value = 0;
   }
 
+  // Create varCells
+  v->create_var_cell(varCellCount);
+  
   if (CUR_CONTEXT != GLOBAL_CONTEXT) {
     v->isLocal = true;
   }
@@ -298,9 +314,9 @@ funcFailed:
  * @brief Declare a new constant variable
  * 
  * @param name 
- * @return var* 
+ * @return varCell* 
  */
-var * declare_const_var(string name)
+varCell * declare_const_var(string name)
 {
   var * v = new var;
 
@@ -314,10 +330,14 @@ var * declare_const_var(string name)
   v->isUsedAsRead = true;
   v->isUsedAsWrite = true;
 
+  // A constant is 1 cell only
+  v->create_var_cell(1);
+
   v->name = name;
   GLOBAL_CONTEXT->add_var(v);
 
-  return v;
+  // Return the only var cell available
+  return v->get_var_cell(0);
 }
 
 /**
@@ -327,24 +347,42 @@ var * declare_const_var(string name)
  * @param name 
  * @return var 
  */
-var * get_or_create_variable(string name)
+varCell * get_or_create_variable(string name)
 {
   var * v;
+  string arrayIndexStr = "";
+  string varName = name;
+  uint16_t curArrayIndex = 0;
+
+  // Is it an array ?
+  if (name.find("[") != string::npos) {
+    arrayIndexStr = find_between(name, "[", "]");
+    if (!is_integer(arrayIndexStr)) {
+      _LOG_ERROR("Wrong index value here: \"%s\"", name.c_str());
+    }
+    curArrayIndex = atol(arrayIndexStr.c_str());
+    varName = name.substr(0, name.find("["));
+  }
 
   // Look for the variable in the current context
-  v = CUR_CONTEXT->get_var(name);
-  if (v != NULL) {
-    return v;
+  v = CUR_CONTEXT->get_var(varName);
+  if (v == NULL) {
+
+    // If not found, look in the global context
+    v = GLOBAL_CONTEXT->get_var(varName);
+    if (v == NULL) {
+
+      // If not found, declare it in global context as a numeric constant and return reference
+      return declare_const_var(varName);
+    }
   }
 
-  // If not found, look in the global context
-  v = GLOBAL_CONTEXT->get_var(name);
-  if (v != NULL) {
-    return v;
+  if (curArrayIndex < 0 || curArrayIndex >= v->arraySize) {
+    _LOG_ERROR("Wrong array index (max: %d) here: \"%s\"", v->arraySize, name.c_str());
+    return NULL;
   }
-  
-  // If not found, declare it in global context as a numeric constant and return reference
-  return declare_const_var(name);
+
+  return v->get_var_cell(curArrayIndex);
 }
 
 string variable_to_change(string str)
@@ -362,16 +400,16 @@ string variable_to_change(string str)
  */
 void create_operation(instruction * ins, string line, string operatorSymbole) 
 {
-  var * v;
+  varCell * vc;
 
-  v = get_or_create_variable(variable_to_change(line));
-  ins->set_return_var(v);
+  vc = get_or_create_variable(variable_to_change(line));
+  ins->set_return_var(vc);
 
-  v = get_or_create_variable(find_between(line, "=", operatorSymbole));
-  ins->set_argument1(v);
+  vc = get_or_create_variable(find_between(line, "=", operatorSymbole));
+  ins->set_argument1(vc);
 
-  v = get_or_create_variable(find_between(line, operatorSymbole, ";"));
-  ins->set_argument2(v);
+  vc = get_or_create_variable(find_between(line, operatorSymbole, ";"));
+  ins->set_argument2(vc);
 
   CUR_CONTEXT->add_instru(ins);
 }
@@ -473,7 +511,7 @@ int parse_function_return(string line)
 {
   fonction * func;
   string returnStr;
-  var * returnVar;
+  varCell * returnVar;
   
   // Check size
   if (fonctionTable.size() <= 0) {
@@ -520,15 +558,15 @@ int parse_function_call(string line)
   vector<string> argStrList;
   fonction * funcCalled;
   uint16_t argIndex;
-  var * v;
+  varCell * vc;
 
   // Is there a return value needed ?
   if (line.find("=") != string::npos) {
     funcName = find_between(line, "=", "(");
-    v = get_or_create_variable(variable_to_change(line));
+    vc = get_or_create_variable(variable_to_change(line));
   } else {
     funcName = line.substr(0, line.find("("));
-    v = NULL; // NULL is equivalent to void type
+    vc = NULL; // NULL is equivalent to void type
   }
 
   if ((funcCalled = find_fonction(funcName)) == NULL) {
@@ -553,13 +591,13 @@ int parse_function_call(string line)
   ins->link_function(funcCalled);
 
   // v can be NULL to indicate no return value
-  ins->link_returned_var(v); 
+  ins->link_returned_var(vc); 
 
   for (argIndex = 0; argIndex < argStrList.size(); argIndex++) {
-    if ((v = get_or_create_variable(argStrList[argIndex])) == NULL) {
+    if ((vc = get_or_create_variable(argStrList[argIndex])) == NULL) {
       continue;
     }
-    if (ins->link_argument(v) != 0) {
+    if (ins->link_argument(vc) != 0) {
       continue;
     }
   }
@@ -752,7 +790,7 @@ int compiler(const char * bagoFilePath, const char * asmFilePath)
   string line = "";                   // Line currently analysed
   string wholeFile;                   // Intermediate buffer before adresses link
   instruction *ins;                   // Temporary pointer for instruction declaration
-  var * v;                            // Temporary pointer for variable declaration
+  varCell * vc;                       // Temporary pointer for variable declaration
   uint32_t index = 0;                 
   char tmpStr1[40] = "";              // Temporary buffer for sprintf purpose
   char tmpStr2[40] = "";              // Temporary buffer for sprintf purpose
@@ -783,11 +821,11 @@ int compiler(const char * bagoFilePath, const char * asmFilePath)
       // Real to int
       ins = new ins_fti;
 
-      v = get_or_create_variable(variable_to_change(line));
-      ins->set_return_var(v);
+      vc = get_or_create_variable(variable_to_change(line));
+      ins->set_return_var(vc);
 
-      v = get_or_create_variable(find_between(line, "(", ")"));
-      ins->set_argument1(v);
+      vc = get_or_create_variable(find_between(line, "(", ")"));
+      ins->set_argument1(vc);
 
       CUR_CONTEXT->add_instru(ins);
     }
@@ -796,11 +834,11 @@ int compiler(const char * bagoFilePath, const char * asmFilePath)
       // int to real
       ins = new ins_itf;
 
-      v = get_or_create_variable(variable_to_change(line));
-      ins->set_return_var(v);
+      vc = get_or_create_variable(variable_to_change(line));
+      ins->set_return_var(vc);
 
-      v = get_or_create_variable(find_between(line, "(", ")"));
-      ins->set_argument1(v);
+      vc = get_or_create_variable(find_between(line, "(", ")"));
+      ins->set_argument1(vc);
 
       CUR_CONTEXT->add_instru(ins);
     }
@@ -843,11 +881,11 @@ int compiler(const char * bagoFilePath, const char * asmFilePath)
       cond->set_condition_type(condition_type(line));
       cond->id = CUR_CONTEXT->get_next_cond_id();
 
-      v = get_or_create_variable(find_between(line, "(", cond->condition_type));
-      cond->set_argument1(v);
+      vc = get_or_create_variable(find_between(line, "(", cond->condition_type));
+      cond->set_argument1(vc);
 
-      v = get_or_create_variable(find_between(line, cond->condition_type, ")"));
-      cond->set_argument2(v);
+      vc = get_or_create_variable(find_between(line, cond->condition_type, ")"));
+      cond->set_argument2(vc);
 
       CUR_CONTEXT->add_instru(cond);
     }
@@ -864,11 +902,11 @@ int compiler(const char * bagoFilePath, const char * asmFilePath)
       lo->set_condition_type(condition_type(line));
       lo->id = CUR_CONTEXT->get_next_loop_id();
 
-      v = get_or_create_variable(find_between(line, "(", lo->condition_type));
-      lo->set_argument1(v);
+      vc = get_or_create_variable(find_between(line, "(", lo->condition_type));
+      lo->set_argument1(vc);
 
-      v = get_or_create_variable(find_between(line, lo->condition_type, ")"));
-      lo->set_argument2(v);
+      vc = get_or_create_variable(find_between(line, lo->condition_type, ")"));
+      lo->set_argument2(vc);
 
       CUR_CONTEXT->add_instru(lo);
     }
@@ -893,11 +931,11 @@ int compiler(const char * bagoFilePath, const char * asmFilePath)
     {
       sine *cond = new sine;
 
-      v = get_or_create_variable(find_between(line, "(", ")"));
-      cond->set_argument1(v);
+      vc = get_or_create_variable(find_between(line, "(", ")"));
+      cond->set_argument1(vc);
 
-      v = get_or_create_variable(variable_to_change(line));
-      cond->set_return_var(v);
+      vc = get_or_create_variable(variable_to_change(line));
+      cond->set_return_var(vc);
 
       CUR_CONTEXT->add_instru(cond);
     }
@@ -905,11 +943,11 @@ int compiler(const char * bagoFilePath, const char * asmFilePath)
     {
       cos *cond = new cos;
 
-      v = get_or_create_variable(find_between(line, "(", ")"));
-      cond->set_argument1(v);
+      vc = get_or_create_variable(find_between(line, "(", ")"));
+      cond->set_argument1(vc);
 
-      v = get_or_create_variable(variable_to_change(line));
-      cond->set_return_var(v);
+      vc = get_or_create_variable(variable_to_change(line));
+      cond->set_return_var(vc);
 
       CUR_CONTEXT->add_instru(cond);
     }
@@ -917,8 +955,8 @@ int compiler(const char * bagoFilePath, const char * asmFilePath)
     {
       ins = new disp_LCD;
 
-      v = get_or_create_variable(find_between(line, "(", ")"));
-      ins->set_argument1(v);
+      vc = get_or_create_variable(find_between(line, "(", ")"));
+      ins->set_argument1(vc);
 
       CUR_CONTEXT->add_instru(ins);
     }
@@ -926,11 +964,11 @@ int compiler(const char * bagoFilePath, const char * asmFilePath)
     {
       ins = new write_to_shared;
 
-      v = get_or_create_variable(find_between(line, "(", ","));
-      ins->set_argument1(v);
+      vc = get_or_create_variable(find_between(line, "(", ","));
+      ins->set_argument1(vc);
 
-      v = get_or_create_variable(find_between(line, ",", ")"));
-      ins->set_argument2(v);
+      vc = get_or_create_variable(find_between(line, ",", ")"));
+      ins->set_argument2(vc);
 
       CUR_CONTEXT->add_instru(ins);
     }
@@ -938,11 +976,11 @@ int compiler(const char * bagoFilePath, const char * asmFilePath)
     {
       ins = new write_at;
 
-      v = get_or_create_variable(find_between(line, "(", ","));
-      ins->set_argument1(v);
+      vc = get_or_create_variable(find_between(line, "(", ","));
+      ins->set_argument1(vc);
 
-      v = get_or_create_variable(find_between(line, ",", ")"));
-      ins->set_argument2(v);
+      vc = get_or_create_variable(find_between(line, ",", ")"));
+      ins->set_argument2(vc);
 
       CUR_CONTEXT->add_instru(ins);
     }
@@ -950,11 +988,11 @@ int compiler(const char * bagoFilePath, const char * asmFilePath)
     {
       ins = new read_at;
 
-      v = get_or_create_variable(variable_to_change(line));
-      ins->set_return_var(v);
+      vc = get_or_create_variable(variable_to_change(line));
+      ins->set_return_var(vc);
 
-      v = get_or_create_variable(find_between(line, "(", ")"));
-      ins->set_argument1(v);
+      vc = get_or_create_variable(find_between(line, "(", ")"));
+      ins->set_argument1(vc);
 
       CUR_CONTEXT->add_instru(ins);
     }
@@ -966,11 +1004,11 @@ int compiler(const char * bagoFilePath, const char * asmFilePath)
     {
       ins = new affectation;
 
-      v = get_or_create_variable(variable_to_change(line));
-      ins->set_return_var(v);
+      vc = get_or_create_variable(variable_to_change(line));
+      ins->set_return_var(vc);
 
-      v = get_or_create_variable(find_between(line, "=", ";"));
-      ins->set_argument1(v);
+      vc = get_or_create_variable(find_between(line, "=", ";"));
+      ins->set_argument1(vc);
 
       CUR_CONTEXT->add_instru(ins);
     }
@@ -1053,33 +1091,36 @@ int compiler(const char * bagoFilePath, const char * asmFilePath)
   for (fonction * func : fonctionTable) {
     LOG_DEBUG("CONTEXT : %s", func->name.c_str());
     for (var * variable : func->variableTable) {
-      //LOG_DEBUG("VAR : %s", variable->id.c_str());
+      //LOG_DEBUG("VAR : %s", variable->get_id().c_str());
       
-      if (variable->isUnused()) {
+      if (variable->is_unused()) {
         if (!variable->isUsedAsRead && !variable->isUsedAsWrite) {
-          _LOG_WARNING("Variable \"%s\" is not used", variable->id.c_str());
+          _LOG_WARNING("Variable \"%s\" is not used", variable->get_id().c_str());
         } else if (!variable->isUsedAsWrite) {
-          _LOG_WARNING("Variable \"%s\" is not set", variable->id.c_str());
+          _LOG_WARNING("Variable \"%s\" is not set", variable->get_id().c_str());
         } else if (!variable->isUsedAsRead) {
-          _LOG_WARNING("Variable \"%s\" is set but never used", variable->id.c_str());
+          _LOG_WARNING("Variable \"%s\" is set but never used", variable->get_id().c_str());
         }
       }
 
       // Declare as variable in the flash only the global constant
       if (!variable->isLocal) {
-#ifdef DEBUG
-        snprintf(tmpStr1, sizeof(tmpStr1), "VAR %07x // %s\n", variable->value & 0x1ffffff, variable->id.c_str());
-#else
-        snprintf(tmpStr1, sizeof(tmpStr1), "VAR %07x\n", variable->value & 0x1ffffff);
-#endif
-        wholeFile += tmpStr1;
-        variable->address = fileLineCounter;
-        ++fileLineCounter;
+        variable->set_base_address(fileLineCounter++);
 
-        // replacement of the variable name in the program with the address
-        sprintf(tmpStr1, ":addr(%s)", variable->id.c_str());
-        sprintf(tmpStr2, "%05x", variable->address);
-        MACRO_REPLACE_ALL_OCCUR;
+        for(index = 0; index < variable->arraySize; index++) {
+          varCell * vc = variable->get_var_cell(index);
+#ifdef DEBUG
+          snprintf(tmpStr1, sizeof(tmpStr1), "VAR %07x // %s\n", variable->value & 0x1ffffff, vc->get_id().c_str());
+#else
+          snprintf(tmpStr1, sizeof(tmpStr1), "VAR %07x\n", variable->value & 0x1ffffff);
+#endif
+          wholeFile += tmpStr1;
+
+          // Replacement of the variable name in the program with the address
+          sprintf(tmpStr1, ":addr(%s)", vc->get_id().c_str());
+          sprintf(tmpStr2, "%05x", vc->get_address());
+          MACRO_REPLACE_ALL_OCCUR;
+        }
       }
     }
   }

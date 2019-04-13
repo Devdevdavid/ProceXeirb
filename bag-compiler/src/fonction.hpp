@@ -43,15 +43,15 @@ class fonction
     vector<var> params;
 
     // If NULL, this mean no returned variable
-    var * returnVar;
+    varCell * returnVar;
 
     int startRamAddress; // Indicates where the function is located in the RAM
 
   public:
     int add_argument(var *v);
-    int set_return_var(var *v);
-    bool is_argument_valid(uint16_t paramIndex, var *v);
-    bool is_returned_var_valid(var *v);
+    int set_return_var(varCell *vc);
+    bool is_argument_valid(uint16_t paramIndex, varCell *vc);
+    bool is_returned_var_valid(varCell *vc);
     bool is_unused();
 
     var * get_var(string varName);

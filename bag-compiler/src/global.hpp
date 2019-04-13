@@ -3,7 +3,7 @@
 
 #include <bag_devlib.h>
 
-#define APP_VERSION     "2.1.28-devantd"
+#define APP_VERSION     "2.1.84-devantd"
 
 /* MACRO: Each ERROR/WARNING are counted */
 #define _LOG_ERROR(format, ...)   LOG_ERROR_L(format, fileLineCounter, ##__VA_ARGS__); nbErrorDetected++;
@@ -17,6 +17,9 @@
 #define SHARED_MEM_ADDR         0x02000
 #define STACK_POINTER_ADDR      "02000" // To update
 #define DYN_ADDI_ADDR           "02000" // To update
+
+/* CONSTANT LIMITS */
+#define ARRAY_MAX_SIZE          128
 
 // Global variable 
 #ifdef MAIN_CPP

@@ -1,4 +1,3 @@
-fonctionmyFunction()
-entiera=0;
-retourne;
-myFunction();
+entiera=4;
+entierb=4;
+a=cos(b);

@@ -60,21 +60,21 @@ public:
   string instBuffer;
   int nbInstrucLine;
 
-  var * a1;
-  var * a2;
-  var * retVar;
+  varCell * a1;
+  varCell * a2;
+  varCell * retVar;
 
 public :
   // Constructor 
   instruction(void);
   
-  void set_argument1(var * v);
-  void set_argument2(var * v);
-  void set_return_var(var * v);
+  void set_argument1(varCell * vc);
+  void set_argument2(varCell * vc);
+  void set_return_var(varCell * vc);
 
   void write_and_count_inst(string str);
-  void print_get_local_var(var *v);
-  void print_get_inst_for_var(var *v);
+  void print_get_local_var(varCell *vc);
+  void print_get_inst_for_var(varCell *vc);
   void print_save_accu(void);
   void set_address (uint32_t address);
   void print_operation(string opInstStr);
@@ -268,14 +268,14 @@ public:
   functionCall();
 
   int link_function(fonction * pFunc);
-  int link_argument(var *v);
-  int link_returned_var(var *v);
+  int link_argument(varCell *v);
+  int link_returned_var(varCell *v);
 
-  void print_push(var * varToPush);
+  void print_push(varCell * varToPush);
 
 private:
   fonction * func;
-  vector<var *> params; // Sorted list of function argument 
+  vector<varCell *> params; // Sorted list of function argument 
 
   string print_instruction();
 };

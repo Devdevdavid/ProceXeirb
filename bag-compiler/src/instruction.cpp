@@ -5,7 +5,7 @@ extern uint32_t fileLineCounter;          // Index of the line currently analyse
 // Arrhh, you drive me crazy with this line of code...
 // Instruction needs to access to this function 
 // to use constant varaibles in asm
-var * get_or_create_variable(string name);
+varCell * get_or_create_variable(string name);
 
 /**
  * @brief Tiny interface to get an
@@ -17,9 +17,9 @@ var * get_or_create_variable(string name);
  */
 string get_const_var_id(string constVarName)
 {
-  var * constVar = get_or_create_variable(constVarName);
-  constVar->isUsedAsRead = true;
-  return constVar->id;
+  varCell * constVar = get_or_create_variable(constVarName);
+  constVar->p->isUsedAsRead = true;
+  return constVar->get_id();
 }
 string get_const_var_value(uint32_t constVarValue)
 {
@@ -35,30 +35,30 @@ instruction::instruction(void)
   this->nbInstrucLine = 0;
 }
 
-void instruction::set_argument1(var * v)
+void instruction::set_argument1(varCell * vc)
 {
-  if (v == NULL) {
+  if (vc == NULL) {
     return;
   }
-  v->isUsedAsRead = true;
-  this->a1 = v;
+  vc->p->isUsedAsRead = true;
+  this->a1 = vc;
 }
 
-void instruction::set_argument2(var * v)
+void instruction::set_argument2(varCell * vc)
 {
-  if (v == NULL) {
+  if (vc == NULL) {
     return;
   }
-  v->isUsedAsRead = true;
-  this->a2 = v;
+  vc->p->isUsedAsRead = true;
+  this->a2 = vc;
 }
 
-void instruction::set_return_var(var * v)
+void instruction::set_return_var(varCell * vc)
 {
-  this->retVar = v;
+  this->retVar = vc;
 
-  if (v != NULL) {
-    v->isUsedAsWrite = true;
+  if (vc != NULL) {
+    vc->p->isUsedAsWrite = true;
   }
 }
 
@@ -74,9 +74,9 @@ void instruction::write_and_count_inst(string str)
   instBuffer += str;
 }
 
-void instruction::print_get_local_var(var *v)
+void instruction::print_get_local_var(varCell *vc)
 {
-  string constIdStr = get_const_var_id(to_string(v->contextOffset));
+  string constIdStr = get_const_var_id(to_string(vc->p->contextOffset));
   // Compute the dynamique address of the local variable
   write_and_count_inst("CSA :addr(" + constIdStr + ")\n");
   // Get the content of the computed address into the ACCU register
@@ -90,26 +90,26 @@ void instruction::print_get_local_var(var *v)
  * 
  * @param v 
  */
-void instruction::print_get_inst_for_var(var *v)
+void instruction::print_get_inst_for_var(varCell *vc)
 {
-  if (v->isLocal) {
-    print_get_local_var(v);
+  if (vc->p->isLocal) {
+    print_get_local_var(vc);
   } else {
     // Get the content of the address into the ACCU register
-    write_and_count_inst("GET :addr(" + v->id  + ")\n");
+    write_and_count_inst("GET :addr(" + vc->get_id()  + ")\n");
   }
 }
 
 void instruction::print_save_accu(void)
 {
-  if (retVar->isLocal) {
-    string constIdStr = get_const_var_id(to_string(retVar->contextOffset));
+  if (retVar->p->isLocal) {
+    string constIdStr = get_const_var_id(to_string(retVar->p->contextOffset));
     // Compute the dynamique address of the local variable
     write_and_count_inst("CSA :addr(" + constIdStr + ")\n");
     // Move the accu to the content pointed by the dynamic address
     write_and_count_inst("SAD " DYN_ADDI_ADDR "\n");
   } else {
-    write_and_count_inst("STA :addr(" + retVar->id + ")\n");
+    write_and_count_inst("STA :addr(" + retVar->get_id() + ")\n");
   }
 }
 
@@ -125,19 +125,19 @@ void instruction::set_address(uint32_t address)
  */
 void instruction::print_operation(string opInstStr)
 {
-  if (a1->type != a2->type) {
+  if (a1->p->type != a2->p->type) {
     _LOG_ERROR("Variable are not of the same type in this operation");
     return;
   }
 
-  if (a2->isLocal) {
+  if (a2->p->isLocal) {
     print_get_local_var(a2);
     write_and_count_inst("STA " DUMMY_FLASH_ADDR "\n");
     print_get_inst_for_var(a1);
     write_and_count_inst(opInstStr + " " DUMMY_FLASH_ADDR "\n");
   } else {
     print_get_inst_for_var(a1);
-    write_and_count_inst(opInstStr + " :addr(" + a2->id + ")\n");
+    write_and_count_inst(opInstStr + " :addr(" + a2->get_id() + ")\n");
   }
 }
 
@@ -157,7 +157,7 @@ addition::addition()
 }
 string addition::print_instruction()
 {
-  if (a1->type == INTEGER) {
+  if (a1->p->type == INTEGER) {
     print_operation_and_store("ADD");
   } else {
     print_operation_and_store("FAD");
@@ -181,7 +181,7 @@ multiplication::multiplication()
 }
 string multiplication::print_instruction()
 {
-  if (a1->type == INTEGER) {
+  if (a1->p->type == INTEGER) {
     print_operation_and_store("MUL");
   } else {
     print_operation_and_store("FMU");
@@ -195,7 +195,7 @@ division::division()
 }
 string division::print_instruction()
 {
-  if (a1->type == INTEGER) {
+  if (a1->p->type == INTEGER) {
     print_operation_and_store("DIV");
   } else {
     print_operation_and_store("FDI");
@@ -359,12 +359,12 @@ string write_to_shared::print_instruction()
 {
   print_get_inst_for_var(a1);
   write_and_count_inst("ADD :addr(" + get_const_var_value(SHARED_MEM_ADDR) + ")\n");
-  if (a2->isLocal) {
+  if (a2->p->isLocal) {
     print_get_local_var(a2);
     write_and_count_inst("STA " DUMMY_FLASH_ADDR "\n");
     write_and_count_inst("SAD " DUMMY_FLASH_ADDR "\n");
   } else {
-    write_and_count_inst("SAD :addr(" + a2->id + ")\n");
+    write_and_count_inst("SAD :addr(" + a2->get_id() + ")\n");
   }
 
   return instBuffer;
@@ -409,14 +409,14 @@ write_at::write_at()
 
 string write_at::print_instruction()
 {
-  if (a2->isLocal) {
+  if (a2->p->isLocal) {
     print_get_local_var(a2);
     write_and_count_inst("STA " DUMMY_FLASH_ADDR "\n");
     print_get_inst_for_var(a1);
     write_and_count_inst("SAD " DUMMY_FLASH_ADDR "\n");
   } else {
     print_get_inst_for_var(a1);
-    write_and_count_inst("SAD :addr(" + a2->id + ")\n");
+    write_and_count_inst("SAD :addr(" + a2->get_id() + ")\n");
   }
   
   return instBuffer;
@@ -429,12 +429,12 @@ read_at::read_at()
 
 string read_at::print_instruction()
 {
-  if (a1->isLocal) {
+  if (a1->p->isLocal) {
     print_get_local_var(a1);
     write_and_count_inst("STA " DUMMY_FLASH_ADDR "\n");
     write_and_count_inst("GAD " DUMMY_FLASH_ADDR "\n");
   } else {
-    write_and_count_inst("GAD :addr(" + a1->id + ")\n");
+    write_and_count_inst("GAD :addr(" + a1->get_id() + ")\n");
   }
   print_save_accu(); 
   return instBuffer;
@@ -451,12 +451,12 @@ ins_fti::ins_fti()
 
 string ins_fti::print_instruction()
 {
-  if (a1->isLocal) {
+  if (a1->p->isLocal) {
     print_get_inst_for_var(a1);
     write_and_count_inst("STA " DUMMY_FLASH_ADDR "\n");
     write_and_count_inst("FTI " DUMMY_FLASH_ADDR "\n");
   } else {
-    write_and_count_inst("FTI :addr(" + a1->id   + ")\n");
+    write_and_count_inst("FTI :addr(" + a1->get_id() + ")\n");
   }
   print_save_accu();
 
@@ -470,12 +470,12 @@ ins_itf::ins_itf()
 
 string ins_itf::print_instruction()
 {
-  if (a1->isLocal) {
+  if (a1->p->isLocal) {
     print_get_inst_for_var(a1);
     write_and_count_inst("STA " DUMMY_FLASH_ADDR "\n");
     write_and_count_inst("ITF " DUMMY_FLASH_ADDR "\n");
   } else {
-    write_and_count_inst("ITF :addr(" + a1->id   + ")\n");
+    write_and_count_inst("ITF :addr(" + a1->get_id() + ")\n");
   }
   print_save_accu();
 
@@ -527,19 +527,19 @@ int functionCall::link_function(fonction * pFunc)
  * @param v 
  * @return -1: Error, 0: OK
  */
-int functionCall::link_argument(var *v)
+int functionCall::link_argument(varCell *vc)
 {
   if (func == NULL) { return -1; }
 
-  if (func->is_argument_valid(params.size(), v) == false) {
+  if (func->is_argument_valid(params.size(), vc) == false) {
     return -1; // A log is already displayed inside
   }
 
   // Mark variable as readed
-  v->isUsedAsRead = true;
+  vc->p->isUsedAsRead = true;
 
   // Variable is valid, add it to the sorted list
-  params.push_back(v);
+  params.push_back(vc);
 
   return 0;
 }
@@ -550,22 +550,22 @@ int functionCall::link_argument(var *v)
  * @param v 
  * @return int -1: Error, 0: OK
  */
-int functionCall::link_returned_var(var *v)
+int functionCall::link_returned_var(varCell *vc)
 {
   if (func == NULL) { return -1; }
 
   // V can be NULL to indicate void
-  if (func->is_returned_var_valid(v) == false) {
+  if (func->is_returned_var_valid(vc) == false) {
     return -1; // A log is already displayed inside
   }
 
   // Variable is valid, add it to the sorted list
-  set_return_var(v);
+  set_return_var(vc);
 
   return 0;
 }
 
-void functionCall::print_push(var * varToPush)
+void functionCall::print_push(varCell * varToPush)
 {
   print_get_inst_for_var(varToPush);
   write_and_count_inst("++StackPointer\n");

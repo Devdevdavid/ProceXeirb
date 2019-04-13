@@ -1,7 +1,5 @@
-fonction myFunction()
-  entier a = 0;
-  entier tab[10];
+entier a = 4;
+entier b = 4;
 
-retourne;
+a = cos(b);
 
-myFunction();

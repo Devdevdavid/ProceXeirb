@@ -46,15 +46,15 @@ int fonction::add_argument(var *v)
  * @param v : NULL = no returned value
  * @return int 0
  */
-int fonction::set_return_var(var *v) 
+int fonction::set_return_var(varCell *vc) 
 {
     // Flag the used as read
-    if (v != NULL) { 
-        v->isUsedAsRead = true;
+    if (vc != NULL) { 
+        vc->p->isUsedAsRead = true;
     }
 
     // Copy the object
-    returnVar = v;
+    returnVar = vc;
 
     return 0;
 }
@@ -67,14 +67,14 @@ int fonction::set_return_var(var *v)
  * @param v 
  * @return boolean 
  */
-bool fonction::is_argument_valid(uint16_t paramIndex, var *v) 
+bool fonction::is_argument_valid(uint16_t paramIndex, varCell *vc) 
 {
     if (paramIndex >= params.size()) {
         _LOG_ERROR("Too much arguments");
         return false;
     }
 
-    if (params.at(paramIndex).type != v->type) {
+    if (params.at(paramIndex).type != vc->p->type) {
         _LOG_ERROR("Wrong type for argument %d", paramIndex + 1);
         return false;
     }
@@ -88,10 +88,10 @@ bool fonction::is_argument_valid(uint16_t paramIndex, var *v)
  * @param v : NULL indicate void
  * @return boolean 
  */
-bool fonction::is_returned_var_valid(var * v)
+bool fonction::is_returned_var_valid(varCell * vc)
 {
     if (returnVar == NULL) {
-        if (v == NULL) {
+        if (vc == NULL) {
             // Function is void and nothing as return value
             return true;
         } else {
@@ -99,14 +99,14 @@ bool fonction::is_returned_var_valid(var * v)
             return false;
         }
     } else {
-        if (v == NULL) {
+        if (vc == NULL) {
             // Function return something but we don't care
             return true;
         }
     }
     
     // We care about the returned value, check type
-    if (returnVar->type != v->type) {
+    if (returnVar->p->type != vc->p->type) {
         _LOG_ERROR("Wrong type for returned value");
         return false;
     }
@@ -147,7 +147,7 @@ var * fonction::get_var(string varName)
  */
 void fonction::add_var(var *v)
 {
-    v->id = this->name + "::" + v->name;
+    v->set_id(this->name);
     v->contextOffset = varCount++;
     variableTable.push_back(v);
 }
