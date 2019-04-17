@@ -3,7 +3,7 @@
 
 #include <bag_devlib.h>
 
-#define APP_VERSION     "2.1.104-devantd"
+#define APP_VERSION     "2.1.117-devantd"
 
 /* MACRO: Each ERROR/WARNING are counted */
 #define _LOG_ERROR(format, ...)   LOG_ERROR_L(format, fileLineCounter, ##__VA_ARGS__); nbErrorDetected++;
@@ -11,12 +11,25 @@
 
 /* CONSTANT ADDRESSES */
 // The define below are hexadecimal value on 5 digits
-#define DUMMY_FLASH_ADDR        "00000"
 #define SIN_TABLE_ADDR          0x03000
 #define COS_TABLE_ADDR          (SIN_TABLE_ADDR + 90)
 #define SHARED_MEM_ADDR         0x02000
+#ifndef DEBUG
+#define DUMMY_FLASH_ADDR        "00000" // To Update
 #define STACK_POINTER_ADDR      "02000" // To update
+#define DYN_OFFSET_ADDR         "02000" // To update
 #define DYN_ADDI_ADDR           "02000" // To update
+#define EIP_ADDR                "02000" // To update
+#define EBP_ADDR                "02000" // To update
+#define ESP_ADDR                STACK_POINTER_ADDR
+#else
+#define DUMMY_FLASH_ADDR        "DUMMY_FLASH_ADDR" // To Update
+#define STACK_POINTER_ADDR      "STACK_POINTER_ADDR" // To update
+#define DYN_ADDI_ADDR           "DYN_ADDI_ADDR" // To update
+#define EIP_ADDR                "EIP_ADDR" // To update
+#define EBP_ADDR                "EBP_ADDR" // To update
+#define ESP_ADDR                STACK_POINTER_ADDR
+#endif
 
 /* CONSTANT LIMITS */
 #define ARRAY_MAX_SIZE          128

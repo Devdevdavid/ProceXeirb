@@ -1,0 +1,29 @@
+#definition STACK_POINTER_ADDR (9216)
+#definition BASE_POINTER_ADDR (9217)
+#definition DYN_ADDI_ADDR (9218)
+
+#definition DUMMY_ADDR (9220)
+
+entier a = 0;
+entier b;
+entier delay;
+
+tant_que (1 < 2)
+
+	// Increment a
+	a = a + 1;
+
+	// Read and write
+	ecrire_a(a, BASE_POINTER_ADDR);
+	b = lire_a(DYN_ADDI_ADDR);
+
+	// Show result
+	afficher_LCD(b);
+
+	// Make a little delay between write/read
+	delay = 0;
+	tant_que (delay < 1500000)
+		delay = delay + 1;
+	fin_tant_que;
+
+fin_tant_que;

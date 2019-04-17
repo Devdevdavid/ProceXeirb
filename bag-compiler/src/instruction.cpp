@@ -76,6 +76,7 @@ void instruction::write_and_count_inst(string str)
 
 void instruction::print_get_local_var(varCell *vc)
 {
+  // 1: Skip the EBP in the call stack
   string constIdStr = get_const_var_id(to_string(vc->p->contextOffset));
   // Compute the dynamique address of the local variable
   write_and_count_inst("CSA :addr(" + constIdStr + ")\n");
@@ -145,6 +146,12 @@ void instruction::print_operation_and_store(string opInstStr)
 {
   print_operation(opInstStr);
   print_save_accu();
+}
+
+void instruction::print_push_accu()
+{
+  write_and_count_inst("--StackPointer\n");
+  write_and_count_inst("SAD " STACK_POINTER_ADDR "\n");
 }
 
 // ===========================
@@ -483,6 +490,64 @@ string ins_itf::print_instruction()
 }
 
 // ===========================
+//    FUNCTION BEGIN/END
+// ===========================
+
+func_begin::func_begin()
+{
+  type = FUNC_BEGIN;
+}
+
+string func_begin::print_instruction()
+{
+  int index;
+
+  // PUSH EBP
+  write_and_count_inst("GET " EBP_ADDR "\n");
+  print_push_accu();
+
+  // Set the new value of EBP (Base Pointer)
+  write_and_count_inst("GET " ESP_ADDR "\n");
+  write_and_count_inst("SET " EBP_ADDR "\n");
+
+  // Allocate space for local variables
+  for (var * variable : func->variableTable) {
+    for(index = 0; index < variable->arraySize; index++) {
+      print_get_inst_for_var(variable->get_var_cell(index));
+      print_push_accu();
+    }
+  }
+
+  return instBuffer;
+}
+
+func_end::func_end()
+{
+  type = FUNC_END;
+}
+
+string func_end::print_instruction()
+{
+  // Save return value in DUMMY
+  print_get_inst_for_var(func->returnVar);
+  write_and_count_inst("SET " DUMMY_FLASH_ADDR "\n");
+
+  // Restore the old value of EBP
+  write_and_count_inst("GET " EBP_ADDR "\n");
+  write_and_count_inst("SET " ESP_ADDR "\n");
+
+  // POP the old EBP from call stack
+  write_and_count_inst("++StackPointer\n");
+
+  // Return to calling function (Equi. POP EIP)
+  write_and_count_inst("GAD " STACK_POINTER_ADDR "\n");
+  write_and_count_inst("SET " EIP_ADDR "\n");
+  write_and_count_inst("++StackPointer\n");
+
+  return instBuffer;
+}
+
+// ===========================
 //        FUNCTION CALL
 // ===========================
 
@@ -565,24 +630,30 @@ int functionCall::link_returned_var(varCell *vc)
   return 0;
 }
 
-void functionCall::print_push(varCell * varToPush)
-{
-  print_get_inst_for_var(varToPush);
-  write_and_count_inst("++StackPointer\n");
-  write_and_count_inst("SAD " STACK_POINTER_ADDR "\n");
-}
-
 string functionCall::print_instruction()
 {
-  for (int index = params.size() - 1; index >= 0; index--) {
-    print_push(params.at(index));
+  int index; 
+
+  // PUSH Parameters
+  for (index = params.size() - 1; index >= 0; index--) {
+    print_get_inst_for_var(params.at(index));
+    print_push_accu();
   }
 
-  // TODO: push return address
+  /** CALL (Equi. to push eip + jump addr) */
+  // PUSH EIP
+  write_and_count_inst("GET " EIP_ADDR "\n");
+  print_push_accu();
 
-
+  // JUMP to the address where the function start
   write_and_count_inst("JMP :call(" + func->name + ")\n");
   
+  // Perform compute
+
+  // Save return value from DUMMY to returned variable
+  write_and_count_inst("GET " DUMMY_FLASH_ADDR "\n");
+  print_save_accu();
+
   return instBuffer;
 }
 

@@ -1,22 +1,12 @@
-entier p;
-entier index = 0;
-entier myTab[8];
-entier out;
+entier retVal;
+entier param1;
 
-p = @myTab;
+fonction power2(entier a);
+	entier result;
 
-tant_que (index < 8)
-  out = index * 2;
-  ecrire_a(out, p);
-  
-  index = index + 1;
-  p = p + 1;
-fin_tant_que;
+	result = a * a;
+retourne result;
 
-p = @myTab+1;
-
-out = lire_a(p);
-  
-afficher_LCD(out);
+retVal = power2(param1);
 
 
