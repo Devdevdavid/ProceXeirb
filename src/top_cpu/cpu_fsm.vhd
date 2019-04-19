@@ -33,7 +33,8 @@ use IEEE.numeric_std.all;
     load_rd  : out std_logic;
     load_ra  : out std_logic;
     load_ad  : out std_logic;
-
+    load_of  : out std_logic;
+    
     -- UAL
     sel_ual  : out std_logic_vector (op_code_size-1 downto 0);
     carry    : in  std_logic;
@@ -76,7 +77,7 @@ architecture rtl of FSM is
 
           when "10010" => -- OP_JMP
             next_state <= EXE_JMP;
-
+            
           when "11000" => -- OP_GAD
             next_state <= FETCH_ADDR;
 
@@ -96,11 +97,18 @@ architecture rtl of FSM is
         end if;
 
       when FETCH_OP_STATIC =>
-        next_state <= EXE_UAL;
+        if op_code = "10111" then -- CSA
+            next_state <= FETCH_INST;
+        else
+            next_state <= EXE_UAL;
+        end if;
 
       when FETCH_OP_DYNAMIC =>
-        next_state <= EXE_UAL;
-
+        if op_code = "11000" then -- OP_GAD
+            next_state <= EXE_UAL;
+        else -- OP_CSA
+            next_state <= FETCH_INST;
+        end if;
       when EXE_UAL =>
         next_state <= FETCH_INST;      
 
@@ -115,7 +123,7 @@ architecture rtl of FSM is
 
       when EXE_JMP =>
         next_state <= FETCH_INST;
-
+                
       when others =>
         next_state <= INIT;
 
@@ -143,6 +151,7 @@ architecture rtl of FSM is
           R_W      <= '0';
           en_mem   <= '0';
           sel_ual  <= (others => '0');
+          load_of  <= '0';
 
         when FETCH_INST =>
           en_cpt   <= '1';
@@ -160,7 +169,8 @@ architecture rtl of FSM is
           load_rd  <= '0';
           load_ra  <= '0';
           sel_ual  <= (others => '0');     
-
+          load_of  <= '0';
+          
         when DECODE =>
           sel_mux  <= "01";
 
@@ -177,7 +187,8 @@ architecture rtl of FSM is
           R_W      <= '0';
           en_mem   <= '0';
           sel_ual  <= (others => '0');
-
+          load_of  <= '0';
+          
         when FETCH_ADDR =>
           sel_mux  <= "01";
           en_mem   <= '1';
@@ -194,12 +205,19 @@ architecture rtl of FSM is
           load_ri  <= '0';
           load_ra  <= '0';
           sel_ual  <= (others => '0');
-
+          load_of  <= '0';
+          
         when FETCH_OP_STATIC =>
           sel_mux  <= "01";
           en_mem   <= '1';
           R_W      <= '0';
-          load_rd  <= '1';
+          if op_code = "10111" then-- OP_CSA
+            load_rd  <= '0';
+            load_of  <= '1';
+          else
+            load_rd  <= '1';
+            load_of  <= '0';
+          end if;
 
           load_ad  <= '0';
           init_cpt <= '0';
@@ -211,13 +229,14 @@ architecture rtl of FSM is
           load_ri  <= '0';
           load_ra  <= '0';
           sel_ual  <= (others => '0');
-
+          
         when FETCH_OP_DYNAMIC =>
           sel_mux  <= "10";
           en_mem   <= '1';
           R_W      <= '0';
           load_rd  <= '1';
-
+          load_of  <= '0';
+          
           init_cpt <= '0';
           init_acc <= '0';
           en_cpt   <= '0';
@@ -249,6 +268,7 @@ architecture rtl of FSM is
             load_ff  <= '0';
 
           end if;
+          
 
         init_cpt <= '0';
         init_acc <= '0';
@@ -260,6 +280,7 @@ architecture rtl of FSM is
         load_rd  <= '0';
         R_W      <= '0';
         en_mem   <= '0';
+        load_of  <= '0';
 
       when STA_STATIC =>
         sel_mux  <= "01";
@@ -271,12 +292,14 @@ architecture rtl of FSM is
         en_cpt   <= '0';
         load_cpt <= '0';
         init_ff  <= '0';
+        load_ad  <= '0';
         load_ff  <= '0';
         load_ri  <= '0';
         load_rd  <= '0';
         load_ra  <= '0';
         sel_ual  <= (others => '0');
-
+        load_of  <= '0';
+        
       when STA_DYNAMIC =>
         sel_mux  <= "10";
         en_mem   <= '1';
@@ -292,6 +315,7 @@ architecture rtl of FSM is
         load_rd  <= '0';
         load_ra  <= '0';
         sel_ual  <= (others => '0');
+        load_of  <= '0';
 
       when EXE_JCC =>
         sel_mux  <= "01";
@@ -309,6 +333,7 @@ architecture rtl of FSM is
         R_W      <= '0';
         en_mem   <= '0';
         sel_ual  <= (others => '0');
+        load_of  <= '0';
 
       when EXE_JMP =>
         sel_mux  <= "01";
@@ -326,7 +351,8 @@ architecture rtl of FSM is
         R_W      <= '0';
         en_mem   <= '0';
         sel_ual  <= (others => '0');
-
+        load_of  <= '0';
+        
     end case;
   end process;
 

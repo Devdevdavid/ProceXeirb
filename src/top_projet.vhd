@@ -12,7 +12,8 @@ entity top_projet is
       data_size         : integer := 25;    -- Taille de chaque mot stocké
       address_size      : integer := 20;    -- Largeur de l'adresse
       clk_div           : integer := 868;  --437; -- diviseur de l'horloge du fpga pour le port série de la programmation, défaut à 115200 Bauds avec clk à 25 MHz
-      ram_address_size  : integer := 13
+      ram_address_size  : integer := 13;    -- largeur d'adresse de la ram
+      cs_address_size   : integer := 10      -- largeur d'addresse de la call_stack
     );                                -- Attention, op_code + address_size doivent valoir data_size !
     port (
       clk                  : in  STD_LOGIC;
@@ -72,7 +73,20 @@ architecture rtl of top_projet is
       bus_R_W         : out std_logic;
       bus_address     : out std_logic_vector (address_size-1 downto 0);
       bus_data_in     : in  std_logic_vector (data_size-1 downto 0);
-      bus_data_out    : out std_logic_vector (data_size-1 downto 0)
+      bus_data_out    : out std_logic_vector (data_size-1 downto 0);
+      
+      bus_periph_data_in        : out std_logic_vector(data_size-1 downto 0);
+      bus_periph_data_out       : in  std_logic_vector(data_size-1 downto 0);
+      bus_periph_address        : in  std_logic_vector(address_size-1 downto 0);
+      bus_periph_R_W            : in  std_logic;
+      bus_periph_en             : in  std_logic;
+      
+            --entree enable des peripherique
+      cpu_stack_pointer_en      : in  std_logic;
+      cpu_base_pointer_en       : in  std_logic;
+      cpu_stack_add_param_en    : in  std_logic;
+      cpu_address_counter_en    : in  std_logic
+      
       );
   end component;
 
@@ -184,7 +198,13 @@ architecture rtl of top_projet is
     cpu_shr_ram_en      : out std_logic;
     cpu_sinus_table_en  : out std_logic;
     spi_en              : out std_logic;
-    gpio_ctrl_en        : out std_logic
+    gpio_ctrl_en        : out std_logic;
+    cpu_call_stack_en   : out std_logic;
+    cpu_stack_pointer_en    : out std_logic;
+    cpu_base_pointer_en     : out std_logic;
+    cpu_stack_add_param_en  : out std_logic;
+    cpu_address_counter_en  : out std_logic;
+    cpu_dummy_en            : out std_logic
     );
   end component;
 
@@ -200,8 +220,15 @@ architecture rtl of top_projet is
     gpu_ram_en          : out std_logic;
     gpu_shr_ram_en      : out std_logic;
     gpu_sinus_table_en  : out std_logic;
-    vga_bitmap_en       : out std_logic
+    vga_bitmap_en       : out std_logic;
+    gpu_call_stack_en       : out std_logic;
+    gpu_stack_pointer_en    : out std_logic;
+    gpu_base_pointer_en     : out std_logic;
+    gpu_stack_add_param_en  : out std_logic;
+    gpu_address_counter_en  : out std_logic;
+    gpu_dummy_en            : out std_logic
     );
+
   end component;
 
 
@@ -253,7 +280,46 @@ architecture rtl of top_projet is
     VGA_blue           : out std_logic_vector(3 downto 0)   -- blue output
     );
   end component;
-
+  
+ -- for dummy
+component reg_with_interface is
+    generic (
+        data_size    : integer := 25;   -- Taille de chaque mot stocké
+        address_size : integer := 20    -- Largeur de l'adresse
+            
+        );
+    port (
+        reset    : in  std_logic;
+        clk      : in  std_logic;
+        clk_en   : in  std_logic;
+        
+        en                 : in  std_logic;
+        bus_data_in        : out std_logic_vector(data_size-1 downto 0);
+        bus_data_out       : in  std_logic_vector(data_size-1 downto 0);
+        bus_address        : in  std_logic_vector(address_size-1 downto 0);
+        bus_R_W            : in  std_logic;
+        bus_en             : in  std_logic
+        );
+  end component;
+  
+-- Call stack
+  component call_stack is
+    generic (
+      data_size        : integer;
+      address_size     : integer;
+      cs_address_size  : integer
+    );
+    port (
+      clk                : in  std_logic;
+      en                 : in  std_logic;
+      bus_data_in        : out std_logic_vector(data_size-1 downto 0);
+      bus_data_out       : in  std_logic_vector(data_size-1 downto 0);
+      bus_address        : in  std_logic_vector(address_size-1 downto 0);
+      bus_R_W            : in  std_logic;
+      bus_en             : in  std_logic
+    );
+  end component;
+  
   /* Signaux du CPU */
   signal cpu_bus_en         : std_logic;
   signal cpu_bus_R_W        : std_logic;
@@ -267,6 +333,12 @@ architecture rtl of top_projet is
   signal cpu_sinus_table_en : std_logic;
   --signal spi_en             : std_logic;
   signal gpio_en            : std_logic;
+  signal cpu_call_stack_en  : std_logic;
+  signal cpu_stack_pointer_en    : std_logic;
+  signal cpu_base_pointer_en     : std_logic;
+  signal cpu_stack_add_param_en  : std_logic;
+  signal cpu_address_counter_en  : std_logic;
+  signal cpu_dummy_en            : std_logic;
 
   /* Signaux du GPU */
   signal gpu_bus_en         : std_logic;
@@ -280,6 +352,13 @@ architecture rtl of top_projet is
   signal gpu_shr_ram_en     : std_logic;
   signal gpu_sinus_table_en : std_logic;
   signal gpu_vga_en         : std_logic;
+  
+  signal gpu_call_stack_en       : std_logic;
+  signal gpu_stack_pointer_en    : std_logic;
+  signal gpu_base_pointer_en     : std_logic;
+  signal gpu_stack_add_param_en  : std_logic;
+  signal gpu_address_counter_en  : std_logic;
+  signal gpu_dummy_en            : std_logic;
 
 begin
 
@@ -310,7 +389,19 @@ inst_CPU : top_CPU
       bus_R_W          => cpu_bus_R_W,
       bus_address      => cpu_bus_address,
       bus_data_in      => cpu_bus_data_in,
-      bus_data_out     => cpu_bus_data_out
+      bus_data_out     => cpu_bus_data_out,
+      
+               
+      bus_periph_data_in     => cpu_bus_data_in,
+      bus_periph_data_out    => cpu_bus_data_out,
+      bus_periph_address     => cpu_bus_address,
+      bus_periph_R_W         => cpu_bus_R_W,
+      bus_periph_en          => cpu_bus_en,
+      --en peripherique bus
+      cpu_stack_pointer_en    => cpu_stack_pointer_en, 
+      cpu_base_pointer_en     => cpu_base_pointer_en,
+      cpu_stack_add_param_en  => cpu_stack_add_param_en,
+      cpu_address_counter_en  => cpu_address_counter_en
     );    
 
  /* Le programmeur du CPU */
@@ -353,7 +444,13 @@ inst_cpu_periph_manager : cpu_periph_manager
     cpu_shr_ram_en      => cpu_shr_ram_en,
     cpu_sinus_table_en  => cpu_sinus_table_en,
     spi_en              => open,
-    gpio_ctrl_en        => gpio_en
+    gpio_ctrl_en        => gpio_en,
+    cpu_call_stack_en   => cpu_call_stack_en,
+    cpu_stack_pointer_en    => cpu_stack_pointer_en,
+    cpu_base_pointer_en     => cpu_base_pointer_en,
+    cpu_stack_add_param_en  => cpu_stack_add_param_en,
+    cpu_address_counter_en  => cpu_address_counter_en,
+    cpu_dummy_en            => cpu_dummy_en
     );
 
 /* La RAM du CPU */
@@ -401,9 +498,8 @@ inst_ram_cpu : ram_simple
     led_out            => led_out
     );
 
-
-/*///////////-----------------------///////////
-               INSTANCIATIONS GPU
+--/*///////////-----------------------///////////
+--               INSTANCIATIONS GPU
 --///////////-----------------------/////////// */
 
  /* Le GPU */
@@ -426,7 +522,19 @@ inst_GPU : top_CPU
       bus_R_W          => gpu_bus_R_W,
       bus_address      => gpu_bus_address,
       bus_data_in      => gpu_bus_data_in,
-      bus_data_out     => gpu_bus_data_out
+      bus_data_out     => gpu_bus_data_out,
+      
+      bus_periph_data_in     => gpu_bus_data_in,
+      bus_periph_data_out    => gpu_bus_data_out,
+      bus_periph_address     => gpu_bus_address,
+      bus_periph_R_W         => gpu_bus_R_W,
+      bus_periph_en          => gpu_bus_en,
+      
+      --en peripherique bus
+      cpu_stack_pointer_en    => gpu_stack_pointer_en, 
+      cpu_base_pointer_en     => gpu_base_pointer_en,
+      cpu_stack_add_param_en  => gpu_stack_add_param_en,
+      cpu_address_counter_en  => gpu_address_counter_en
     );
 
  /* Le programmeur du GPU */
@@ -466,7 +574,13 @@ inst_gpu_periph_manager : gpu_periph_manager
     gpu_ram_en          => gpu_ram_en,
     gpu_shr_ram_en      => gpu_shr_ram_en,
     gpu_sinus_table_en  => gpu_sinus_table_en,
-    vga_bitmap_en       => gpu_vga_en
+    vga_bitmap_en       => gpu_vga_en,
+    gpu_call_stack_en       => gpu_call_stack_en,
+    gpu_stack_pointer_en    => gpu_stack_pointer_en,
+    gpu_base_pointer_en     => gpu_base_pointer_en,
+    gpu_stack_add_param_en  => gpu_stack_add_param_en,
+    gpu_address_counter_en  => gpu_address_counter_en,
+    gpu_dummy_en            => gpu_dummy_en
     );
 
 /* La RAM du GPU */
@@ -562,4 +676,75 @@ inst_sinus_table : sinus_table
     gpu_bus_en          => gpu_bus_en
   );   
 
+/* La Call stack du CPU */
+
+inst_call_stack_cpu : call_stack
+  generic map (
+    data_size        => data_size,
+    address_size     => address_size,
+    cs_address_size  => cs_address_size 
+  )
+  port map ( 
+    clk             => clk,
+    en              => cpu_call_stack_en,         
+    bus_data_in     => cpu_bus_data_in,
+    bus_data_out    => cpu_bus_data_out,
+    bus_address     => cpu_bus_address,
+    bus_R_W         => cpu_bus_R_W,
+    bus_en          => cpu_bus_en
+  );   
+  
+/* La Call stack du GPU */
+
+inst_call_stack_gpu : call_stack
+  generic map (
+    data_size        => data_size,
+    address_size     => address_size,
+    cs_address_size  => cs_address_size 
+  )
+  port map ( 
+    clk             => clk,
+    en              => gpu_call_stack_en,         
+    bus_data_in     => gpu_bus_data_in,
+    bus_data_out    => gpu_bus_data_out,
+    bus_address     => gpu_bus_address,
+    bus_R_W         => gpu_bus_R_W,
+    bus_en          => gpu_bus_en
+  );   
+  
+inst_dummy_cpu : reg_with_interface
+  generic map (
+    data_size        => data_size,
+    address_size     => address_size
+  )
+  port map (
+    reset           => reset,
+    clk             => clk,
+    clk_en          => clk_en,
+    
+    en              => cpu_dummy_en,         
+    bus_data_in     => cpu_bus_data_in,
+    bus_data_out    => cpu_bus_data_out,
+    bus_address     => cpu_bus_address,
+    bus_R_W         => cpu_bus_R_W,
+    bus_en          => cpu_bus_en
+  );   
+  
+inst_dummy_gpu : reg_with_interface
+  generic map (
+    data_size        => data_size,
+    address_size     => address_size
+  )
+  port map (
+    reset           => reset,
+    clk             => clk,
+    clk_en          => clk_en,
+    
+    en              => gpu_dummy_en,         
+    bus_data_in     => gpu_bus_data_in,
+    bus_data_out    => gpu_bus_data_out,
+    bus_address     => gpu_bus_address,
+    bus_R_W         => gpu_bus_R_W,
+    bus_en          => gpu_bus_en
+  );   
 end rtl;

@@ -29,6 +29,7 @@ entity UC is
     load_ff  : out std_logic;
     load_rd  : out std_logic;
     load_ra  : out std_logic;
+    load_of  : out std_logic;
 
     -- UAL
     sel_ual  : out std_logic_vector (op_code_size-1 downto 0);
@@ -36,7 +37,15 @@ entity UC is
 
     -- RAM
     en_mem   : out std_logic;
-    R_W      : out std_logic
+    R_W      : out std_logic;
+    
+    --bus
+        en_counter_bus     : in std_logic;
+        bus_data_in        : out std_logic_vector(data_size-1 downto 0);
+        bus_data_out       : in  std_logic_vector(data_size-1 downto 0);
+        bus_address        : in  std_logic_vector(address_size-1 downto 0);
+        bus_R_W            : in  std_logic;
+        bus_en             : in  std_logic
   );
 
 end entity;
@@ -102,6 +111,7 @@ architecture rtl of UC is
     load_rd  : out std_logic;
     load_ra  : out std_logic;
     load_ad  : out std_logic;
+    load_of  : out std_logic;
 
     -- UAL
     sel_ual  : out std_logic_vector (op_code_size-1 downto 0);
@@ -117,7 +127,8 @@ architecture rtl of UC is
 
   component compteur is
     generic (
-      address_size : integer := 6  -- Largeur du signal d'adresses
+      address_size : integer;  -- Largeur du signal d'adresses
+      data_size : integer
       );
     port (
       reset    : in  std_logic;
@@ -129,7 +140,15 @@ architecture rtl of UC is
       load_cpt : in  std_logic;
 
       cpt_in   : in  std_logic_vector (address_size -1 downto 0);
-      cpt_out  : out std_logic_vector (address_size -1 downto 0)
+      cpt_out  : out std_logic_vector (address_size -1 downto 0);
+      
+      --bus
+      en                 : in std_logic;
+      bus_data_in        : out std_logic_vector(data_size-1 downto 0);
+      bus_data_out       : in  std_logic_vector(data_size-1 downto 0);
+      bus_address        : in  std_logic_vector(address_size-1 downto 0);
+      bus_R_W            : in  std_logic;
+      bus_en             : in  std_logic
       );
   end component;
 
@@ -174,7 +193,8 @@ inst_fsm : fsm
     load_rd  => load_rd,
     load_ra  => load_ra,
     load_ad  => load_ad,
-
+    load_of  => load_of,
+ 
     -- UAL
     sel_ual  => sel_ual,
     carry    => carry,
@@ -237,7 +257,9 @@ inst_mux : mux
 
 inst_compteur : compteur
   generic map (
-    address_size => address_size
+    address_size => address_size,
+    data_size => data_size
+    
     )
   port map (
     reset   => reset,
@@ -249,7 +271,14 @@ inst_compteur : compteur
     load_cpt => load_cpt,
 
     cpt_in   => reg_inst_out(address_size -1 downto 0),
-    cpt_out  => cpt_to_mux
+    cpt_out  => cpt_to_mux,
+    
+    en              => en_counter_bus,         
+    bus_data_in     => bus_data_in,
+    bus_data_out    => bus_data_out,
+    bus_address     => bus_address,
+    bus_R_W         => bus_R_W,
+    bus_en          => bus_en
     );
 
 end architecture;

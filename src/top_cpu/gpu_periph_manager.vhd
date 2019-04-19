@@ -17,7 +17,13 @@ entity gpu_periph_manager is
     gpu_ram_en          : out std_logic;
     gpu_shr_ram_en      : out std_logic;
     gpu_sinus_table_en  : out std_logic;
-    vga_bitmap_en       : out std_logic
+    vga_bitmap_en       : out std_logic;
+    gpu_call_stack_en       : out std_logic;
+    gpu_stack_pointer_en    : out std_logic;
+    gpu_base_pointer_en     : out std_logic;
+    gpu_stack_add_param_en  : out std_logic;
+    gpu_address_counter_en  : out std_logic;
+    gpu_dummy_en            : out std_logic
     );
 
 end entity gpu_periph_manager;
@@ -32,17 +38,41 @@ begin
     gpu_ram_en         <= '0';
     gpu_shr_ram_en     <= '0';
     vga_bitmap_en      <= '0';
+    gpu_call_stack_en       <= '0';
+    gpu_stack_pointer_en    <= '0';
+    gpu_base_pointer_en     <= '0';
+    gpu_stack_add_param_en  <= '0';
+    gpu_address_counter_en  <= '0';
+    gpu_dummy_en            <= '0';
     gpu_sinus_table_en <= '0';
     
     if gpu_bus_en = '1' then
       case to_integer(unsigned(gpu_bus_address)) is
         when 16#00000# to 16#01fff# => 
           gpu_ram_en   <= '1';
-
-        when 16#02000# to 16#02fff# =>
+          
+        when 16#02000# to 16#023ff# => 
+          gpu_call_stack_en    <= '1';
+   
+        when 16#02400# => 
+          gpu_stack_pointer_en  <= '1';
+          
+        when 16#02401# => 
+          gpu_base_pointer_en    <= '1';
+        
+        when 16#02402# => 
+          gpu_stack_add_param_en    <= '1';
+          
+        when 16#02403# => 
+          gpu_address_counter_en    <= '1';
+          
+        when 16#02404# => 
+          gpu_dummy_en    <= '1';
+          
+        when 16#03000# to 16#03fff# =>
           gpu_shr_ram_en <= '1';
 
-        when 16#03000# to 16#03fff# =>
+        when 16#04000# to 16#04167# =>
           gpu_sinus_table_en   <= '1';
 
         when 16#80000# to 16#cb000# =>

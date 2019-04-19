@@ -25,7 +25,20 @@ entity top_CPU is
         bus_R_W             : out std_logic;
         bus_address         : out std_logic_vector (address_size-1 downto 0);
         bus_data_in         : in  std_logic_vector (data_size-1 downto 0);
-        bus_data_out        : out std_logic_vector (data_size-1 downto 0)
+        bus_data_out        : out std_logic_vector (data_size-1 downto 0);
+        
+        -- Bus pour les périphériques
+        bus_periph_data_in        : out std_logic_vector(data_size-1 downto 0);
+        bus_periph_data_out       : in  std_logic_vector(data_size-1 downto 0);
+        bus_periph_address        : in  std_logic_vector(address_size-1 downto 0);
+        bus_periph_R_W            : in  std_logic;
+        bus_periph_en             : in  std_logic;
+        
+        --entree enable des peripherique
+        cpu_stack_pointer_en      : in  std_logic;
+        cpu_base_pointer_en       : in  std_logic;
+        cpu_stack_add_param_en    : in  std_logic;
+        cpu_address_counter_en    : in  std_logic
         );
 
 end entity;
@@ -36,7 +49,8 @@ architecture rtl of top_CPU is
     component UT is
     generic (
         op_code_size : integer; -- Largeur du signal des instructions
-        data_size    : integer  -- Taille de chaque mot stockÃ©
+        data_size    : integer; -- Taille de chaque mot stockÃ©
+        address_size : integer
         );
     port (
         reset    : in  std_logic;
@@ -53,8 +67,20 @@ architecture rtl of top_CPU is
         load_ra  : in std_logic;
         load_ff  : in std_logic;
         load_rd  : in std_logic;
+        load_of  : in std_logic;
         init_ff  : in std_logic;
-        init_acc : in std_logic
+        init_acc : in std_logic;
+        
+        bus_data_in        : out std_logic_vector(data_size-1 downto 0);
+        bus_data_out       : in  std_logic_vector(data_size-1 downto 0);
+        bus_address        : in  std_logic_vector(address_size-1 downto 0);
+        bus_R_W            : in  std_logic;
+        bus_en             : in  std_logic;
+        
+        --entree enable des peripherique
+        cpu_stack_pointer_en      : in  std_logic;
+        cpu_base_pointer_en       : in  std_logic;
+        cpu_stack_add_param_en    : in  std_logic
         );
 
     end component;
@@ -82,6 +108,7 @@ architecture rtl of top_CPU is
       load_ff  : out std_logic;
       load_rd  : out std_logic;
       load_ra  : out std_logic;
+      load_of  : out std_logic;
 
       -- UAL
       sel_ual  : out std_logic_vector (op_code_size-1 downto 0);
@@ -89,7 +116,14 @@ architecture rtl of top_CPU is
 
       -- RAM
       en_mem   : out std_logic;
-      R_W      : out std_logic
+      R_W      : out std_logic;
+      
+      en_counter_bus     : in std_logic;
+      bus_data_in        : out std_logic_vector(data_size-1 downto 0);
+      bus_data_out       : in  std_logic_vector(data_size-1 downto 0);
+      bus_address        : in  std_logic_vector(address_size-1 downto 0);
+      bus_R_W            : in  std_logic;
+      bus_en             : in  std_logic
       );
 
     end component;
@@ -130,6 +164,7 @@ architecture rtl of top_CPU is
   signal load_ff      : std_logic;
   signal load_rd      : std_logic;
   signal load_ra      : std_logic;
+  signal load_of      : std_logic;
 
   -- UAL
   signal sel_ual      : std_logic_vector (op_code_size-1 downto 0);
@@ -147,7 +182,8 @@ begin
 inst_ut : UT
   generic map(
     op_code_size => op_code_size,
-    data_size    => data_size
+    data_size    => data_size,
+    address_size => address_size
     )
   port map(
     reset    => reset,
@@ -165,7 +201,19 @@ inst_ut : UT
     load_ff  => load_ff,
     load_rd  => load_rd,
     init_ff  => init_ff,
-    init_acc => init_acc
+    init_acc => init_acc,
+    load_of  => load_of,
+    
+    bus_data_in =>bus_periph_data_in,
+    bus_data_out =>bus_periph_data_out,
+    bus_address  =>bus_periph_address,
+    bus_R_W => bus_periph_R_W,
+    bus_en =>bus_periph_en,
+    
+    --entree enable des peripherique
+    cpu_stack_pointer_en        => cpu_stack_pointer_en,
+    cpu_base_pointer_en         => cpu_base_pointer_en,
+    cpu_stack_add_param_en      => cpu_stack_add_param_en
     );
 
 inst_uc :  UC
@@ -190,6 +238,7 @@ inst_uc :  UC
     load_ff  => load_ff,
     load_rd  => load_rd,
     load_ra  => load_ra,
+    load_of  => load_of,
 
     -- UAL
     sel_ual  => sel_ual,
@@ -197,7 +246,14 @@ inst_uc :  UC
 
     -- RAM
     en_mem   => en_mem,
-    R_W      => R_W
+    R_W      => R_W,
+    
+    en_counter_bus => cpu_address_counter_en,
+    bus_data_in =>bus_periph_data_in,
+    bus_data_out =>bus_periph_data_out,
+    bus_address  =>bus_periph_address,
+    bus_R_W => bus_periph_R_W,
+    bus_en =>bus_periph_en
     );
 
 inst_bus_interface : bus_interface

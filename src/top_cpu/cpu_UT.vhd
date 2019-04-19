@@ -9,7 +9,8 @@ use IEEE.numeric_std.all;
 entity UT is
   generic (
     op_code_size : integer; -- Largeur du signal des instructions
-    data_size    : integer  -- Taille de chaque mot stocké
+    data_size    : integer;  -- Taille de chaque mot stocké
+    address_size : integer
       );
   port (
   reset    : in  std_logic;
@@ -26,8 +27,21 @@ entity UT is
     load_ra  : in std_logic;
     load_ff  : in std_logic;
     load_rd  : in std_logic;
+    load_of  : in std_logic;
     init_ff  : in std_logic;
-    init_acc : in std_logic
+    init_acc : in std_logic;
+    
+    --bus
+    bus_data_in        : out std_logic_vector(data_size-1 downto 0);
+    bus_data_out       : in  std_logic_vector(data_size-1 downto 0);
+    bus_address        : in  std_logic_vector(address_size-1 downto 0);
+    bus_R_W            : in  std_logic;
+    bus_en             : in  std_logic;
+
+    --entree enable des peripherique
+    cpu_stack_pointer_en      : in  std_logic;
+    cpu_base_pointer_en       : in  std_logic;
+    cpu_stack_add_param_en    : in  std_logic
   );
 
 end entity;
@@ -66,13 +80,74 @@ architecture rtl of UT is
         carry     : out std_logic
         );
     end component;
+    
+    component reg_read_only_with_interface is
+    generic (
+            data_size : integer := 8;
+            address_size : integer := 8
+            
+        );
+    port (
+        reset    : in  std_logic;
+        clk      : in  std_logic;
+        clk_en   : in  std_logic;
+        
+        data_out : out std_logic_vector(data_size-1 downto 0);
+        en                 : in  std_logic;
+        bus_data_in        : out std_logic_vector(data_size-1 downto 0);
+        bus_data_out       : in  std_logic_vector(data_size-1 downto 0);
+        bus_address        : in  std_logic_vector(address_size-1 downto 0);
+        bus_R_W            : in  std_logic;
+        bus_en             : in  std_logic
+        );
+        end component;
 
-
+    component reg_write_only_with_interface is
+    generic (
+            data_size : integer := 8;
+            address_size : integer := 8
+            
+        );
+    port (
+        reset    : in  std_logic;
+        clk      : in  std_logic;
+        clk_en   : in  std_logic;
+        
+        data_in  : in std_logic_vector(data_size-1 downto 0);
+        
+        en                 : in  std_logic;
+        bus_data_in        : out std_logic_vector(data_size-1 downto 0);
+        bus_data_out       : in  std_logic_vector(data_size-1 downto 0);
+        bus_address        : in  std_logic_vector(address_size-1 downto 0);
+        bus_R_W            : in  std_logic;
+        bus_en             : in  std_logic
+        );
+    end component;
+        
+    component add is
+    generic (
+                    size : integer := 8
+                );
+    port (
+        reset    : in  std_logic;
+        clk      : in  std_logic;
+        clk_en   : in  std_logic;
+                
+        data_in_1  : in  std_logic_vector (size-1 downto 0);
+        data_in_2  : in  std_logic_vector (size-1 downto 0);
+        data_out : out std_logic_vector (size-1 downto 0)
+        );
+    end component;
+       
     signal reg_data_to_UAL : std_logic_vector (data_size-1 downto 0);
     signal reg_accu_to_UAL : std_logic_vector (data_size-1 downto 0);
     signal UAL_out_to_accu : std_logic_vector (data_size-1 downto 0);
     signal UAL_carry_to_ff : std_logic;
     signal ff_input : std_logic_vector(0 downto 0);
+    
+    signal base_pointer_to_add : std_logic_vector (data_size-1 downto 0);
+    signal offset_to_add : std_logic_vector (data_size-1 downto 0);
+    signal add_to_stack_add : std_logic_vector (data_size-1 downto 0);
 
 begin
 
@@ -144,5 +219,75 @@ inst_reg_data : reg
         data_out => reg_data_to_UAL
         );
 
+inst_reg_base_pointer : reg_read_only_with_interface
+    generic map (
+    data_size        => data_size,
+    address_size     => address_size
+  )
+  port map (
+    reset           => reset,
+    clk             => clk,
+    clk_en          => clk_en,
+    
+    data_out        => base_pointer_to_add,
+    
+    en              => cpu_base_pointer_en,         
+    bus_data_in     => bus_data_in,
+    bus_data_out    => bus_data_out,
+    bus_address     => bus_address,
+    bus_R_W         => bus_R_W,
+    bus_en          => bus_en
+  );   
+  
+  inst_reg_stack_add : reg_write_only_with_interface
+    generic map (
+    data_size        => data_size,
+    address_size     => address_size
+  )
+  port map (
+    reset           => reset,
+    clk             => clk,
+    clk_en          => clk_en,
+    
+    data_in        => add_to_stack_add,
+    
+    en              => cpu_stack_add_param_en,         
+    bus_data_in     => bus_data_in,
+    bus_data_out    => bus_data_out,
+    bus_address     => bus_address,
+    bus_R_W         => bus_R_W,
+    bus_en          => bus_en
+  );   
+   
+  inst_reg_offset_param : reg
+    generic map (
+    size        => data_size
+  )
+  port map (
+    reset   => reset,
+    clk     => clk,
+    clk_en  => clk_en,
+
+    load    => load_of,
+    init    => '0',
+
+    data_in  => data_in,
+    data_out => offset_to_add
+    
+  );   
+  
+  inst_calc_stack_adr : add
+    generic map (
+        size        => data_size
+    )
+    port map (
+    reset   => reset,
+    clk     => clk,
+    clk_en  => clk_en,
+
+    data_in_1  => base_pointer_to_add,
+    data_in_2  => offset_to_add,
+    data_out => add_to_stack_add
+    );   
 
 end architecture;

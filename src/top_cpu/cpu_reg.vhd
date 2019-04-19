@@ -31,7 +31,7 @@ begin
     process(clk, reset) is
     begin
         if reset = '1' then
-            data_out <= (others => '0');
+            data_out <= x"F0", (others => '0') ;
 
         elsif rising_edge(clk) then
             if clk_en = '1' then
