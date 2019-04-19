@@ -33,7 +33,10 @@ use IEEE.numeric_std.all;
     load_rd  : out std_logic;
     load_ra  : out std_logic;
     load_ad  : out std_logic;
-
+    load_of  : out std_logic;
+    add_stack  : out std_logic;
+    rmv_stack  : out std_logic;
+    
     -- UAL
     sel_ual  : out std_logic_vector (op_code_size-1 downto 0);
     carry    : in  std_logic;
@@ -49,7 +52,7 @@ end entity FSM;
 
 architecture rtl of FSM is
 
-  type STATES is (INIT, FETCH_INST, DECODE, FETCH_OP_STATIC, FETCH_OP_DYNAMIC, FETCH_ADDR, EXE_UAL, STA_STATIC, STA_DYNAMIC, EXE_JCC, EXE_JMP); 
+  type STATES is (INIT, FETCH_INST, DECODE, FETCH_OP_STATIC, FETCH_OP_DYNAMIC, FETCH_ADDR, EXE_UAL, STA_STATIC, STACK_OP, STA_DYNAMIC, EXE_JCC, EXE_JMP); 
   signal state : STATES;
   signal next_state : STATES;
   
@@ -76,13 +79,19 @@ architecture rtl of FSM is
 
           when "10010" => -- OP_JMP
             next_state <= EXE_JMP;
-
+            
           when "11000" => -- OP_GAD
             next_state <= FETCH_ADDR;
 
           when "11001" => -- OP_SAD
             next_state <= FETCH_ADDR;
-
+            
+          when "01110" => -- OP_PSH
+            next_state <= STACK_OP;
+            
+          when "01111" => -- OP_POP
+            next_state <= STACK_OP;
+            
           when others =>  -- Opérations arithmétiques et logiques, ainsi que le GET pour que la donnée passe par l'UAL pour aller dans ACCU
             next_state <= FETCH_OP_STATIC;
 
@@ -96,17 +105,27 @@ architecture rtl of FSM is
         end if;
 
       when FETCH_OP_STATIC =>
-        next_state <= EXE_UAL;
+        if op_code = "10111" then -- CSA
+            next_state <= FETCH_INST;
+        else
+            next_state <= EXE_UAL;
+        end if;
 
       when FETCH_OP_DYNAMIC =>
-        next_state <= EXE_UAL;
-
+        if op_code = "11000" then -- OP_GAD
+            next_state <= EXE_UAL;
+        else -- OP_CSA
+            next_state <= FETCH_INST;
+        end if;
       when EXE_UAL =>
         next_state <= FETCH_INST;      
 
       when STA_STATIC =>
         next_state <= FETCH_INST;
-
+      
+      when STACK_OP =>
+        next_state <= FETCH_INST;
+        
       when STA_DYNAMIC =>
         next_state <= FETCH_INST;
 
@@ -115,7 +134,7 @@ architecture rtl of FSM is
 
       when EXE_JMP =>
         next_state <= FETCH_INST;
-
+                
       when others =>
         next_state <= INIT;
 
@@ -143,7 +162,10 @@ architecture rtl of FSM is
           R_W      <= '0';
           en_mem   <= '0';
           sel_ual  <= (others => '0');
-
+          load_of  <= '0';
+          add_stack <= '0';
+          rmv_stack <= '0';
+          
         when FETCH_INST =>
           en_cpt   <= '1';
           load_ri  <= '1';
@@ -160,7 +182,10 @@ architecture rtl of FSM is
           load_rd  <= '0';
           load_ra  <= '0';
           sel_ual  <= (others => '0');     
-
+          load_of  <= '0';
+          add_stack <= '0';
+          rmv_stack <= '0';
+          
         when DECODE =>
           sel_mux  <= "01";
 
@@ -177,7 +202,10 @@ architecture rtl of FSM is
           R_W      <= '0';
           en_mem   <= '0';
           sel_ual  <= (others => '0');
-
+          load_of  <= '0';
+          add_stack <= '0';
+          rmv_stack <= '0';
+          
         when FETCH_ADDR =>
           sel_mux  <= "01";
           en_mem   <= '1';
@@ -194,12 +222,21 @@ architecture rtl of FSM is
           load_ri  <= '0';
           load_ra  <= '0';
           sel_ual  <= (others => '0');
-
+          load_of  <= '0';
+          add_stack <= '0';
+          rmv_stack <= '0';
+          
         when FETCH_OP_STATIC =>
           sel_mux  <= "01";
           en_mem   <= '1';
           R_W      <= '0';
-          load_rd  <= '1';
+          if op_code = "10111" then-- OP_CSA
+            load_rd  <= '0';
+            load_of  <= '1';
+          else
+            load_rd  <= '1';
+            load_of  <= '0';
+          end if;
 
           load_ad  <= '0';
           init_cpt <= '0';
@@ -211,13 +248,16 @@ architecture rtl of FSM is
           load_ri  <= '0';
           load_ra  <= '0';
           sel_ual  <= (others => '0');
-
+          add_stack <= '0';
+          rmv_stack <= '0';
+          
         when FETCH_OP_DYNAMIC =>
           sel_mux  <= "10";
           en_mem   <= '1';
           R_W      <= '0';
           load_rd  <= '1';
-
+          load_of  <= '0';
+          
           init_cpt <= '0';
           init_acc <= '0';
           en_cpt   <= '0';
@@ -228,6 +268,8 @@ architecture rtl of FSM is
           load_ri  <= '0';
           load_ra  <= '0';
           sel_ual  <= (others => '0');
+          add_stack <= '0';
+          rmv_stack <= '0';
 
         when EXE_UAL =>
           sel_mux  <= "01";
@@ -249,6 +291,7 @@ architecture rtl of FSM is
             load_ff  <= '0';
 
           end if;
+          
 
         init_cpt <= '0';
         init_acc <= '0';
@@ -260,6 +303,9 @@ architecture rtl of FSM is
         load_rd  <= '0';
         R_W      <= '0';
         en_mem   <= '0';
+        load_of  <= '0';
+        add_stack <= '0';
+        rmv_stack <= '0';
 
       when STA_STATIC =>
         sel_mux  <= "01";
@@ -271,12 +317,41 @@ architecture rtl of FSM is
         en_cpt   <= '0';
         load_cpt <= '0';
         init_ff  <= '0';
+        load_ad  <= '0';
         load_ff  <= '0';
         load_ri  <= '0';
         load_rd  <= '0';
         load_ra  <= '0';
         sel_ual  <= (others => '0');
+        load_of  <= '0';
+        add_stack <= '0';
+        rmv_stack <= '0';
+        
+      when STACK_OP =>
+        sel_mux  <= "00";
+        en_mem   <= '0';
+        R_W      <= '0';
 
+        init_cpt <= '0';
+        init_acc <= '0';
+        en_cpt   <= '0';
+        load_cpt <= '0';
+        init_ff  <= '0';
+        load_ad  <= '0';
+        load_ff  <= '0';
+        load_ri  <= '0';
+        load_rd  <= '0';
+        load_ra  <= '0';
+        sel_ual  <= (others => '0');
+        load_of  <= '0';
+        if op_code = "01110" then -- OP_PSH
+            rmv_stack <= '1';
+            add_stack <= '0';
+        elsif op_code = "01111" then -- OP_POP
+            rmv_stack <= '0';
+            add_stack <= '1';
+        end if;
+        
       when STA_DYNAMIC =>
         sel_mux  <= "10";
         en_mem   <= '1';
@@ -292,7 +367,10 @@ architecture rtl of FSM is
         load_rd  <= '0';
         load_ra  <= '0';
         sel_ual  <= (others => '0');
-
+        load_of  <= '0';
+        add_stack <= '0';
+        rmv_stack <= '0';
+          
       when EXE_JCC =>
         sel_mux  <= "01";
         init_ff  <= carry;
@@ -309,7 +387,10 @@ architecture rtl of FSM is
         R_W      <= '0';
         en_mem   <= '0';
         sel_ual  <= (others => '0');
-
+        load_of  <= '0';
+        add_stack <= '0';
+        rmv_stack <= '0';
+        
       when EXE_JMP =>
         sel_mux  <= "01";
         init_ff  <= '0';
@@ -326,7 +407,10 @@ architecture rtl of FSM is
         R_W      <= '0';
         en_mem   <= '0';
         sel_ual  <= (others => '0');
-
+        load_of  <= '0';
+        add_stack <= '0';
+        rmv_stack <= '0';
+        
     end case;
   end process;
 

@@ -8,7 +8,8 @@ use IEEE.numeric_std.all;
 
 entity reg is
     generic (
-            size : integer := 8
+            size : integer := 8;
+            init_value : integer := 0
         );
     port (
         reset    : in  std_logic;
@@ -31,7 +32,7 @@ begin
     process(clk, reset) is
     begin
         if reset = '1' then
-            data_out <= (others => '0');
+            data_out <= std_logic_vector(to_unsigned(init_value, size));
 
         elsif rising_edge(clk) then
             if clk_en = '1' then
