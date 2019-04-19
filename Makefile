@@ -1,11 +1,11 @@
 # TARGET          = cube
-TARGET          = test_fonction
+TARGET          = test_stack_addi
 
 SRCDIR          = prog
 OBJDIR          = obj
 BINDIR          = bin
 
-PORT            = /dev/cu.usbserial-00002014B
+PORT            = /dev/cu.usbserial-00001014B
 
 OBJTARG         = $(OBJDIR)/$(TARGET)
 BINTARG         = $(BINDIR)/$(TARGET)

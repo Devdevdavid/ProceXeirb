@@ -238,12 +238,12 @@ int set_var_init_value(var * v, string valueStr)
 }
 
 /**
- * @brief Declare a new variable with or not initial value
+ * @brief Parse a variable with array and init value 
  * 
  * @param line : declaration line of the variable
  * @return var* : Pointer on the variable freshly created
  */
-var * declare_var(string line)
+var * parse_var_declaration(string line)
 {
   var * v = new var;
   uint16_t varCellCount = 1;
@@ -299,15 +299,34 @@ var * declare_var(string line)
   // Create varCells
   v->create_var_cell(varCellCount);
   
-  if (CUR_CONTEXT != GLOBAL_CONTEXT) {
-    v->isLocal = true;
-  }
-  CUR_CONTEXT->add_var(v);
   return v;
 
 funcFailed:
   delete v;
   return NULL;
+}
+
+/**
+ * @brief Declare a new variable with or not initial value 
+ * and add it to the current context
+ * 
+ * @param line : declaration line of the variable
+ * @return var* : Pointer on the variable freshly declared
+ */
+var * declare_var(string line)
+{
+  var * v;
+  
+  if ((v = parse_var_declaration(line)) == NULL) {
+    return NULL;
+  }
+
+  if (CUR_CONTEXT != GLOBAL_CONTEXT) {
+    v->isLocal = true;
+  }
+  CUR_CONTEXT->add_var(v);
+
+  return v;
 }
 
 /**
@@ -522,6 +541,11 @@ int parse_function_declaration(string line)
   // Declaration is ok, we go in edition mode 
   func->isBeingEdited = true;
 
+  // Create the first instruction of the function
+  func_begin * ins = new func_begin;
+  ins->func = func;                     // Link the instruction with the current function
+  CUR_CONTEXT->add_instru(ins);
+
   return 0;
 }
 
@@ -562,6 +586,11 @@ int parse_function_return(string line)
   
   // The function is not edited anymore
   func->isBeingEdited = false;
+
+  // Create the ending instruction of the function
+  func_end * ins = new func_end;
+  ins->func = func;                     // Link the instruction with the current function
+  CUR_CONTEXT->add_instru(ins);
 
   // Go back to the global context
   CUR_CONTEXT = GLOBAL_CONTEXT;
@@ -1068,14 +1097,9 @@ int compiler(const char * bagoFilePath, const char * asmFilePath)
     wholeFile += "\n";
     #endif
 
-    if (func != GLOBAL_CONTEXT) {
-      // TODO: Ajouter les PUSH pour les variables locales ici
-    }
-
-    // LOG_DEBUG("CONTEXT : %s", func->name.c_str());
-    for (index = 0; index < instruTable->size(); ++index)
-    {
-      // LOG_DEBUG("INSTYPE : %d", instruTable->at(index)->type);
+    LOG_DEBUG("CONTEXT : %s", func->name.c_str());
+    for (index = 0; index < instruTable->size(); ++index) {
+      LOG_DEBUG("INSTYPE : %d", instruTable->at(index)->type);
 
       instruTable->at(index)->set_address(fileLineCounter);
       wholeFile += instruTable->at(index)->print_instruction();
@@ -1116,7 +1140,7 @@ int compiler(const char * bagoFilePath, const char * asmFilePath)
   for (fonction * func : fonctionTable) {
     LOG_DEBUG("CONTEXT : %s", func->name.c_str());
     for (var * variable : func->variableTable) {
-      //LOG_DEBUG("VAR : %s", variable->get_id().c_str());
+      LOG_DEBUG("VAR : %s", variable->get_id().c_str());
       
       if (variable->is_unused()) {
         if (!variable->isUsedAsRead && !variable->isUsedAsWrite) {

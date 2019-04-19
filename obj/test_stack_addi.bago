@@ -1,0 +1,13 @@
+entiera=0;
+entierb;
+entierdelay;
+tant_que(1<2)
+a=a+1;
+ecrire_a(a,9217);
+b=lire_a(9218);
+afficher_LCD(b);
+delay=0;
+tant_que(delay<1500000)
+delay=delay+1;
+fin_tant_que;
+fin_tant_que;

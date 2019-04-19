@@ -10,7 +10,7 @@ fonction::fonction()
     instruTable.clear();
     loopId = 0;
     condId = 0;
-    varCount = 0;
+    varCount = 1;
     params.clear();
     returnVar = NULL;
     startRamAddress = 0;
@@ -28,7 +28,7 @@ fonction::~fonction()
  * @param v 
  * @return int 0
  */
-int fonction::add_argument(var *v) 
+int fonction::add_argument(var *v)
 {
     if (v == NULL) { return -1; }
 
@@ -148,7 +148,7 @@ var * fonction::get_var(string varName)
 void fonction::add_var(var *v)
 {
     v->set_id(this->name);
-    v->contextOffset = varCount++;
+    v->contextOffset = 1 + varCount++; // The offset start at 1 because of EBP in the call stack
     variableTable.push_back(v);
 }
 

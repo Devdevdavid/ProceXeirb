@@ -18,6 +18,8 @@ class instruction;
 #include "fonction.hpp"
 
 typedef enum {
+  FUNC_BEGIN,
+  FUNC_END,
   FUNCTION_CALL,
   ADDITION,
   SOUSTRACTION,
@@ -79,6 +81,7 @@ public :
   void set_address (uint32_t address);
   void print_operation(string opInstStr);
   void print_operation_and_store(string opInstStr);
+  void print_push_accu(void);
 
   virtual string print_instruction() = 0;
 };
@@ -259,6 +262,28 @@ public:
 };
 
 // ===========================
+//    FUNCTION BEGIN/END
+// ===========================
+
+class func_begin : public instruction
+{
+public:
+  func_begin();
+  string print_instruction();
+
+  fonction * func; // Pointer to the linked function
+};
+
+class func_end : public instruction
+{
+public:
+  func_end();
+  string print_instruction();
+
+  fonction * func; // Pointer to the linked function
+};
+
+// ===========================
 //        FUNCTION CALL
 // ===========================
 
@@ -268,10 +293,8 @@ public:
   functionCall();
 
   int link_function(fonction * pFunc);
-  int link_argument(varCell *v);
-  int link_returned_var(varCell *v);
-
-  void print_push(varCell * varToPush);
+  int link_argument(varCell *vc);
+  int link_returned_var(varCell *vc);
 
 private:
   fonction * func;
