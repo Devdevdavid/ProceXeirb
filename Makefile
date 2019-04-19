@@ -1,5 +1,5 @@
 # TARGET          = cube
-TARGET          = test_stack_addi
+TARGET          = test_func
 
 SRCDIR          = prog
 OBJDIR          = obj

@@ -9,7 +9,7 @@
             "type": "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/bag-compiler/bin/bag-compiler",
-            "args": ["-o", "./obj/cube.asm", "../prog/cube.bag"],
+            "args": ["-o", "./obj/test_func.asm", "../prog/test_func.bag"],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}/bag-compiler/",
             "environment": [],

@@ -755,13 +755,13 @@ int preprocessor(const char * bagFilePath, const char * bagoFilePath)
   remove(bagoFilePath);
   bagoFile.open(bagoFilePath);
   if (!bagoFile.is_open()) {
-    LOG_ERROR("Failed to create .bago file %s: %s\n", bagoFilePath, strerror(errno));
+    LOG_ERROR("Failed to create .bago file %s: %s", bagoFilePath, strerror(errno));
     retError = 1;
   }
 
   bagFile.open(bagFilePath);
   if (!bagFile.is_open()) {
-    LOG_ERROR("Failed to open .bag file %s: %s\n", bagFilePath, strerror(errno));
+    LOG_ERROR("Failed to open .bag file %s: %s", bagFilePath, strerror(errno));
     retError = 1;
   }
 

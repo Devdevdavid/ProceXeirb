@@ -22,18 +22,26 @@ fin_tant_que;
 
 tant_que (1 == 1)
 
-	test = 8192 - 9215;
+	counter = counter + 1;
+	si (counter > 2)
+		counter = 0;
+	fin_si;
 
 	// Write
-	ecrire_a(9215, BASE_POINTER_ADDR);
-	ecrire_mem_part(test, 0);
-	addr = lire_a(DYN_ADDI_ADDR);
-	ecrire_a(16, addr);
+	si (counter == 0)
+		ecrire_a(4095, ESP_ADDR);
+	fin_si;
+	si (counter == 1)
+		ecrire_mem_part(0, 0); // --StackPointer
+	fin_si;
+	si (counter == 2)
+		ecrire_mem_part(1, 0); // ++StackPointer
+	fin_si;
 
-	readValue = lire_a(8192);
+	readValue = lire_a(ESP_ADDR);
 
 	// Show result
-	afficher_LCD(addr);
+	afficher_LCD(readValue);
 
 	// Make a little delay between write/read
 	delay = 0;

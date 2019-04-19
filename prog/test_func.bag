@@ -1,0 +1,7 @@
+fonction aff();
+	afficher_LCD(4095);
+retourne;
+
+aff();
+
+

@@ -39,7 +39,7 @@ public:
   bool isUsedAsRead;        // Flag to tell if the variable is read at least one time
   bool isLocal;             // Flag to tell if the variable is either local or global
   int32_t value;            // Initial value of the variable (REAL and INTEGER) 
-  uint16_t contextOffset;   // Offset of the variable inside the context where it is declared
+  int16_t contextOffset;   // Offset of the variable inside the context where it is declared
   uint32_t address;         // Address of the variable in the RAM
   uint16_t arraySize;
   varCell * varCellArray;  

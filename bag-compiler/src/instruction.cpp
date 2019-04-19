@@ -21,7 +21,7 @@ string get_const_var_id(string constVarName)
   constVar->p->isUsedAsRead = true;
   return constVar->get_id();
 }
-string get_const_var_value(uint32_t constVarValue)
+string get_const_var_value(int32_t constVarValue)
 {
   return get_const_var_id(to_string(constVarValue));
 }
@@ -77,7 +77,7 @@ void instruction::write_and_count_inst(string str)
 void instruction::print_get_local_var(varCell *vc)
 {
   // 1: Skip the EBP in the call stack
-  string constIdStr = get_const_var_id(to_string(vc->p->contextOffset));
+  string constIdStr = get_const_var_value(vc->p->contextOffset);
   // Compute the dynamique address of the local variable
   write_and_count_inst("CSA :addr(" + constIdStr + ")\n");
   // Get the content of the computed address into the ACCU register
@@ -104,7 +104,7 @@ void instruction::print_get_inst_for_var(varCell *vc)
 void instruction::print_save_accu(void)
 {
   if (retVar->p->isLocal) {
-    string constIdStr = get_const_var_id(to_string(retVar->p->contextOffset));
+    string constIdStr = get_const_var_value(retVar->p->contextOffset);
     // Compute the dynamique address of the local variable
     write_and_count_inst("CSA :addr(" + constIdStr + ")\n");
     // Move the accu to the content pointed by the dynamic address
@@ -150,8 +150,8 @@ void instruction::print_operation_and_store(string opInstStr)
 
 void instruction::print_push_accu()
 {
-  write_and_count_inst("--StackPointer\n");
-  write_and_count_inst("SAD " STACK_POINTER_ADDR "\n");
+  write_and_count_inst("SAD " ESP_ADDR "\n");
+  write_and_count_inst("PSH 00000\n");
 }
 
 // ===========================
@@ -364,7 +364,7 @@ write_to_shared::write_to_shared()
 
 string write_to_shared::print_instruction()
 {
-  print_get_inst_for_var(a1);
+  /*print_get_inst_for_var(a1);
   write_and_count_inst("ADD :addr(" + get_const_var_value(SHARED_MEM_ADDR) + ")\n");
   if (a2->p->isLocal) {
     print_get_local_var(a2);
@@ -372,7 +372,15 @@ string write_to_shared::print_instruction()
     write_and_count_inst("SAD " DUMMY_FLASH_ADDR "\n");
   } else {
     write_and_count_inst("SAD :addr(" + a2->get_id() + ")\n");
+  }*/
+  #pragma message "FIXME: write_to_shared is used as debug"
+  //write_and_count_inst("CSA :addr(" + a1->get_id() + ")\n");
+  if (a1->p->value == 1) {
+    write_and_count_inst("POP CAFE\n");
+  } else {
+    write_and_count_inst("PSH CAFE\n");
   }
+  
 
   return instBuffer;
 }
@@ -537,12 +545,12 @@ string func_end::print_instruction()
   write_and_count_inst("SET " ESP_ADDR "\n");
 
   // POP the old EBP from call stack
-  write_and_count_inst("++StackPointer\n");
+  write_and_count_inst("POP 00000\n");
 
   // Return to calling function (Equi. POP EIP)
-  write_and_count_inst("GAD " STACK_POINTER_ADDR "\n");
+  write_and_count_inst("GAD " ESP_ADDR "\n");
   write_and_count_inst("SET " EIP_ADDR "\n");
-  write_and_count_inst("++StackPointer\n");
+  write_and_count_inst("POP 00000\n");
 
   return instBuffer;
 }
@@ -647,12 +655,14 @@ string functionCall::print_instruction()
 
   // JUMP to the address where the function start
   write_and_count_inst("JMP :call(" + func->name + ")\n");
-  
-  // Perform compute
 
-  // Save return value from DUMMY to returned variable
-  write_and_count_inst("GET " DUMMY_FLASH_ADDR "\n");
-  print_save_accu();
+  // At the end of the function, we come back here
+  
+  // Save return value from DUMMY to returned variable if needed
+  if (retVar != NULL) {
+    write_and_count_inst("GET " DUMMY_FLASH_ADDR "\n");
+    print_save_accu();
+  }
 
   return instBuffer;
 }

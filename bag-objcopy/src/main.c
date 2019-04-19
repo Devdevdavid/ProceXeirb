@@ -48,6 +48,8 @@
 #define ITF 0xD //int to float
 
 //UTILS
+#define PSH 0xE
+#define POP 0xF
 #define STA 0x10
 #define JCC 0x11
 #define JMP 0x12 //jump
@@ -59,6 +61,7 @@
 #define TEQ 0x16 //equal
 
 //MEMORY MOVEMENTS
+#define CSA 0x17
 #define GAD 0x18
 #define SAD 0x19
 
@@ -82,6 +85,8 @@ int decodeInstruction(char * instruction) {
   if (!strcmp(instruction, "FMU")) return FMU;
   if (!strcmp(instruction, "FTI")) return FTI;
   if (!strcmp(instruction, "ITF")) return ITF;
+  if (!strcmp(instruction, "PSH")) return PSH;
+  if (!strcmp(instruction, "POP")) return POP;
   if (!strcmp(instruction, "STA")) return STA;
   if (!strcmp(instruction, "JCC")) return JCC;
   if (!strcmp(instruction, "JMP")) return JMP;
@@ -90,6 +95,7 @@ int decodeInstruction(char * instruction) {
   if (!strcmp(instruction, "TLT")) return TLT;
   if (!strcmp(instruction, "TEQ")) return TEQ;
   if (!strcmp(instruction, "GAD")) return GAD;
+  if (!strcmp(instruction, "CSA")) return CSA;
   if (!strcmp(instruction, "SAD")) return SAD;
   if (!strcmp(instruction, "VAR")) return VAR;
   return -1;
