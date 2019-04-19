@@ -1,14 +1,12 @@
 /*******************************************************************************
- *  Main Author : Pierre JOUBERT
+ *  First Author : Pierre JOUBERT
  *  With the kind collaboration of : Julien BESSE
  *  Date : 04/04/2018
  *  OS : Linux
  *  Updated by David DEVANT on 2019-02-02
- *    The goal of this program is to convert a program written in language 
+ *  Desc: The goal of this program is to convert a program written in language 
  *  assembly to hexa, ready to put in the RAM of the processor we have created.
- * Usage: ./asm input_file.asm outputfile.bytes
- * 
- * Compiler option : IS_BINARY_MODE
+ *  See print_usage() for usage.
  ******************************************************************************/
 
 #include <stdio.h>
@@ -24,52 +22,59 @@
 #define INST_BIT_LENGTH   5     // Bits allocated to Instructions
 #define VALUE_BIT_LENGTH  20    // Bits allocated to Value
 
-// list of instructions available
-//locical operands
-#define NOR 0x0
-#define LOR 0x1 // logical OR
-#define AND 0x2
-#define XOR 0x3
+// List of instructions available
+// LOGICAL OPERANDS
+#define NOR 0x0 // Logical NOT OR
+#define LOR 0x1 // Logical OR
+#define AND 0x2 // Logical AND
+#define XOR 0x3 // Logical Exclusive OR
 
-//mathematical operands
-#define ADD 0x4
-#define SUB 0x5
-#define DIV 0x6
-#define MUL 0x7
-#define MOD 0x8 //modulo
+// INTEGER OPERANDS
+#define ADD 0x4 // Addition of integer
+#define SUB 0x5 // Substraction of integer
+#define DIV 0x6 // Division of integer
+#define MUL 0x7 // Multiplication of integer
+#define MOD 0x8 // Modulo of integer
 
-//float operands
-#define FAD 0x9 // addition 
-#define FDI 0xA //division
-#define FMU 0xB //multiply
+// REAL OPERANDS
+#define FAD 0x9 // Addition of real
+#define FDI 0xA // Division of real
+#define FMU 0xB // Multiplication of real
 
-//Casts
-#define FTI 0xC //float to int 
-#define ITF 0xD //int to float
+// CASTS
+#define FTI 0xC // Real to integer conversion
+#define ITF 0xD // Integer to real conversion
 
-//UTILS
-#define PSH 0xE
-#define POP 0xF
-#define STA 0x10
-#define JCC 0x11
-#define JMP 0x12 //jump
-#define GET 0x13
+// UTILS
+#define PSH 0xE // Decrement stack pointer
+#define POP 0xF // Increment stack pointer
+#define STA 0x10 // Store Accu
+#define JCC 0x11 // Jump with carry condition
+#define JMP 0x12 // Jump at address
+#define GET 0x13 // Load into Accu
 
-//TESTS
-#define TGT 0x14 //greater than
-#define TLT 0x15 //lower than
-#define TEQ 0x16 //equal
+// TESTS
+#define TGT 0x14 // Greater than comparaison
+#define TLT 0x15 // Lower than comparaison
+#define TEQ 0x16 // Equal comparaison
 
-//MEMORY MOVEMENTS
-#define CSA 0x17
-#define GAD 0x18
-#define SAD 0x19
+// MEMORY MOVEMENTS
+#define CSA 0x17 // Compute Stack Address 
+#define GAD 0x18 // Get at address
+#define SAD 0x19 // Set at address
 
-//intern shit
+// VARIABLES (Not an instruction)
 #define VAR 0x69
 
 void print_size(uint32_t instructionCounter, uint32_t varCounter);
 
+/**
+ * @brief Make the association between the string and numerical 
+ * representation of each instructions
+ * 
+ * @param instruction 
+ * @return int Instruction code
+ */
 int decodeInstruction(char * instruction) {
   if (!strcmp(instruction, "NOR")) return NOR;
   if (!strcmp(instruction, "LOR")) return LOR;
