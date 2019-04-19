@@ -154,15 +154,17 @@ int splitLineArgs(char * line, char ** instStr, char ** valueStr)
 void print_usage(void) 
 {
   LOG("You should use this program with the following arguments :\n");
-  LOG("\t ./bag-objcopy -i <file.asm> -o <file.bytes> [-s]\n");
+  LOG("\t ./bag-objcopy -i <file.asm> -o <file.bytes> [-s, -f]\n");
   LOG("Options\n");
-  LOG("\t -s  : Print size of the generated file\n");
+  LOG("\t -s          : Print size of the generated file\n");
+  LOG("\t -f <format> : BIN = Binary for bag-upload (default)\n");
+  LOG("\t               COE = COE file for Vivado\n");
 }
 
 int main(int argc, char const *argv[])
 {
   FILE * asmFile = NULL;
-  FILE * binFile = NULL;
+  FILE * outFile = NULL;
   const char * inputFilePath;
   const char * outputFilePath;
   const uint32_t outputMaxValue = (uint32_t) pow(2, VALUE_BIT_LENGTH + INST_BIT_LENGTH) - 1;
@@ -181,6 +183,7 @@ int main(int argc, char const *argv[])
   uint32_t instructionCounter = 0;      // Number of instruction (!= VAR) in the asm file
 
   uint8_t printSizeOpt = 0;
+  uint8_t fileFormatOpt = 0;            // 0: Binary (for bag-upload), 1: COE (for Vivado ROM)
 
   // Arg check
   if (argc < (4 + 1)) {
@@ -192,6 +195,22 @@ int main(int argc, char const *argv[])
   for (index = 1; index < argc; index++) {
     if (!strncmp(argv[index], "-s", 2)) {
       printSizeOpt = 1;
+    } else if (!strncmp(argv[index], "-f", 2)) {
+      if (argc - index > 1) {
+        // The next argument is the format mode
+        ++index;
+        if (!strncmp(argv[index], "BIN", 3)) {
+          fileFormatOpt = 0;
+        } else if (!strncmp(argv[index], "COE", 3)) {
+          fileFormatOpt = 1;
+        } else {
+          LOG_ERROR("-f error: unknown format: %s", argv[index]);
+          return 1;
+        }
+      } else {
+        LOG_ERROR("-f error: argument missing");
+        return 1;
+      }
     } else if (!strncmp(argv[index], "-i", 2)) {
       if (argc - index > 1) {
         // The next argument is an output file path
@@ -221,10 +240,15 @@ int main(int argc, char const *argv[])
     LOG_ERROR("Failed to open %s: %s", inputFilePath, strerror(errno));
     return 1;
   }
-  binFile = fopen(outputFilePath, "w");
-  if (binFile == NULL) {
+  outFile = fopen(outputFilePath, "w");
+  if (outFile == NULL) {
     LOG_ERROR("Failed to open %s: %s", outputFilePath, strerror(errno));
     return 1;
+  }
+
+  if (fileFormatOpt == 1) {
+    fprintf(outFile, "memory_initialization_radix=16;\n");
+    fprintf(outFile, "memory_initialization_vector=\n");
   }
 
   // Loop on all lines of input file
@@ -269,13 +293,21 @@ int main(int argc, char const *argv[])
     }
 
     // Write in output file
-    fwrite(&output, sizeof(output), 1, binFile);
+    if (fileFormatOpt == 0) {
+      fwrite(&output, sizeof(output), 1, outFile);
+    } else if(fileFormatOpt == 1) {
+      fprintf(outFile, "%07x\n", output);
+    }
   }
 
-  // Complete file by 0 if in binary mode
-  output = 0;
-  while (lineCounter++ <= (HARD_RAM_SIZE / sizeof(output))) {
-    fwrite(&output, sizeof(output), 1, binFile);
+  if (fileFormatOpt == 0) {
+    // Complete file by 0x00 if in binary mode
+    output = 0;
+    while (lineCounter++ <= (HARD_RAM_SIZE / sizeof(output))) {
+      fwrite(&output, sizeof(output), 1, outFile);
+    }
+  } else if (fileFormatOpt == 1) {
+    fprintf(outFile, ";\n");
   }
   
   LOG_INFO("Work done !");
@@ -285,7 +317,7 @@ int main(int argc, char const *argv[])
   }
 
   fclose(asmFile);
-  fclose(binFile);
+  fclose(outFile);
   
   return 0;
 }

@@ -1,12 +1,16 @@
 #definition BASE_LED_ADDR (524304)
 #definition BASE_VGA (524288)
+#definition LAST_VGA_PIXEL (831486)
+#definition VGA_WRITE_OK (831488)
+#definition CPU_DATA_OK (12337)
+#definition SHARED_MEM_OFF (12288)
 
-entier retour1;
+entier isGPU;
 
-ecrire_a(1, 831486);
-retour1 = lire_a(831486);
+ecrire_a(1, LAST_VGA_PIXEL);
+isGPU = lire_a(LAST_VGA_PIXEL);
 
-si (retour1 == 1)
+si (isGPU == 1)
   reel x0_trace_v;
   reel y0_trace_v;
   reel x1_trace_v;
@@ -37,35 +41,28 @@ si (retour1 == 1)
   entier tempD;
 
 
-  //boucle infinie
-  tant_que(1 < 2)
+  // Boucle infinie
+  tant_que(1 == 1)
 
-    retour2 = lire_a(831488);
     //Attente de la disponibilité d'un buffer d'écran
+    retour2 = 1;
     tant_que(retour2 > 0)          
-      retour2 = lire_a(831488);
+      retour2 = lire_a(VGA_WRITE_OK);
     fin_tant_que;
 
     // Attente des données du CPU
-    retour2 = lire_a(8241)
+    retour2 = 1;
     tant_que(retour2 > 0)
-      retour2 = lire_a(8241);
+      retour2 = lire_a(CPU_DATA_OK);
     fin_tant_que;
-    ecrire_a(1, 8241);
+    ecrire_a(1, CPU_DATA_OK);
 
     //nombre de points à lire
-    cpt_add = 8192;
+    cpt_add = SHARED_MEM_OFF;
     nb_seg  = lire_a ( cpt_add );
     cpt_add = cpt_add + 1;
 
     cpt_seg = 0;
-
-    ////Vidage de l'écran
-    //adresse = BASE_VGA;
-    //tant_que(adresse < 831487)
-    //  ecrire_a (0, adresse);
-    //  adresse = adresse + 1;
-    //fin_tant_que;
 
     tant_que ( cpt_seg < nb_seg)
 
@@ -2117,10 +2114,10 @@ si (retour1 == 1)
     ecrire_a(15, 542834);
 
     //ecriture à l'écran
-    ecrire_a (1, 831488);
+    ecrire_a (1, VGA_WRITE_OK);
 
     // On a fini d'utiliser les données
-    ecrire_a (1, 8241);
+    ecrire_a (1, CPU_DATA_OK);
 
   //fin boucle infinie
   fin_tant_que 
@@ -2131,7 +2128,6 @@ fin_si
 
 entier a_cos; 
 entier a_sin; 
-entier a;
 entier b; 
 entier c;
 
@@ -2214,17 +2210,15 @@ retour3 = 1;
 a_cos = 1;
 a_sin = 1;
 
-entier compteur;
-compteur = 0;
-
+entier compteur = 0;
 entier valeur_led;
 entier led_i;
 entier led_addr = BASE_LED_ADDR;
 entier led;
 entier deg_led;
 
-ecrire_a(1, 8241);
-tant_que(1 < 2)
+ecrire_a(1, CPU_DATA_OK);
+tant_que(1 == 1)
 
   a_cos = a_cos + 1;
   a_sin = a_sin + 1;
@@ -2391,78 +2385,79 @@ tant_que(1 < 2)
   x8 = x8 + CUBE_DECAL_X;
   y8 = y8 + CUBE_DECAL_Y;
 
-  ecrire_a (12, 8192);
+  // 12 segments to read
+  ecrire_a (12, SHARED_MEM_OFF);
 
   // On attend que le GPU ait fini d'utiliser les données précédentes.
-  retour3 = lire_a(8241)
+  retour3 = 0;
   tant_que(retour3 < 1)
-    retour3 = lire_a(8241);
+    retour3 = lire_a(CPU_DATA_OK);
   fin_tant_que;
-  ecrire_a (1, 8241);
+  ecrire_a (1, CPU_DATA_OK);
 
 // segment 1  : S[1;2]
-  ecrire_a (x1, 8193);
-  ecrire_a (y1, 8194);
-  ecrire_a (x2, 8195);
-  ecrire_a (y2, 8196);
+  ecrire_a (x1, 12289);
+  ecrire_a (y1, 12290);
+  ecrire_a (x2, 12291);
+  ecrire_a (y2, 12292);
 // segment 2  : S[1;4]
-  ecrire_a (x1, 8197);
-  ecrire_a (y1, 8198);
-  ecrire_a (x4, 8199);
-  ecrire_a (y4, 8200);
+  ecrire_a (x1, 12293);
+  ecrire_a (y1, 12294);
+  ecrire_a (x4, 12295);
+  ecrire_a (y4, 12296);
 // segment 3  : S[1;5]
-  ecrire_a (x1, 8201);
-  ecrire_a (y1, 8202);
-  ecrire_a (x5, 8203);
-  ecrire_a (y5, 8204);
+  ecrire_a (x1, 12297);
+  ecrire_a (y1, 12298);
+  ecrire_a (x5, 12299);
+  ecrire_a (y5, 12300);
 // segment 4  : S[2;3]
-  ecrire_a (x2, 8205);
-  ecrire_a (y2, 8206);
-  ecrire_a (x3, 8207);
-  ecrire_a (y3, 8208);
+  ecrire_a (x2, 12301);
+  ecrire_a (y2, 12302);
+  ecrire_a (x3, 12303);
+  ecrire_a (y3, 12304);
 // segment 5  : S[2;6]
-  ecrire_a (x2, 8209);
-  ecrire_a (y2, 8210);
-  ecrire_a (x6, 8211);
-  ecrire_a (y6, 8212);
+  ecrire_a (x2, 12305);
+  ecrire_a (y2, 12306);
+  ecrire_a (x6, 12307);
+  ecrire_a (y6, 12308);
 // segment 6  : S[3;4]
-  ecrire_a (x3, 8213);
-  ecrire_a (y3, 8214);
-  ecrire_a (x4, 8215);
-  ecrire_a (y4, 8216);
+  ecrire_a (x3, 12309);
+  ecrire_a (y3, 12310);
+  ecrire_a (x4, 12311);
+  ecrire_a (y4, 12312);
 // segment 7  : S[3;7]
-  ecrire_a (x3, 8217);
-  ecrire_a (y3, 8218);
-  ecrire_a (x7, 8219);
-  ecrire_a (y7, 8220);
+  ecrire_a (x3, 12313);
+  ecrire_a (y3, 12314);
+  ecrire_a (x7, 12315);
+  ecrire_a (y7, 12316);
 // segment 8  : S[4;8]
-  ecrire_a (x4, 8221);
-  ecrire_a (y4, 8222);
-  ecrire_a (x8, 8223);
-  ecrire_a (y8, 8224);
+  ecrire_a (x4, 12317);
+  ecrire_a (y4, 12318);
+  ecrire_a (x8, 12319);
+  ecrire_a (y8, 12320);
 // segment 9  : S[5;8]
-  ecrire_a (x5, 8225);
-  ecrire_a (y5, 8226);
-  ecrire_a (x8, 8227);
-  ecrire_a (y8, 8228);
+  ecrire_a (x5, 12321);
+  ecrire_a (y5, 12322);
+  ecrire_a (x8, 12323);
+  ecrire_a (y8, 12324);
 // segment 10 : S[5;6]
-  ecrire_a (x5, 8229);
-  ecrire_a (y5, 8230);
-  ecrire_a (x6, 8231);
-  ecrire_a (y6, 8232);
+  ecrire_a (x5, 12325);
+  ecrire_a (y5, 12326);
+  ecrire_a (x6, 12327);
+  ecrire_a (y6, 12328);
 // segment 11 : S[6;7]
-  ecrire_a (x6, 8233);
-  ecrire_a (y6, 8234);
-  ecrire_a (x7, 8235);
-  ecrire_a (y7, 8236);
+  ecrire_a (x6, 12329);
+  ecrire_a (y6, 12330);
+  ecrire_a (x7, 12331);
+  ecrire_a (y7, 12332);
 // segment 12 : S[7;8]
-  ecrire_a (x7, 8237);
-  ecrire_a (y7, 8238);
-  ecrire_a (x8, 8239);
-  ecrire_a (y8, 8240);
+  ecrire_a (x7, 12333);
+  ecrire_a (y7, 12334);
+  ecrire_a (x8, 12335);
+  ecrire_a (y8, 12336);
 
 
-  ecrire_a (0, 8241); // Données prêtes
+  ecrire_a (0, CPU_DATA_OK); // Données prêtes
 
   compteur = compteur + 1;
   afficher_LCD(compteur);

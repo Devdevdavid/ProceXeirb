@@ -1,5 +1,5 @@
-# TARGET          = cube
-TARGET          = test_func
+TARGET          = cube
+# TARGET          = test_func
 
 SRCDIR          = prog
 OBJDIR          = obj
@@ -30,6 +30,10 @@ $(BINTARG).bytes: $(OBJTARG).asm
 .PHONY: load
 load: all
 	bag-upload $(BINTARG).bytes -p $(PORT)
+
+.PHONY: coe
+coe: all
+	bag-objcopy -i $(OBJTARG).asm -o $(BINDIR)/ram_cpu_init.coe -f COE
 
 # Build all the tools used by this toolchain
 .PHONY: tools
