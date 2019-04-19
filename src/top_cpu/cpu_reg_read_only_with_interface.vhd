@@ -9,8 +9,8 @@ use IEEE.numeric_std.all;
 entity reg_read_only_with_interface is
     generic (
             data_size : integer := 8;
-            address_size : integer := 8
-            
+            address_size : integer := 8;
+            init_value : integer := 0
         );
     port (
         reset    : in  std_logic;
@@ -92,7 +92,7 @@ inst_bus_interface : bus_periph_interface
     process(clk, reset) is
     begin
         if reset = '1' then
-            periph_data_out <= (others => '0');
+             periph_data_out <= std_logic_vector(to_unsigned(init_value, data_size));
         elsif falling_edge(clk) then
             if clk_en = '1' then
                 if periph_en = '1' then

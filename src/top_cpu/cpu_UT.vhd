@@ -30,6 +30,8 @@ entity UT is
     load_of  : in std_logic;
     init_ff  : in std_logic;
     init_acc : in std_logic;
+    add_stack  : in std_logic;
+    rmv_stack  : in std_logic;
     
     --bus
     bus_data_in        : out std_logic_vector(data_size-1 downto 0);
@@ -84,8 +86,8 @@ architecture rtl of UT is
     component reg_read_only_with_interface is
     generic (
             data_size : integer := 8;
-            address_size : integer := 8
-            
+            address_size : integer := 8;
+            init_value  : integer := 0
         );
     port (
         reset    : in  std_logic;
@@ -138,7 +140,30 @@ architecture rtl of UT is
         data_out : out std_logic_vector (size-1 downto 0)
         );
     end component;
-       
+    
+    component stack_pointer is
+    generic (
+            address_size : integer := 6;  -- Largeur du signal d'adresses
+            init_value : integer := 0;
+            data_size : integer := 8
+        );
+    port (
+        reset    : in  std_logic;
+        clk      : in  std_logic;
+        clk_en   : in  std_logic;
+
+        add_cpt : in  std_logic;
+        rmv_cpt : in std_logic;
+        
+        en                 : in  std_logic;
+        bus_data_in        : out std_logic_vector(data_size-1 downto 0);
+        bus_data_out       : in  std_logic_vector(data_size-1 downto 0);
+        bus_address        : in  std_logic_vector(address_size-1 downto 0);
+        bus_R_W            : in  std_logic;
+        bus_en             : in  std_logic
+        );
+    end component;
+    
     signal reg_data_to_UAL : std_logic_vector (data_size-1 downto 0);
     signal reg_accu_to_UAL : std_logic_vector (data_size-1 downto 0);
     signal UAL_out_to_accu : std_logic_vector (data_size-1 downto 0);
@@ -222,7 +247,8 @@ inst_reg_data : reg
 inst_reg_base_pointer : reg_read_only_with_interface
     generic map (
     data_size        => data_size,
-    address_size     => address_size
+    address_size     => address_size,
+    init_value       => 9215 -- 0x23FF
   )
   port map (
     reset           => reset,
@@ -288,6 +314,29 @@ inst_reg_base_pointer : reg_read_only_with_interface
     data_in_1  => base_pointer_to_add,
     data_in_2  => offset_to_add,
     data_out => add_to_stack_add
+    );   
+    
+    inst_stack_pointer : stack_pointer
+    generic map (
+        data_size        => data_size,
+        address_size     => address_size,
+        init_value       => 9215 -- 0x23FF
+    )
+    port map (
+    reset   => reset,
+    clk     => clk,
+    clk_en  => clk_en,
+    
+    add_cpt => add_stack,
+    rmv_cpt => rmv_stack,
+    
+    en              => cpu_stack_pointer_en,         
+    bus_data_in     => bus_data_in,
+    bus_data_out    => bus_data_out,
+    bus_address     => bus_address,
+    bus_R_W         => bus_R_W,
+    bus_en          => bus_en
+   
     );   
 
 end architecture;

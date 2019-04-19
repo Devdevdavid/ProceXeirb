@@ -30,6 +30,8 @@ entity UC is
     load_rd  : out std_logic;
     load_ra  : out std_logic;
     load_of  : out std_logic;
+    add_stack  : out std_logic;
+    rmv_stack  : out std_logic;
 
     -- UAL
     sel_ual  : out std_logic_vector (op_code_size-1 downto 0);
@@ -112,6 +114,8 @@ architecture rtl of UC is
     load_ra  : out std_logic;
     load_ad  : out std_logic;
     load_of  : out std_logic;
+    add_stack  : out std_logic;
+    rmv_stack  : out std_logic;
 
     -- UAL
     sel_ual  : out std_logic_vector (op_code_size-1 downto 0);
@@ -194,7 +198,9 @@ inst_fsm : fsm
     load_ra  => load_ra,
     load_ad  => load_ad,
     load_of  => load_of,
- 
+    add_stack => add_stack,
+    rmv_stack => rmv_stack,
+    
     -- UAL
     sel_ual  => sel_ual,
     carry    => carry,

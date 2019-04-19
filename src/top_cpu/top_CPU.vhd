@@ -70,6 +70,8 @@ architecture rtl of top_CPU is
         load_of  : in std_logic;
         init_ff  : in std_logic;
         init_acc : in std_logic;
+        add_stack  : in std_logic;
+        rmv_stack  : in std_logic;
         
         bus_data_in        : out std_logic_vector(data_size-1 downto 0);
         bus_data_out       : in  std_logic_vector(data_size-1 downto 0);
@@ -109,7 +111,9 @@ architecture rtl of top_CPU is
       load_rd  : out std_logic;
       load_ra  : out std_logic;
       load_of  : out std_logic;
-
+      add_stack  : out std_logic;
+      rmv_stack  : out std_logic;
+      
       -- UAL
       sel_ual  : out std_logic_vector (op_code_size-1 downto 0);
       carry    : in  std_logic;
@@ -165,7 +169,9 @@ architecture rtl of top_CPU is
   signal load_rd      : std_logic;
   signal load_ra      : std_logic;
   signal load_of      : std_logic;
-
+  signal add_stack    : std_logic;     
+  signal rmv_stack    : std_logic;
+  
   -- UAL
   signal sel_ual      : std_logic_vector (op_code_size-1 downto 0);
   signal carry        : std_logic;
@@ -203,6 +209,8 @@ inst_ut : UT
     init_ff  => init_ff,
     init_acc => init_acc,
     load_of  => load_of,
+    add_stack => add_stack,
+    rmv_stack => rmv_stack,
     
     bus_data_in =>bus_periph_data_in,
     bus_data_out =>bus_periph_data_out,
@@ -239,7 +247,9 @@ inst_uc :  UC
     load_rd  => load_rd,
     load_ra  => load_ra,
     load_of  => load_of,
-
+    add_stack => add_stack,
+    rmv_stack => rmv_stack,
+    
     -- UAL
     sel_ual  => sel_ual,
     carry    => carry,
