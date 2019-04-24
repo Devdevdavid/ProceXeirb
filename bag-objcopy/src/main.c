@@ -22,50 +22,6 @@
 #define INST_BIT_LENGTH   5     // Bits allocated to Instructions
 #define VALUE_BIT_LENGTH  20    // Bits allocated to Value
 
-// List of instructions available
-// LOGICAL OPERANDS
-#define NOR 0x0 // Logical NOT OR
-#define LOR 0x1 // Logical OR
-#define AND 0x2 // Logical AND
-#define XOR 0x3 // Logical Exclusive OR
-
-// INTEGER OPERANDS
-#define ADD 0x4 // Addition of integer
-#define SUB 0x5 // Substraction of integer
-#define DIV 0x6 // Division of integer
-#define MUL 0x7 // Multiplication of integer
-#define MOD 0x8 // Modulo of integer
-
-// REAL OPERANDS
-#define FAD 0x9 // Addition of real
-#define FDI 0xA // Division of real
-#define FMU 0xB // Multiplication of real
-
-// CASTS
-#define FTI 0xC // Real to integer conversion
-#define ITF 0xD // Integer to real conversion
-
-// UTILS
-#define PSH 0xE // Decrement stack pointer
-#define POP 0xF // Increment stack pointer
-#define STA 0x10 // Store Accu
-#define JCC 0x11 // Jump with carry condition
-#define JMP 0x12 // Jump at address
-#define GET 0x13 // Load into Accu
-
-// TESTS
-#define TGT 0x14 // Greater than comparaison
-#define TLT 0x15 // Lower than comparaison
-#define TEQ 0x16 // Equal comparaison
-
-// MEMORY MOVEMENTS
-#define CSA 0x17 // Compute Stack Address 
-#define GAD 0x18 // Get at address
-#define SAD 0x19 // Set at address
-
-// VARIABLES (Not an instruction)
-#define VAR 0x69
-
 void print_size(uint32_t instructionCounter, uint32_t varCounter);
 
 /**
@@ -76,33 +32,33 @@ void print_size(uint32_t instructionCounter, uint32_t varCounter);
  * @return int Instruction code
  */
 int decodeInstruction(char * instruction) {
-  if (!strcmp(instruction, "NOR")) return NOR;
-  if (!strcmp(instruction, "LOR")) return LOR;
-  if (!strcmp(instruction, "AND")) return AND;
-  if (!strcmp(instruction, "XOR")) return XOR;
-  if (!strcmp(instruction, "ADD")) return ADD;
-  if (!strcmp(instruction, "SUB")) return SUB;
-  if (!strcmp(instruction, "DIV")) return DIV;
-  if (!strcmp(instruction, "MUL")) return MUL;
-  if (!strcmp(instruction, "MOD")) return MOD;
-  if (!strcmp(instruction, "FAD")) return FAD;
-  if (!strcmp(instruction, "FDI")) return FDI;
-  if (!strcmp(instruction, "FMU")) return FMU;
-  if (!strcmp(instruction, "FTI")) return FTI;
-  if (!strcmp(instruction, "ITF")) return ITF;
-  if (!strcmp(instruction, "PSH")) return PSH;
-  if (!strcmp(instruction, "POP")) return POP;
-  if (!strcmp(instruction, "STA")) return STA;
-  if (!strcmp(instruction, "JCC")) return JCC;
-  if (!strcmp(instruction, "JMP")) return JMP;
-  if (!strcmp(instruction, "GET")) return GET;
-  if (!strcmp(instruction, "TGT")) return TGT;
-  if (!strcmp(instruction, "TLT")) return TLT;
-  if (!strcmp(instruction, "TEQ")) return TEQ;
-  if (!strcmp(instruction, "GAD")) return GAD;
-  if (!strcmp(instruction, "CSA")) return CSA;
-  if (!strcmp(instruction, "SAD")) return SAD;
-  if (!strcmp(instruction, "VAR")) return VAR;
+  if (!strcmp(instruction, "NOR")) return OP_NOR;
+  if (!strcmp(instruction, "LOR")) return OP_LOR;
+  if (!strcmp(instruction, "AND")) return OP_AND;
+  if (!strcmp(instruction, "XOR")) return OP_XOR;
+  if (!strcmp(instruction, "ADD")) return OP_ADD;
+  if (!strcmp(instruction, "SUB")) return OP_SUB;
+  if (!strcmp(instruction, "DIV")) return OP_DIV;
+  if (!strcmp(instruction, "MUL")) return OP_MUL;
+  if (!strcmp(instruction, "MOD")) return OP_MOD;
+  if (!strcmp(instruction, "FAD")) return OP_FAD;
+  if (!strcmp(instruction, "FDI")) return OP_FDI;
+  if (!strcmp(instruction, "FMU")) return OP_FMU;
+  if (!strcmp(instruction, "FTI")) return OP_FTI;
+  if (!strcmp(instruction, "ITF")) return OP_ITF;
+  if (!strcmp(instruction, "PSH")) return OP_PSH;
+  if (!strcmp(instruction, "POP")) return OP_POP;
+  if (!strcmp(instruction, "STA")) return OP_STA;
+  if (!strcmp(instruction, "JCC")) return OP_JCC;
+  if (!strcmp(instruction, "JMP")) return OP_JMP;
+  if (!strcmp(instruction, "GET")) return OP_GET;
+  if (!strcmp(instruction, "TGT")) return OP_TGT;
+  if (!strcmp(instruction, "TLT")) return OP_TLT;
+  if (!strcmp(instruction, "TEQ")) return OP_TEQ;
+  if (!strcmp(instruction, "GAD")) return OP_GAD;
+  if (!strcmp(instruction, "CSA")) return OP_CSA;
+  if (!strcmp(instruction, "SAD")) return OP_SAD;
+  if (!strcmp(instruction, "VAR")) return OP_VAR;
   return -1;
 }
 
@@ -284,7 +240,7 @@ int main(int argc, char const *argv[])
     value = (uint32_t) strtol(valueStr, NULL, 16);
     
     // VAR are not managed the same way
-    if (instCode == VAR) {
+    if (instCode == OP_VAR) {
       output = value;
       ++varCounter;
     } else {

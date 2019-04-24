@@ -41,7 +41,8 @@ typedef enum {
   AND,
   XOR,
   FTI,
-  ITF
+  ITF,
+  DBG     // This is only for DEBUG purpose
 } INS_TYPE;
 
 using namespace std;
@@ -300,6 +301,17 @@ private:
   fonction * func;
   vector<varCell *> params; // Sorted list of function argument 
 
+  string print_instruction();
+};
+
+// ===========================
+//          DEBUB
+// ===========================
+
+class ins_dbg : public instruction
+{
+public:
+  ins_dbg();
   string print_instruction();
 };
 

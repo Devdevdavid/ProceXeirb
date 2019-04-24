@@ -150,8 +150,8 @@ void instruction::print_operation_and_store(string opInstStr)
 
 void instruction::print_push_accu()
 {
-  write_and_count_inst("SAD " ESP_ADDR "\n");
   write_and_count_inst("PSH 00000\n");
+  write_and_count_inst("SAD " ESP_ADDR "\n");
 }
 
 // ===========================
@@ -352,7 +352,7 @@ disp_LCD::disp_LCD()
 string disp_LCD::print_instruction()
 {
   print_get_inst_for_var(a1);
-  write_and_count_inst("STA 80001\n");
+  write_and_count_inst("STA " LCD_ADDR "\n");
 
   return instBuffer;
 }
@@ -364,7 +364,7 @@ write_to_shared::write_to_shared()
 
 string write_to_shared::print_instruction()
 {
-  /*print_get_inst_for_var(a1);
+  print_get_inst_for_var(a1);
   write_and_count_inst("ADD :addr(" + get_const_var_value(SHARED_MEM_ADDR) + ")\n");
   if (a2->p->isLocal) {
     print_get_local_var(a2);
@@ -372,15 +372,7 @@ string write_to_shared::print_instruction()
     write_and_count_inst("SAD " DUMMY_FLASH_ADDR "\n");
   } else {
     write_and_count_inst("SAD :addr(" + a2->get_id() + ")\n");
-  }*/
-  #pragma message "FIXME: write_to_shared is used as debug"
-  //write_and_count_inst("CSA :addr(" + a1->get_id() + ")\n");
-  if (a1->p->value == 1) {
-    write_and_count_inst("POP CAFE\n");
-  } else {
-    write_and_count_inst("PSH CAFE\n");
   }
-  
 
   return instBuffer;
 }
@@ -516,7 +508,7 @@ string func_begin::print_instruction()
 
   // Set the new value of EBP (Base Pointer)
   write_and_count_inst("GET " ESP_ADDR "\n");
-  write_and_count_inst("SET " EBP_ADDR "\n");
+  write_and_count_inst("STA " EBP_ADDR "\n");
 
   // Allocate space for local variables
   for (var * variable : func->variableTable) {
@@ -536,21 +528,43 @@ func_end::func_end()
 
 string func_end::print_instruction()
 {
-  // Save return value in DUMMY
-  print_get_inst_for_var(func->returnVar);
-  write_and_count_inst("SET " DUMMY_FLASH_ADDR "\n");
+  // Restore the old value of ESP
+  write_and_count_inst("GET " EBP_ADDR "\n");
+  write_and_count_inst("STA " ESP_ADDR "\n");
 
   // Restore the old value of EBP
-  write_and_count_inst("GET " EBP_ADDR "\n");
-  write_and_count_inst("SET " ESP_ADDR "\n");
+  write_and_count_inst("GAD " ESP_ADDR "\n");
+  write_and_count_inst("STA " EBP_ADDR "\n");
 
   // POP the old EBP from call stack
   write_and_count_inst("POP 00000\n");
 
+  // Are we interrested in the returned value ?
+  if (func->returnVar != NULL) {
+    // Save return value in ACCU
+    print_get_inst_for_var(func->returnVar);
+  }
+
   // Return to calling function (Equi. POP EIP)
+  // Get the current position of the EIP
+  write_and_count_inst("GET " EIP_ADDR "\n");
+  // Compute the address where we want to save the instruction
+  write_and_count_inst("ADD :addr(" + get_const_var_value(6) + ")\n");
+  // Save it in dummy
+  write_and_count_inst("STA " DUMMY_FLASH_ADDR "\n");
+
+  // Dynamicaly create the JMP Instruction
+  // Get the old EIP where we want to jump and pop it
   write_and_count_inst("GAD " ESP_ADDR "\n");
-  write_and_count_inst("SET " EIP_ADDR "\n");
   write_and_count_inst("POP 00000\n");
+  // Add the OP code of the JMP
+  write_and_count_inst("ADD :addr(" + get_const_var_value(OP_JMP << 20) + ")\n");
+
+  // Set this at the address located in DUMMY
+  write_and_count_inst("SAD " DUMMY_FLASH_ADDR "\n");
+
+  // This instruction will be erased by the execution of above code
+  write_and_count_inst("JMP 00000\n");
 
   return instBuffer;
 }
@@ -651,19 +665,114 @@ string functionCall::print_instruction()
   /** CALL (Equi. to push eip + jump addr) */
   // PUSH EIP
   write_and_count_inst("GET " EIP_ADDR "\n");
+  // Add 3 to EIP value to skip the 2 instructions inside print_push_accu() and this ADD
+  write_and_count_inst("ADD :addr(" + get_const_var_value(4) + ")\n");
   print_push_accu();
 
   // JUMP to the address where the function start
   write_and_count_inst("JMP :call(" + func->name + ")\n");
 
   // At the end of the function, we come back here
+
+  // POP all parameters
+  for (index = params.size() - 1; index >= 0; index--) {
+    write_and_count_inst("POP 00000\n");
+  }
   
-  // Save return value from DUMMY to returned variable if needed
+  // Save return value from ACCU to returned variable if needed
   if (retVar != NULL) {
-    write_and_count_inst("GET " DUMMY_FLASH_ADDR "\n");
     print_save_accu();
   }
 
   return instBuffer;
 }
 
+// ===========================
+//          DEBUG
+// ===========================
+
+ins_dbg::ins_dbg()
+{
+  type = DBG;
+}
+
+string ins_dbg::print_instruction()
+{
+  // Needed to init ESP
+  write_and_count_inst("GET :addr(" + get_const_var_value(0x23FF) + ")\n");
+  write_and_count_inst("STA " ESP_ADDR "\n");
+  write_and_count_inst("STA " EBP_ADDR "\n");
+
+  return instBuffer;
+
+  // a2
+  // a1
+  // __
+  // PUSH PARAMS
+  print_get_inst_for_var(a1);
+  print_push_accu(); // ESP = 23FE
+  print_get_inst_for_var(a2);
+  print_push_accu(); // ESP = 23FD
+
+  // PUSH EIP
+  write_and_count_inst("GET " EIP_ADDR "\n");
+  // Add 3 to EIP value to skip the 2 instructions inside print_push_accu() and this ADD
+  write_and_count_inst("ADD :addr(" + get_const_var_value(3) + ")\n");
+  print_push_accu(); // ESP = 23FC
+
+  /** INSIDE FUNCTION */
+  // PUSH old EBP
+  write_and_count_inst("GET " EBP_ADDR "\n");
+  print_push_accu(); // ESP = 23FB
+
+  // Set the new value of EBP (Base Pointer)
+  write_and_count_inst("GET " ESP_ADDR "\n");
+  write_and_count_inst("STA " EBP_ADDR "\n");
+
+  // Allocate space for local variable
+  write_and_count_inst("GET :addr(" + get_const_var_value(3) + ")\n");
+  print_push_accu(); // ESP = 23FA
+  write_and_count_inst("GET :addr(" + get_const_var_value(4) + ")\n");
+  print_push_accu(); // ESP = 23F9
+
+  // Get a param from base
+  write_and_count_inst("CSA :addr(" + get_const_var_value(-2) + ")\n");
+  write_and_count_inst("GAD " DYN_ADDI_ADDR "\n");
+
+  write_and_count_inst("ADD :addr(" + get_const_var_value(4) + ")\n");
+
+  write_and_count_inst("CSA :addr(" + get_const_var_value(-2) + ")\n");
+  write_and_count_inst("SAD " DYN_ADDI_ADDR "\n");
+
+  write_and_count_inst("CSA :addr(" + get_const_var_value(-2) + ")\n");
+  write_and_count_inst("GAD " DYN_ADDI_ADDR "\n");
+
+  // Restore the old value of ESP
+  write_and_count_inst("GET " EBP_ADDR "\n");
+  write_and_count_inst("STA " ESP_ADDR "\n"); // ESP = 23FB
+
+  // Restore the old value of EBP
+  write_and_count_inst("GAD " ESP_ADDR "\n");
+  write_and_count_inst("STA " EBP_ADDR "\n");
+
+  // POP the old EBP from call stack
+  write_and_count_inst("POP 00000\n"); // ESP = 23FC
+
+  // Return to calling function (Equi. POP EIP)
+  write_and_count_inst("GAD " ESP_ADDR "\n");
+  write_and_count_inst("STA " DUMMY_FLASH_ADDR "\n");
+  write_and_count_inst("POP 00000\n"); // ESP = 23FD
+  //write_and_count_inst("JUMP " DUMMY_FLASH_ADDR "\n");
+
+  /** OUTSIDE FUNCTION */
+
+  // POP ARGS
+  write_and_count_inst("POP 00000\n"); // ESP = 23FE
+  write_and_count_inst("POP 00000\n"); // ESP = 23FF
+
+  // SHOW
+  write_and_count_inst("GET " EBP_ADDR "\n");
+  print_save_accu();
+
+  return instBuffer;
+}

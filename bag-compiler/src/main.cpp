@@ -1050,6 +1050,21 @@ int compiler(const char * bagoFilePath, const char * asmFilePath)
 
       CUR_CONTEXT->add_instru(ins);
     }
+    else if (line.find("debug(") != string::npos)
+    {
+      ins = new ins_dbg;
+
+      vc = get_or_create_variable(variable_to_change(line));
+      ins->set_return_var(vc);
+
+      vc = get_or_create_variable(find_between(line, "(", ","));
+      ins->set_argument1(vc);
+
+      vc = get_or_create_variable(find_between(line, ",", ")"));
+      ins->set_argument2(vc);
+
+      CUR_CONTEXT->add_instru(ins);
+    }
     else if (line.find(");") != string::npos) {
       // This method of function recognition is a bit ugly :)
       parse_function_call(line);
@@ -1123,6 +1138,9 @@ int compiler(const char * bagoFilePath, const char * asmFilePath)
         MACRO_REPLACE_ALL_OCCUR
       }
     }
+    // Insert an infinite loop at the end of each context
+    snprintf(tmpStr1, sizeof(tmpStr1), "JMP %05x\n", fileLineCounter++);
+    wholeFile += tmpStr1;
   }
 
   // Replace address call
@@ -1131,10 +1149,6 @@ int compiler(const char * bagoFilePath, const char * asmFilePath)
     sprintf(tmpStr2, "%05x", func->startRamAddress);
     MACRO_REPLACE_ALL_OCCUR
   }
-
-  // fin du programme
-  snprintf(tmpStr1, sizeof(tmpStr1), "JMP %05x\n", fileLineCounter++);
-  wholeFile += tmpStr1;
 
   // gestion des variables
   for (fonction * func : fonctionTable) {
