@@ -53,7 +53,7 @@ int fonction::set_return_var(varCell *vc)
         vc->p->isUsedAsRead = true;
     }
 
-    // Copy the object
+    // Link the object
     returnVar = vc;
 
     return 0;
@@ -148,7 +148,7 @@ var * fonction::get_var(string varName)
 void fonction::add_var(var *v)
 {
     v->set_id(this->name);
-    v->contextOffset = (-1) * varCount++; // The offset starts at 0
+    v->contextOffset = (-1) * ( 1 + varCount++); // The offset starts at -1
     variableTable.push_back(v);
 }
 

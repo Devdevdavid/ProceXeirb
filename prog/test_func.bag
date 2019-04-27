@@ -4,18 +4,16 @@ entier a2 = 2;
 entier counter;
 
 fonction power2()
-	counter = counter + 1;
-retourne;
+	entier localVar;
+	entier localVar2;
+	localVar = 1;
+	localVar2 = 127;
+	localVar = localVar + localVar2;
+	counter = localVar;
+retourne localVar;
 
-// Erase call stack
-counter = 8192;
-tant_que (counter < 9216)
-	ecrire_a(0, counter);
-	counter = counter + 1;
-fin_tant_que;
-
-// Init ESP and EBP
-ret = debug(a1, a2);
 counter = 1;
+
+afficher_LCD(0);
 power2();
 afficher_LCD(counter);

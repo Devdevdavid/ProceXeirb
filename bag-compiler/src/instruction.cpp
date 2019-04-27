@@ -155,6 +155,26 @@ void instruction::print_push_accu()
 }
 
 // ===========================
+//         HARDWARE
+// ===========================
+
+hw_init::hw_init()
+{
+  type = HW_INIT;
+}
+string hw_init::print_instruction()
+{
+  // Init Call Stack
+  write_and_count_inst("GET :addr(" + get_const_var_value(CALL_STACK_END) + ")\n");
+  write_and_count_inst("STA " ESP_ADDR "\n");
+  write_and_count_inst("STA " EBP_ADDR "\n");
+  write_and_count_inst("GET :addr(" + get_const_var_value(0) + ")\n");
+  write_and_count_inst("STA " LCD_ADDR "\n");
+
+  return instBuffer;
+}
+
+// ===========================
 //        OPERATIONS
 // ===========================
 
@@ -510,12 +530,33 @@ string func_begin::print_instruction()
   write_and_count_inst("GET " ESP_ADDR "\n");
   write_and_count_inst("STA " EBP_ADDR "\n");
 
-  // Allocate space for local variables
-  for (var * variable : func->variableTable) {
-    for(index = 0; index < variable->arraySize; index++) {
-      print_get_inst_for_var(variable->get_var_cell(index));
-      print_push_accu();
+  // Manage local variables
+  if (func->variableTable.size() > 0) {
+    // Load 0 in accu to initialize local variables 
+    write_and_count_inst("GET :addr(" + get_const_var_value(0) + ")\n");
+
+    // Allocate space for local variables
+    for (var * variable : func->variableTable) {
+      for(index = 0; index < variable->arraySize; index++) {
+        print_push_accu();
+      }
     }
+  }
+
+  // Copy params from before EBP to local variables
+  for (index = func->params.size() - 1; index >= 0; index--) {
+    // Select the param in the call satck (2: Skip Old_EBP and Old_EIP)
+    string constIdStr = get_const_var_value(2 + index);
+    // Compute the dynamique address of the local variable
+    write_and_count_inst("CSA :addr(" + constIdStr + ")\n");
+    // Get the content of the computed address into the ACCU register
+    write_and_count_inst("GAD " DYN_ADDI_ADDR "\n");
+
+    constIdStr = get_const_var_value(func->variableTable.at(index)->contextOffset);
+    // Compute the dynamique address of the local variable
+    write_and_count_inst("CSA :addr(" + constIdStr + ")\n");
+    // Move the accu to the content pointed by the dynamic address
+    write_and_count_inst("SAD " DYN_ADDI_ADDR "\n");
   }
 
   return instBuffer;
@@ -539,13 +580,13 @@ string func_end::print_instruction()
   // POP the old EBP from call stack
   write_and_count_inst("POP 00000\n");
 
-  // Are we interrested in the returned value ?
+  // Are we interrested in the returned value ? (THIS DOESN'T WORK FOR NOW)
   if (func->returnVar != NULL) {
     // Save return value in ACCU
     print_get_inst_for_var(func->returnVar);
   }
 
-  // Return to calling function (Equi. POP EIP)
+  // Return to calling function (Equi. POP EIP) (All code below is a JMP)
   // Get the current position of the EIP
   write_and_count_inst("GET " EIP_ADDR "\n");
   // Compute the address where we want to save the instruction
@@ -564,7 +605,7 @@ string func_end::print_instruction()
   write_and_count_inst("SAD " DUMMY_FLASH_ADDR "\n");
 
   // This instruction will be erased by the execution of above code
-  write_and_count_inst("JMP 00000\n");
+  write_and_count_inst("JMP CAFFE\n");
 
   return instBuffer;
 }
@@ -681,7 +722,8 @@ string functionCall::print_instruction()
   
   // Save return value from ACCU to returned variable if needed
   if (retVar != NULL) {
-    print_save_accu();
+    _LOG_ERROR("Returned value are not supported yet");
+    //print_save_accu();
   }
 
   return instBuffer;
@@ -698,81 +740,7 @@ ins_dbg::ins_dbg()
 
 string ins_dbg::print_instruction()
 {
-  // Needed to init ESP
-  write_and_count_inst("GET :addr(" + get_const_var_value(0x23FF) + ")\n");
-  write_and_count_inst("STA " ESP_ADDR "\n");
-  write_and_count_inst("STA " EBP_ADDR "\n");
-
-  return instBuffer;
-
-  // a2
-  // a1
-  // __
-  // PUSH PARAMS
-  print_get_inst_for_var(a1);
-  print_push_accu(); // ESP = 23FE
-  print_get_inst_for_var(a2);
-  print_push_accu(); // ESP = 23FD
-
-  // PUSH EIP
-  write_and_count_inst("GET " EIP_ADDR "\n");
-  // Add 3 to EIP value to skip the 2 instructions inside print_push_accu() and this ADD
-  write_and_count_inst("ADD :addr(" + get_const_var_value(3) + ")\n");
-  print_push_accu(); // ESP = 23FC
-
-  /** INSIDE FUNCTION */
-  // PUSH old EBP
-  write_and_count_inst("GET " EBP_ADDR "\n");
-  print_push_accu(); // ESP = 23FB
-
-  // Set the new value of EBP (Base Pointer)
-  write_and_count_inst("GET " ESP_ADDR "\n");
-  write_and_count_inst("STA " EBP_ADDR "\n");
-
-  // Allocate space for local variable
-  write_and_count_inst("GET :addr(" + get_const_var_value(3) + ")\n");
-  print_push_accu(); // ESP = 23FA
-  write_and_count_inst("GET :addr(" + get_const_var_value(4) + ")\n");
-  print_push_accu(); // ESP = 23F9
-
-  // Get a param from base
-  write_and_count_inst("CSA :addr(" + get_const_var_value(-2) + ")\n");
-  write_and_count_inst("GAD " DYN_ADDI_ADDR "\n");
-
-  write_and_count_inst("ADD :addr(" + get_const_var_value(4) + ")\n");
-
-  write_and_count_inst("CSA :addr(" + get_const_var_value(-2) + ")\n");
-  write_and_count_inst("SAD " DYN_ADDI_ADDR "\n");
-
-  write_and_count_inst("CSA :addr(" + get_const_var_value(-2) + ")\n");
-  write_and_count_inst("GAD " DYN_ADDI_ADDR "\n");
-
-  // Restore the old value of ESP
-  write_and_count_inst("GET " EBP_ADDR "\n");
-  write_and_count_inst("STA " ESP_ADDR "\n"); // ESP = 23FB
-
-  // Restore the old value of EBP
-  write_and_count_inst("GAD " ESP_ADDR "\n");
-  write_and_count_inst("STA " EBP_ADDR "\n");
-
-  // POP the old EBP from call stack
-  write_and_count_inst("POP 00000\n"); // ESP = 23FC
-
-  // Return to calling function (Equi. POP EIP)
-  write_and_count_inst("GAD " ESP_ADDR "\n");
-  write_and_count_inst("STA " DUMMY_FLASH_ADDR "\n");
-  write_and_count_inst("POP 00000\n"); // ESP = 23FD
-  //write_and_count_inst("JUMP " DUMMY_FLASH_ADDR "\n");
-
-  /** OUTSIDE FUNCTION */
-
-  // POP ARGS
-  write_and_count_inst("POP 00000\n"); // ESP = 23FE
-  write_and_count_inst("POP 00000\n"); // ESP = 23FF
-
-  // SHOW
-  write_and_count_inst("GET " EBP_ADDR "\n");
-  print_save_accu();
+  
 
   return instBuffer;
 }

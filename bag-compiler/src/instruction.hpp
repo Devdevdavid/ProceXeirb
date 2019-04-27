@@ -18,6 +18,7 @@ class instruction;
 #include "fonction.hpp"
 
 typedef enum {
+  HW_INIT,
   FUNC_BEGIN,
   FUNC_END,
   FUNCTION_CALL,
@@ -85,6 +86,17 @@ public :
   void print_push_accu(void);
 
   virtual string print_instruction() = 0;
+};
+
+// ===========================
+//         HARDWARE
+// ===========================
+
+class hw_init : public instruction
+{
+public:
+  hw_init();
+  string print_instruction();
 };
 
 // ===========================

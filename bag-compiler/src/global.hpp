@@ -3,7 +3,7 @@
 
 #include <bag_devlib.h>
 
-#define APP_VERSION     "2.1.243-devantd"
+#define APP_VERSION     "2.2.1-devantd"
 
 /* MACRO: Each ERROR/WARNING are counted */
 #define _LOG_ERROR(format, ...)   LOG_ERROR_L(format, fileLineCounter, ##__VA_ARGS__); nbErrorDetected++;
@@ -14,10 +14,10 @@
 #define SIN_TABLE_ADDR          0x04000
 #define COS_TABLE_ADDR          (SIN_TABLE_ADDR + 90)
 #define SHARED_MEM_ADDR         0x03000
+#define CALL_STACK_START        0x02000     // CallStack ram start address
+#define CALL_STACK_END          0x023FF     // CallStack ram end address
 #ifndef DEBUG
     #define LCD_ADDR                "80001"     // LCD Display Address
-    #define CALL_STACK_START        "02000"     // CallStack ram start address
-    #define CALL_STACK_END          "023FF"     // CallStack ram end address
     #define ESP_ADDR                "02400"     // Stack Pointer
     #define EBP_ADDR                "02401"     // Base Pointer
     #define DYN_ADDI_ADDR           "02402"     // Output of the dynamic adress computer 
@@ -25,11 +25,11 @@
     #define DUMMY_FLASH_ADDR        "02404"     // 1 Byte of Flash memory
 #else
     #define LCD_ADDR                "LCD_ADDR"
-    #define DUMMY_FLASH_ADDR        "DUMMY_FLASH_ADDR" 
     #define ESP_ADDR                "ESP_ADDR" 
+    #define EBP_ADDR                "EBP_ADDR" 
     #define DYN_ADDI_ADDR           "DYN_ADDI_ADDR" 
     #define EIP_ADDR                "EIP_ADDR" 
-    #define EBP_ADDR                "EBP_ADDR" 
+    #define DUMMY_FLASH_ADDR        "DUMMY_FLASH_ADDR" 
 #endif
 
 /* CONSTANT LIMITS */

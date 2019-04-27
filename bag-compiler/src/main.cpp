@@ -255,8 +255,6 @@ var * parse_var_declaration(string line)
   if (line.find("=") != string::npos) {
     delimNameChar = "=";
     initValueStr = find_between(line, "=", ";");
-    // Initiated variable are considered used as write
-    v->isUsedAsWrite = true;
   }
 
   // Is it an array ?
@@ -286,14 +284,20 @@ var * parse_var_declaration(string line)
     goto funcFailed; // _LOG_ERROR inside
   }
 
-  // if there is a init value, use it, otherwise, set to 0
+  // Set value to 0 but if there is an initial value, use it
+  v->value = 0;
   if (!initValueStr.empty()) {
-    if (set_var_init_value(v, initValueStr) != 0) {
-      _LOG_ERROR("Wrong initial value for declaration: \"%s\"", line.c_str());
+    if (CUR_CONTEXT == GLOBAL_CONTEXT) {
+      if (set_var_init_value(v, initValueStr) != 0) {
+        _LOG_ERROR("Wrong initial value for declaration: \"%s\"", line.c_str());
+        goto funcFailed;
+      }
+      // Initiated variable are considered used as write
+      v->isUsedAsWrite = true;
+    } else {
+      _LOG_ERROR("Initial value are not supported inside functions: \"%s\"", line.c_str());
       goto funcFailed;
     }
-  } else {
-    v->value = 0;
   }
 
   // Create varCells
@@ -826,6 +830,10 @@ void create_global_context(void)
 
   // The Global Context never called (Here we avoid warning)
   GLOBAL_CONTEXT->isCalledAtLeastOnce = true;
+
+  // Add the first instruction in the context to init hardware
+  instruction * ins = new hw_init;
+  GLOBAL_CONTEXT->add_instru(ins);
 
   // Set the default context to global
   CUR_CONTEXT = GLOBAL_CONTEXT;

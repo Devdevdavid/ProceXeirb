@@ -1,0 +1,138 @@
+#definition BASE_LED_ADDR (524304)
+#definition BASE_VGA (524288)
+#definition LAST_VGA_PIXEL (831486)
+#definition VGA_WRITE_OK (831488)
+#definition CPU_DATA_OK (12337)
+#definition SHARED_MEM_OFF (12288)
+
+entier ledTime = 0;
+
+// value of 16777215 is 16.10 sec
+// so 1ms is 16777215 / 16100 = 1042
+fonction delay_ms(entier value)
+	entier counter;
+
+	counter = 0;
+	value = value * 1042;
+	tant_que (counter < value)
+		counter = counter + 1;
+	fin_tant_que;
+retourne;
+
+fonction led_anim_1()
+	entier ledAddr;
+	entier ledIndex;
+	entier ledDeg;
+	entier ledIntensity;
+	reel ledIntensityFloat;
+
+	// This is the main counter for sinus
+	ledTime = ledTime + 1;
+	si (ledTime > 360);
+		ledTime = ledTime - 360;
+	fin_si;
+
+	// The right side is identical ti the left side
+	ledIndex = 0;
+	tant_que (ledIndex < 8)
+
+		// Generate the counter in degrees
+		ledDeg = ledIndex * 50;
+		ledDeg = ledDeg + ledTime;
+		si (ledDeg > 360);
+			ledDeg = ledDeg - 360;
+		fin_si;
+
+		// Read the sinus table and aplly an offset to avoid negative value
+	    ledIntensity = sin(ledDeg);
+	    ledIntensity = ledIntensity + 256;
+
+	    // Convert to real to apply amplitude reduction (Division on integer doesn't work)
+	    ledIntensityFloat = evr(ledIntensity);
+	    ledIntensityFloat = ledIntensityFloat * 0.3;
+	    ledIntensity = rve(ledIntensityFloat);
+	    
+	    // Write the left side led
+	    ledAddr = BASE_LED_ADDR + ledIndex;
+	    ecrire_a(ledIntensity, ledAddr);
+
+	    // Write the right side led
+	    ledAddr = 15 - ledIndex;
+	    ledAddr = ledAddr + BASE_LED_ADDR;
+	    ecrire_a(ledIntensity, ledAddr);
+
+	    // Go to next led
+	    ledIndex = ledIndex + 1;
+	fin_tant_que;
+
+	delay_ms(5);
+retourne;
+
+fonction led_anim_2()
+	entier ledAddr;
+	entier ledIndex;
+	entier ledDeg;
+	entier ledIntensity;
+	reel ledIntensityFloat;
+
+	// This is the main counter for sinus
+	ledTime = ledTime + 1;
+	si (ledTime > 360);
+		ledTime = ledTime - 360;
+	fin_si;
+
+	// The right side is identical ti the left side
+	ledIndex = 0;
+	tant_que (ledIndex < 16)
+
+		// Generate the counter in degrees
+		ledDeg = ledIndex * 13;
+		ledDeg = ledDeg + ledTime;
+		si (ledDeg > 360);
+			ledDeg = ledDeg - 360;
+		fin_si;
+
+		// Read the sinus table and aplly an offset to avoid negative value
+	    ledIntensity = sin(ledDeg);
+	    si (ledIntensity < 0) 
+	    	ledIntensity = 0;
+	    fin_si;
+
+	    // Convert to real to apply amplitude reduction (Division on integer doesn't work)
+	    ledIntensityFloat = evr(ledIntensity);
+	    ledIntensityFloat = ledIntensityFloat * 0.6;
+	    ledIntensity = rve(ledIntensityFloat);
+	    
+	    // Write the left side led
+	    ledAddr = BASE_LED_ADDR + ledIndex;
+	    ecrire_a(ledIntensity, ledAddr);
+
+	    // Go to next led
+	    ledIndex = ledIndex + 1;
+	fin_tant_que;
+
+	delay_ms(8);
+retourne;
+
+entier anim = 1;
+entier counter = 1;
+
+tant_que (1 == 1)
+	si (anim == 1)
+		led_anim_1();
+	fin_si;
+	si (anim == 2)
+		led_anim_2();
+	fin_si;
+
+	counter = counter + 1;
+	si (counter > 1000) 
+		counter = 0;
+		anim = anim + 1;
+		si (anim > 2)
+			anim = 1;
+		fin_si;
+	fin_si
+
+fin_tant_que;
+

@@ -1,5 +1,5 @@
 # TARGET          = cube
-TARGET          = test_func
+TARGET          = led_anim_with_func
 
 SRCDIR          = prog
 OBJDIR          = obj
