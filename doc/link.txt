@@ -2,3 +2,6 @@ http://tutorial.math.lamar.edu/Classes/CalcIII/3DCoords.aspx
 
 /!\ lourd /!\
 https://www.desmos.com/calculator/imazvy40oz
+
+// Draw line on a grid
+https://www.redblobgames.com/grids/line-drawing.html

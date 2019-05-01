@@ -1,0 +1,293 @@
+#definition BASE_LED_ADDR (524304)
+#definition BASE_VGA (524288)
+#definition LAST_VGA_PIXEL (831486)
+#definition VGA_WRITE_OK (831488)
+#definition CPU_DATA_OK (12337)
+#definition SHARED_MEM_OFF (12288)
+#definition SCREEN_WIDTH (640)
+#definition SCREEN_HEIGHT (480)
+
+#definition COLOR_WHITE (15)
+#definition COLOR_GRAY (7)
+#definition COLOR_BLACK (0)
+
+// Used by both (but not equivalent !)
+entier isGPU;
+entier sync; 
+entier sharedHead;
+
+// Used by GPU
+entier vgaHead;
+entier nbPoints;
+entier pointsColor;
+entier pointIndex;
+entier pointX;
+entier pointY;
+entier oldPointX;
+entier oldPointY;
+
+// Used by GPU
+entier lineMoveY;
+entier lineMoveX;
+entier lineMoveMode = 0;
+
+ecrire_a(1, LAST_VGA_PIXEL);
+isGPU = lire_a(LAST_VGA_PIXEL);
+
+fonction draw_segment(entier color, entier x1, entier y1, entier x2, entier y2)
+	entier diagDistance; // Number of points between p1 and p2
+	entier xDiff;
+	entier yDiff;
+	entier index;
+	entier yIncrement;
+	entier Dx;
+	entier Dy;
+
+	si (x1 > x2)
+		// Swap p1 and p2 to be able to draw from left to right of the screen
+		// Note: We use "index" as temporarly variable to save callstack space
+		index = x1;
+		x1 = x2;
+		x2 = index;
+		index = y1;
+		y1 = y2;
+		y2 = index;
+	fin_si
+	xDiff = x2 - x1;
+
+	// Compute abs diff
+	si (y1 < y2)
+		yDiff = y2 - y1;
+		yIncrement = 1;
+	sinon;
+		yDiff = y1 - y2;
+		yIncrement = -1;
+	fin_si
+
+	// Get MAX
+	si (xDiff > yDiff)
+		diagDistance = xDiff;
+	sinon;
+		diagDistance = yDiff;
+	fin_si;
+
+	Dy = yDiff - xDiff;
+	Dx = xDiff - yDiff;
+
+	index = 0;
+	tant_que (index < diagDistance)
+		// Draw current point
+		vgaHead = SCREEN_WIDTH * y1;
+		vgaHead = vgaHead + x1;
+		vgaHead = vgaHead + BASE_VGA;
+		ecrire_a(color, vgaHead);
+
+		si (Dx > 0)
+			x1 = x1 + 1; // Only x as constant increment because we swaped
+			Dx = Dx - yDiff;
+		fin_si;
+		Dx = Dx + xDiff;
+
+		si (Dy > 0)
+			y1 = y1 + yIncrement;
+			Dy = Dy - xDiff;
+		fin_si;
+		Dy = Dy + yDiff;
+
+		index = index + 1;
+	fin_tant_que;
+
+retourne;
+
+fonction draw_point(entier color, entier x1, entier y1)
+	vgaHead = SCREEN_WIDTH * y1;
+	vgaHead = vgaHead + x1;
+	vgaHead = vgaHead + BASE_VGA;
+	ecrire_a(color, vgaHead);
+retourne;
+
+// This is the GPU part
+si (isGPU == 1)
+
+	tant_que(1 == 1)
+
+		// Wait the VGA buffer to be available
+	    sync = 1;
+	    tant_que(sync > 0)
+	      sync = lire_a(VGA_WRITE_OK);
+	    fin_tant_que;
+
+		// Init
+		sharedHead = SHARED_MEM_OFF;
+
+		nbPoints = lire_a(sharedHead);
+		sharedHead = sharedHead + 1;
+		tant_que (nbPoints > 0)
+			pointsColor = lire_a(sharedHead); // Color
+			sharedHead = sharedHead + 1;
+
+			// For each points
+			pointIndex = 0;
+			tant_que (pointIndex < nbPoints)
+				pointX = lire_a(sharedHead); // x_
+				sharedHead = sharedHead + 1;
+				pointY = lire_a(sharedHead); // y_
+				sharedHead = sharedHead + 1;
+
+				// Can't draw segment at first point
+				si (pointIndex > 0)
+					draw_segment(pointsColor, oldPointX, oldPointY, pointX, pointY);
+				fin_si;
+				draw_point(pointsColor, pointX, pointY);
+
+				// Shift data
+				oldPointX = pointX;
+				oldPointY = pointY;
+
+				pointIndex = pointIndex + 1;
+			fin_tant_que;
+
+			// Read for next loop
+			nbPoints = lire_a(sharedHead); // NB_SEG
+			sharedHead = sharedHead + 1;
+		fin_tant_que;
+
+		//ecriture à l'écran
+    	ecrire_a (1, VGA_WRITE_OK);
+	fin_tant_que;
+fin_si; // End of GPU part
+
+// This is the CPU part
+
+entier ledTime;			// Counter for led animation
+
+// value of 16777215 is 16.10 sec
+// so 1ms is 16777215 / 16100 = 1042
+fonction delay_ms(entier value)
+	entier counter;
+
+	counter = 0;
+	value = value * 1042;
+	tant_que (counter < value)
+		counter = counter + 1;
+	fin_tant_que;
+retourne;
+
+// This make nice animation on the 16 LED
+// Symetrical waves 
+fonction led_anim_1()
+	entier ledAddr;
+	entier ledIndex;
+	entier ledDeg;
+	entier ledIntensity;
+	reel ledIntensityFloat;
+
+	// This is the main counter for sinus
+	ledTime = ledTime + 1;
+	si (ledTime > 360);
+		ledTime = ledTime - 360;
+	fin_si;
+
+	// The right side is identical ti the left side
+	ledIndex = 0;
+	tant_que (ledIndex < 8)
+
+		// Generate the counter in degrees
+		ledDeg = ledIndex * 50;
+		ledDeg = ledDeg + ledTime;
+		si (ledDeg > 360);
+			ledDeg = ledDeg - 360;
+		fin_si;
+
+		// Read the sinus table and aplly an offset to avoid negative value
+	    ledIntensity = sin(ledDeg);
+	    ledIntensity = ledIntensity + 256;
+
+	    // Convert to real to apply amplitude reduction (Division on integer doesn't work)
+	    ledIntensityFloat = evr(ledIntensity);
+	    ledIntensityFloat = ledIntensityFloat * 0.3;
+	    ledIntensity = rve(ledIntensityFloat);
+	    
+	    // Write the left side led
+	    ledAddr = BASE_LED_ADDR + ledIndex;
+	    ecrire_a(ledIntensity, ledAddr);
+
+	    // Write the right side led
+	    ledAddr = 15 - ledIndex;
+	    ledAddr = ledAddr + BASE_LED_ADDR;
+	    ecrire_a(ledIntensity, ledAddr);
+
+	    // Go to next led
+	    ledIndex = ledIndex + 1;
+	fin_tant_que;
+
+	delay_ms(5);
+retourne;
+
+lineMoveX = 10;
+lineMoveY = 10;
+
+tant_que(1 == 1)
+
+	led_anim_1();
+
+	sharedHead = SHARED_MEM_OFF;
+	ecrire_a(2, sharedHead); // NB_POINTS
+	sharedHead = sharedHead + 1;
+	ecrire_a(COLOR_WHITE, sharedHead); // Color
+
+	sharedHead = sharedHead + 1;
+	ecrire_a(lineMoveX, sharedHead); // x1
+	sharedHead = sharedHead + 1;
+	ecrire_a(lineMoveY, sharedHead); // y1
+
+	sharedHead = sharedHead + 1;
+	ecrire_a(320, sharedHead); // x2
+	sharedHead = sharedHead + 1;
+	ecrire_a(240, sharedHead); // y2
+
+	sharedHead = sharedHead + 1;
+	ecrire_a(0, sharedHead); // NB_POINTS = 0 indicates the end
+
+	si (lineMoveMode == 0)
+		si (lineMoveX < 630)
+			lineMoveX = lineMoveX + 1;
+		sinon;
+			lineMoveMode = 1;
+		fin_si;
+	fin_si;
+	si (lineMoveMode == 1)
+		si (lineMoveY < 470)
+			lineMoveY = lineMoveY + 1;
+		sinon;
+			lineMoveMode = 2;
+		fin_si;
+	fin_si;
+	si (lineMoveMode == 2)
+		si (lineMoveX > 10)
+			lineMoveX = lineMoveX - 1;
+		sinon;
+			lineMoveMode = 3;
+		fin_si;
+	fin_si;
+	si (lineMoveMode == 3)
+		si (lineMoveY > 10)
+			lineMoveY = lineMoveY - 1;
+		sinon;
+			lineMoveMode = 0;
+		fin_si;
+	fin_si;
+
+fin_tant_que;
+
+
+
+
+
+
+
+
+
+
+
+

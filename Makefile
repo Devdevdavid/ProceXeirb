@@ -1,5 +1,5 @@
 # TARGET          = cube
-TARGET          = test_sinon
+TARGET          = tunnel
 
 SRCDIR          = prog
 OBJDIR          = obj
