@@ -951,6 +951,12 @@ int compiler(const char * bagoFilePath, const char * asmFilePath)
 
       CUR_CONTEXT->add_instru(cond);
     }
+    else if (line.find("sinon;") == 0)
+    {
+      ins = new sinon;
+      ins->id = CUR_CONTEXT->get_cur_cond_id();
+      CUR_CONTEXT->add_instru(ins);
+    }
     else if (line.find("fin_si") == 0)
     {
       ins = new endif;
@@ -1128,13 +1134,18 @@ int compiler(const char * bagoFilePath, const char * asmFilePath)
       wholeFile += instruTable->at(index)->print_instruction();
       fileLineCounter += instruTable->at(index)->nbInstrucLine;
 
-      if (instruTable->at(index)->type == FIN_CONDITION) {
+      INS_TYPE type = instruTable->at(index)->type;
+      if ((type == SINON) || (type == FIN_CONDITION)) {
         sprintf(tmpStr1, ":condition(%s)", instruTable->at(index)->id.c_str());
         sprintf(tmpStr2, "%05x", fileLineCounter);
         MACRO_REPLACE_ALL_OCCUR
       }
-
-      if (instruTable->at(index)->type == FIN_TANT_QUE) {
+      if (type == FIN_CONDITION) {
+        sprintf(tmpStr1, ":sinon(%s)", instruTable->at(index)->id.c_str());
+        sprintf(tmpStr2, "%05x", fileLineCounter);
+        MACRO_REPLACE_ALL_OCCUR
+      }
+      if (type == FIN_TANT_QUE) {
         string toClose = instruTable->at(index)->id;
         
         sprintf(tmpStr1, ":endloop(%s)", toClose.c_str());

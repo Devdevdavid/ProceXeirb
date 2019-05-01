@@ -314,6 +314,18 @@ string condition::print_instruction()
   return instBuffer;
 }
 
+sinon::sinon()
+{
+  type = SINON;
+}
+
+string sinon::print_instruction()
+{
+  // This is the end of the CONDITION part to skip "sinon" if executed
+  write_and_count_inst("JMP :sinon(" + id + ")\n");
+  return instBuffer;
+}
+
 endif::endif()
 {
   type = FIN_CONDITION;

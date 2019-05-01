@@ -28,6 +28,7 @@ typedef enum {
   DIVISION,
   AFFECTATION,
   CONDITION,
+  SINON,
   FIN_CONDITION,
   TANT_QUE,
   FIN_TANT_QUE,
@@ -180,6 +181,13 @@ public:
   string condition_type;
   condition();
   void set_condition_type(string type);
+  string print_instruction();
+};
+
+class sinon : public instruction
+{
+public:
+  sinon();
   string print_instruction();
 };
 

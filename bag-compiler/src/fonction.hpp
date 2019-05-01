@@ -63,6 +63,7 @@ class fonction
     string consume_loop_id(void);
     uint32_t get_loop_back_address(string loopIdToClose);
     string get_next_cond_id(void);
+    string get_cur_cond_id(void);
     string consume_cond_id(void);
     void check_loops_and_cond(void);
 

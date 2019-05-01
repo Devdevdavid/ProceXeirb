@@ -1,0 +1,13 @@
+entiera=1;
+entierb=0;
+entierr=0;
+si(a==b)
+r=1;
+sinon;
+si(a<b)
+r=2;
+sinon;
+r=3;
+fin_si;
+fin_si;
+afficher_LCD(r);

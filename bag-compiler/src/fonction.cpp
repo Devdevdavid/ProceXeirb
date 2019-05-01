@@ -209,6 +209,11 @@ string fonction::get_next_cond_id(void)
     return build_cond_loop_id(condStack.top());
 }
 
+string fonction::get_cur_cond_id(void)
+{
+    return build_cond_loop_id(condStack.top());
+}
+
 string fonction::consume_cond_id(void)
 {
     if (condStack.size() > 0) {

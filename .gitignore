@@ -20,3 +20,4 @@ main.o
 doc/Conception-de-circuit-numériques-BESSE-_-JOUBERT.pdf
 ProceXeirb.code-workspace
 .vscode/*
+bag-compiler/bin/bag-compiler

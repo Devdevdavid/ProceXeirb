@@ -3,7 +3,7 @@
 
 #include <bag_devlib.h>
 
-#define APP_VERSION     "2.2.1-devantd"
+#define APP_VERSION     "2.2.6-devantd"
 
 /* MACRO: Each ERROR/WARNING are counted */
 #define _LOG_ERROR(format, ...)   LOG_ERROR_L(format, fileLineCounter, ##__VA_ARGS__); nbErrorDetected++;
