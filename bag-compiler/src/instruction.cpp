@@ -127,7 +127,10 @@ void instruction::set_address(uint32_t address)
 void instruction::print_operation(string opInstStr)
 {
   if (a1->p->type != a2->p->type) {
-    _LOG_ERROR("Variable are not of the same type in this operation");
+    _LOG_ERROR("Variable are not of the same type in this operation: %s %s %s",
+      a1->get_id().c_str(), 
+      opInstStr.c_str(), 
+      a2->get_id().c_str());
     return;
   }
 

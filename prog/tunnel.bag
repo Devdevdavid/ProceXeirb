@@ -2,10 +2,15 @@
 #definition BASE_VGA (524288)
 #definition LAST_VGA_PIXEL (831486)
 #definition VGA_WRITE_OK (831488)
-#definition CPU_DATA_OK (12337)
-#definition SHARED_MEM_OFF (12288)
+#definition SHARED_MEM_START (12288)
+#definition SHARED_MEM_END (16383)
+#definition CPU_DATA_OK (16383) // This is the end of shared mem
 #definition SCREEN_WIDTH (640)
 #definition SCREEN_HEIGHT (480)
+#definition SCREEN_MASK_TOP (10)
+#definition SCREEN_MASK_RIGHT (630)
+#definition SCREEN_MASK_BOTTOM (470)
+#definition SCREEN_MASK_LEFT (10)
 
 #definition COLOR_WHITE (15)
 #definition COLOR_GRAY (7)
@@ -26,13 +31,32 @@ entier pointY;
 entier oldPointX;
 entier oldPointY;
 
-// Used by GPU
-entier lineMoveY;
-entier lineMoveX;
-entier lineMoveMode = 0;
+// Used by CPU
+entier nbShapeSummit;
 
 ecrire_a(1, LAST_VGA_PIXEL);
 isGPU = lire_a(LAST_VGA_PIXEL);
+
+fonction draw_point(entier color, entier x1, entier y1)
+
+	si (x1 < SCREEN_MASK_LEFT)
+		x1 = SCREEN_MASK_LEFT;
+	fin_si;
+	si (y1 < SCREEN_MASK_TOP)
+		y1 = SCREEN_MASK_TOP;
+	fin_si;
+	si (x1 > SCREEN_MASK_RIGHT)
+		x1 = SCREEN_MASK_RIGHT;
+	fin_si;
+	si (y1 > SCREEN_MASK_BOTTOM)
+		y1 = SCREEN_MASK_BOTTOM;
+	fin_si;
+
+	vgaHead = SCREEN_WIDTH * y1;
+	vgaHead = vgaHead + x1;
+	vgaHead = vgaHead + BASE_VGA;
+	ecrire_a(color, vgaHead);
+retourne;
 
 fonction draw_segment(entier color, entier x1, entier y1, entier x2, entier y2)
 	entier diagDistance; // Number of points between p1 and p2
@@ -77,10 +101,11 @@ fonction draw_segment(entier color, entier x1, entier y1, entier x2, entier y2)
 	index = 0;
 	tant_que (index < diagDistance)
 		// Draw current point
-		vgaHead = SCREEN_WIDTH * y1;
-		vgaHead = vgaHead + x1;
-		vgaHead = vgaHead + BASE_VGA;
-		ecrire_a(color, vgaHead);
+		draw_point(color, x1, y1);
+		//vgaHead = SCREEN_WIDTH * y1;
+		//vgaHead = vgaHead + x1;
+		//vgaHead = vgaHead + BASE_VGA;
+		//ecrire_a(color, vgaHead);
 
 		si (Dx > 0)
 			x1 = x1 + 1; // Only x as constant increment because we swaped
@@ -99,13 +124,6 @@ fonction draw_segment(entier color, entier x1, entier y1, entier x2, entier y2)
 
 retourne;
 
-fonction draw_point(entier color, entier x1, entier y1)
-	vgaHead = SCREEN_WIDTH * y1;
-	vgaHead = vgaHead + x1;
-	vgaHead = vgaHead + BASE_VGA;
-	ecrire_a(color, vgaHead);
-retourne;
-
 // This is the GPU part
 si (isGPU == 1)
 
@@ -117,8 +135,14 @@ si (isGPU == 1)
 	      sync = lire_a(VGA_WRITE_OK);
 	    fin_tant_que;
 
+	    // Wait CPU Data to be ready
+	    sync = 0;
+    	tant_que(sync == 0)
+	    	sync = lire_a(CPU_DATA_OK); // 0: Data for CPU, 1: Data for GPU
+		fin_tant_que;
+
 		// Init
-		sharedHead = SHARED_MEM_OFF;
+		sharedHead = SHARED_MEM_START;
 
 		nbPoints = lire_a(sharedHead);
 		sharedHead = sharedHead + 1;
@@ -151,6 +175,9 @@ si (isGPU == 1)
 			nbPoints = lire_a(sharedHead); // NB_SEG
 			sharedHead = sharedHead + 1;
 		fin_tant_que;
+
+		// Libération des data CPU
+		ecrire_a (0, CPU_DATA_OK);
 
 		//ecriture à l'écran
     	ecrire_a (1, VGA_WRITE_OK);
@@ -220,63 +247,136 @@ fonction led_anim_1()
 	    // Go to next led
 	    ledIndex = ledIndex + 1;
 	fin_tant_que;
-
-	delay_ms(5);
 retourne;
 
-lineMoveX = 10;
-lineMoveY = 10;
+
+entier shapeIndex;
+entier summitIndex;
+entier tetaDegresCos;
+entier tetaDegresSin;
+entier x;
+entier y;
+entier degreeStep;
+
+entier pRadius;
+
+#definition NB_SHAPES (9)
+#definition MAX_RADIUS (200.0)
+
+reel rx;
+reel ry;
+reel radius[NB_SHAPES]; // Radius of all shapes
+reel shapeRadius;
+reel middleX;
+reel middleY;
+
+nbShapeSummit = 9;
+
+degreeStep = 45; // This is 360 / nbShapeSummit
+
+middleX = 320.0;
+middleY = 240.0;
+tetaDegresSin = 0;
+tetaDegresCos = 90;
+
+// Init radius table for all shapes before animation begin
+pRadius = @radius;
+shapeIndex = 0;
+tant_que (shapeIndex < NB_SHAPES)
+	shapeRadius = evr(shapeIndex);
+	shapeRadius = shapeRadius + 1.0;
+	shapeRadius = shapeRadius * 22.0;
+	ecrire_a(shapeRadius, pRadius);
+
+	pRadius = pRadius + 1;
+	shapeIndex = shapeIndex + 1;
+fin_tant_que;
 
 tant_que(1 == 1)
 
+	// Wait GPU to be ready
+	sync = 1;
+	tant_que(sync == 1)
+	    sync = lire_a(CPU_DATA_OK); // 0: Data for CPU, 1: Data for GPU
+	fin_tant_que;
+
 	led_anim_1();
 
-	sharedHead = SHARED_MEM_OFF;
-	ecrire_a(2, sharedHead); // NB_POINTS
-	sharedHead = sharedHead + 1;
-	ecrire_a(COLOR_WHITE, sharedHead); // Color
+	// Init
+	sharedHead = SHARED_MEM_START;
+	pRadius = @radius;
 
-	sharedHead = sharedHead + 1;
-	ecrire_a(lineMoveX, sharedHead); // x1
-	sharedHead = sharedHead + 1;
-	ecrire_a(lineMoveY, sharedHead); // y1
+	shapeIndex = 0;
+	tant_que (shapeIndex < NB_SHAPES)
 
-	sharedHead = sharedHead + 1;
-	ecrire_a(320, sharedHead); // x2
-	sharedHead = sharedHead + 1;
-	ecrire_a(240, sharedHead); // y2
+		ecrire_a(nbShapeSummit, sharedHead); // NB_POINTS
+		sharedHead = sharedHead + 1;
 
-	sharedHead = sharedHead + 1;
+		ecrire_a(COLOR_WHITE, sharedHead); // Color
+		sharedHead = sharedHead + 1;
+
+		// Make it turn on itself
+		//tetaDegresSin = tetaDegresSin + 1;
+		//tetaDegresCos = tetaDegresCos + 1;
+		// Make it fixed
+		//tetaDegresSin = 0;
+		//tetaDegresCos = 90;
+
+		// Update radius of the shape
+		shapeRadius = lire_a(pRadius);
+		shapeRadius = shapeRadius + 1.0;
+		si (shapeRadius > MAX_RADIUS)
+			shapeRadius = 2.0;
+		fin_si;
+		ecrire_a(shapeRadius, pRadius);
+
+		summitIndex = 0;
+		tant_que (summitIndex < nbShapeSummit)
+			// Compute X and Y from the middle
+			rx = sin(tetaDegresSin);
+			rx = rx * shapeRadius;
+			rx = rx + middleX;
+			x = rve(rx);
+			si (x > 2000)
+				x = 0;
+			fin_si;
+
+			ry = sin(tetaDegresCos);
+			ry = ry * shapeRadius;
+			ry = ry + middleY;
+			y = rve(ry);
+			si (y > 2000)
+				y = 0;
+			fin_si;
+
+			// Write X and Y
+			ecrire_a(x, sharedHead); // x_
+			sharedHead = sharedHead + 1;
+			ecrire_a(y, sharedHead); // y_
+			sharedHead = sharedHead + 1;
+
+			// Update teta to go to next summit
+			tetaDegresCos = tetaDegresCos + degreeStep;
+			si (tetaDegresCos > 360) 
+				tetaDegresCos = tetaDegresCos - 360;
+			fin_si;
+			tetaDegresSin = tetaDegresSin + degreeStep;
+			si (tetaDegresSin > 360)
+				tetaDegresSin = tetaDegresSin - 360;
+			fin_si;
+
+			// Next summit
+			summitIndex = summitIndex + 1;
+		fin_tant_que; // nbSummit
+
+		pRadius = pRadius + 1;
+		shapeIndex = shapeIndex + 1;
+	fin_tant_que; // nbShape
+
 	ecrire_a(0, sharedHead); // NB_POINTS = 0 indicates the end
 
-	si (lineMoveMode == 0)
-		si (lineMoveX < 630)
-			lineMoveX = lineMoveX + 1;
-		sinon;
-			lineMoveMode = 1;
-		fin_si;
-	fin_si;
-	si (lineMoveMode == 1)
-		si (lineMoveY < 470)
-			lineMoveY = lineMoveY + 1;
-		sinon;
-			lineMoveMode = 2;
-		fin_si;
-	fin_si;
-	si (lineMoveMode == 2)
-		si (lineMoveX > 10)
-			lineMoveX = lineMoveX - 1;
-		sinon;
-			lineMoveMode = 3;
-		fin_si;
-	fin_si;
-	si (lineMoveMode == 3)
-		si (lineMoveY > 10)
-			lineMoveY = lineMoveY - 1;
-		sinon;
-			lineMoveMode = 0;
-		fin_si;
-	fin_si;
+	// Indicate to the GPU data ready
+	ecrire_a (1, CPU_DATA_OK);
 
 fin_tant_que;
 
