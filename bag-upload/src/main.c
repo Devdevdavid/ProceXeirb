@@ -163,7 +163,11 @@ int main(int argc, char const *argv[])
 
     /** Write what was read on the serial port */
     if (write(comPort, buffer, sizeRead) == -1) {
-      LOG_ERROR("Coun't write to serial port: %s", strerror(errno));
+      LOG_ERROR("Couldn't write to serial port: %s", strerror(errno));
+      return -1;
+    }
+    if (tcdrain(comPort) == -1) {
+      LOG_ERROR("Couldn't wait for transmission: %s", strerror(errno));
       return -1;
     }
 

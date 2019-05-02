@@ -769,12 +769,8 @@ int preprocessor(const char * bagFilePath, const char * bagoFilePath)
     retError = 1;
   }
 
-  // Init the counter to 0
-  fileLineCounter = 0;
-
   // First pass: Preprocessor duty
   while (getline(bagFile, originLine) && (retError == 0)) {
-    ++fileLineCounter;
     line = replace_all(originLine, " ", "");
     line = replace_all(line, "\t", "");
     line = remove_line_comment(line);         // Remove text after comment symbole "//"
@@ -787,7 +783,7 @@ int preprocessor(const char * bagFilePath, const char * bagoFilePath)
 
       // Check the name
       if (defineName.back().empty()) {
-        _LOG_ERROR("Wrong syntax on line %d: \"%s\"", fileLineCounter, originLine.c_str());
+        _LOG_ERROR("Wrong syntax: \"%s\"", originLine.c_str());
         retError = 2; // Syntaxe Error
       } 
       continue; // Do not copy tthe line of the #definition
@@ -867,14 +863,10 @@ int compiler(const char * bagoFilePath, const char * asmFilePath)
   // Create the context and set it as default
   create_global_context();
 
-  // Init the counter to 0
-  fileLineCounter = 0;
 
   // For all lines of the file, parse it !
   while (getline(bagoFile, line) && (nbErrorDetected < 5))
   {
-    ++fileLineCounter;
-    // LOG_DEBUG("cur line = %s", line.c_str());
     if ((line.find("entier") == 0) || (line.find("reel") == 0)) {
       declare_var(line);
     }

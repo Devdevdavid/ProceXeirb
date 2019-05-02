@@ -1,5 +1,5 @@
 # TARGET          = cube
-TARGET          = tunnel
+TARGET          = tunnel_v1
 
 SRCDIR          = prog
 OBJDIR          = obj

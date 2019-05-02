@@ -1,7 +1,3 @@
-// File: tunnel.bag (V2)
-// Author: David DEVANT
-// Date: May 2, 2019
-//
 #definition BASE_LED_ADDR (524304)
 #definition BASE_VGA (524288)
 #definition LAST_VGA_PIXEL (831486)
@@ -34,6 +30,9 @@ entier pointX;
 entier pointY;
 entier oldPointX;
 entier oldPointY;
+
+// Used by CPU
+entier nbShapeSummit;
 
 ecrire_a(1, LAST_VGA_PIXEL);
 isGPU = lire_a(LAST_VGA_PIXEL);
@@ -163,9 +162,9 @@ si (isGPU == 1)
 
 				// Can't draw segment at first point
 				si (pointIndex > 0)
-					//draw_segment(pointsColor, oldPointX, oldPointY, pointX, pointY);
+					draw_segment(pointsColor, oldPointX, oldPointY, pointX, pointY);
 				fin_si;
-				draw_point(pointsColor, pointX, pointY);
+				//draw_point(pointsColor, pointX, pointY);
 
 				// Shift data
 				oldPointX = pointX;
@@ -252,44 +251,65 @@ fonction led_anim_1()
 	fin_tant_que;
 retourne;
 
-// Used by CPU
-reel reg1;
-reel Axy;
-reel Az;
-reel Bxy;
-reel Bz;
-reel planePointXY[2];
-entier screenPointXY[2];
-reel camXYZ[3];
-reel planeXYZ[3];
-reel pointXYZ[12];
-entier pPointXYZ;
 
-camXYZ[0] = 0.0; // x
-camXYZ[1] = 0.0; // y
-camXYZ[2] = 0.0; // z
+entier shapeIndex;
+entier summitIndex;
+entier tetaDegresCos;
+entier tetaDegresSin;
+entier x;
+entier y;
+entier degreeStep;
+entier slowDownCnt;
+entier pRadius;
+entier pMiddleX;
+entier pMiddleY;
+entier isInExpansion;
+entier colorE;
+reel colorR;
 
-planeXYZ[0] = 0.0; // x
-planeXYZ[1] = 0.0; // y
-planeXYZ[2] = 10.0; // z
+#definition NB_SHAPES (10)
+#definition MIN_RADIUS (1.0)
+#definition MAX_RADIUS (210.0)
+#definition MIN_MIDDLE_X (320.0)
+#definition MAX_MIDDLE_X (640.0)
+#definition MIN_MIDDLE_Y (50.0)
+#definition MAX_MIDDLE_Y (480.0)
 
-pointXYZ[0] = -15.0; // x
-pointXYZ[1] = 10.0; // y
-pointXYZ[2] = 20.0; // z
+reel rx;
+reel ry;
+reel radius[NB_SHAPES]; // Radius of all shapes
+reel shapeRadius;
 
-pointXYZ[3] = 10.0;
-pointXYZ[4] = 10.0;
-pointXYZ[5] = 20.0;
+nbShapeSummit = 46;
 
-pointXYZ[6] = 10.0;
-pointXYZ[7] = -10.0;
-pointXYZ[8] = 20.0;
+degreeStep = 8; // This is 360 / (nbShapeSummit - 1)
 
-pointXYZ[9] = -10.0;
-pointXYZ[10] = -10.0;
-pointXYZ[11] = 20.0;
+tetaDegresSin = 0;
+tetaDegresCos = 90;
 
-Bz = planeXYZ[2] - camXYZ[2]; 
+// Init radius table for all shapes before animation begin
+pRadius = @radius;
+shapeRadius = MIN_RADIUS;
+shapeIndex = 0;
+tant_que (shapeIndex < NB_SHAPES)
+	// Write first radius
+	ecrire_a(shapeRadius, pRadius);
+	pRadius = pRadius + 1;
+
+	// invert value to make the second deacreasing
+	shapeRadius = shapeRadius + 18.0;
+	shapeRadius = 0.0 - shapeRadius;
+
+	// Write second radius
+	ecrire_a(shapeRadius, pRadius);
+	pRadius = pRadius + 1;
+
+	// Re-invert and go to next level of radius
+	shapeRadius = 0.0 - shapeRadius ;
+	shapeRadius = shapeRadius + 22.0;
+
+	shapeIndex = shapeIndex + 2;
+fin_tant_que;
 
 tant_que(1 == 1)
 
@@ -303,38 +323,101 @@ tant_que(1 == 1)
 
 	// Init
 	sharedHead = SHARED_MEM_START;
-	pPointXYZ = @pointXYZ;
+	pRadius = @radius;
 
-	Az = pointXYZ[2] - camXYZ[2]; 
-	reg1 = Bz / Az; // This is not working
+	// Make it turn on itself
+	si (slowDownCnt == 1)
+		slowDownCnt = 0;
+		//tetaDegresSin = tetaDegresSin + 1;
+		//tetaDegresCos = tetaDegresCos + 1;
+	sinon;
+		slowDownCnt = slowDownCnt + 1;
+	fin_si;
 
-	// For X
-	Axy = pointXYZ[0] - camXYZ[0]; 
-	planePointXY[0] = reg1 * Axy; 
+	shapeIndex = 0;
+	tant_que (shapeIndex < NB_SHAPES)
+		// Update radius of the shape
+		shapeRadius = lire_a(pRadius);
+		si (shapeRadius < 0.0)
+			isInExpansion = 0;
+			shapeRadius = 0.0 - shapeRadius;
+			shapeRadius = shapeRadius - 1.0;
+			si (shapeRadius < MIN_RADIUS)
+				isInExpansion = 1;
+			fin_si;
+		sinon;
+			isInExpansion = 1;
+			shapeRadius = shapeRadius + 1.0;
+			si (shapeRadius > MAX_RADIUS)
+				isInExpansion = 0;
+			fin_si;
+		fin_si;
 
-	// For Y
-	Axy = pointXYZ[1] - camXYZ[1]; 
-	planePointXY[1] = reg1 * Axy; 
+		ecrire_a(nbShapeSummit, sharedHead); // NB_POINTS
+		sharedHead = sharedHead + 1;
 
-	// Adaptation
-	planePointXY[0] = planePointXY[0] * 10.0;
-	planePointXY[0] = planePointXY[0] + 320.0;
-	planePointXY[1] = planePointXY[1] * 10.0;
-	planePointXY[1] = planePointXY[1] + 240.0;
+		// Choose the right color
+		si (isInExpansion == 0)
+			colorR = shapeRadius;
+			colorR = colorR * 0.033;
+			colorR = colorR + 7.0;
+		sinon;
+			colorR = MAX_RADIUS - shapeRadius;
+			colorR = colorR * 0.033;
+			colorR = colorR + 1.0;
+		fin_si;
+		colorE = rve(colorR);
+		ecrire_a(colorE, sharedHead); // Color
+		sharedHead = sharedHead + 1;
 
-	// Convertion
-	screenPointXY[0] = rve(planePointXY[0]);
-	screenPointXY[1] = rve(planePointXY[1]);
+		summitIndex = 0;
+		tant_que (summitIndex < nbShapeSummit)
+			// Compute X and Y from the middle
+			rx = sin(tetaDegresSin);
+			rx = rx * shapeRadius;
+			rx = rx + 320.0;
+			x = rve(rx);
+			si (x > 1024)
+				x = 0;
+			fin_si;
 
-	ecrire_a(1, sharedHead);	// NB_POINT
-	sharedHead = sharedHead + 1;
-	ecrire_a(COLOR_WHITE, sharedHead); // Color
-	sharedHead = sharedHead + 1;
+			ry = sin(tetaDegresCos);
+			ry = ry * shapeRadius;
+			ry = ry + 240.0;
+			y = rve(ry);
+			si (y > 1024)
+				y = 0;
+			fin_si;
 
-	ecrire_a(screenPointXY[0], sharedHead); // X
-	sharedHead = sharedHead + 1;
-	ecrire_a(screenPointXY[1], sharedHead); // Y
-	sharedHead = sharedHead + 1;
+
+			// Write X and Y
+			ecrire_a(x, sharedHead); // x_
+			sharedHead = sharedHead + 1;
+			ecrire_a(y, sharedHead); // y_
+			sharedHead = sharedHead + 1;
+
+			// Update teta to go to next summit
+			tetaDegresCos = tetaDegresCos + degreeStep;
+			si (tetaDegresCos > 360) 
+				tetaDegresCos = tetaDegresCos - 360;
+			fin_si;
+			tetaDegresSin = tetaDegresSin + degreeStep;
+			si (tetaDegresSin > 360)
+				tetaDegresSin = tetaDegresSin - 360;
+			fin_si;
+
+			// Next summit
+			summitIndex = summitIndex + 1;
+		fin_tant_que; // nbSummit
+
+		si (isInExpansion == 0)
+			shapeRadius = 0.0 - shapeRadius;
+		fin_si;
+		ecrire_a(shapeRadius, pRadius);
+
+		pRadius = pRadius + 1;
+		shapeIndex = shapeIndex + 1;
+	fin_tant_que; // nbShape
 
 	ecrire_a(0, sharedHead); // NB_POINTS = 0 indicates the end
 

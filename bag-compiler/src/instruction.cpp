@@ -1,7 +1,5 @@
 #include "instruction.hpp"
 
-extern uint32_t fileLineCounter;          // Index of the line currently analysed (Preprocessor and compiler)
-
 // Arrhh, you drive me crazy with this line of code...
 // Instruction needs to access to this function 
 // to use constant varaibles in asm
@@ -284,6 +282,12 @@ affectation::affectation()
 
 string affectation::print_instruction()
 {
+  if (retVar->p->type != a1->p->type) {
+    _LOG_ERROR("Variable are not of the same type in this operation: %s = %s",
+      retVar->get_id().c_str(), 
+      a1->get_id().c_str());
+    return "";
+  }
   print_get_inst_for_var(a1);
   print_save_accu();
 
