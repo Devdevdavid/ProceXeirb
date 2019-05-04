@@ -1,10 +1,11 @@
-/*******************************************************************************
- *  Main Author : Pierre JOUBERT
+/******************************************************************************
+ *  Authors : Pierre JOUBERT, David DEVANT
  *  With the kind collaboration of : Julien BESSE
- *  Date : 04/04/2018
- *  OS : Linux
+ *  Date    : 04/04/2018
+ *  Updated : 04/05/2019
+ *  OS      : Linux / MacOS
  *    The goal of this program is to compile a code written in language 
- *  baguette to assembly.
+ *  "Baguette" into assembly.
  ******************************************************************************/
 
 #define MAIN_CPP
@@ -16,7 +17,6 @@
 #include <vector>
 #include <stack>
 #include <sys/time.h>
-#include <bag_devlib.h>
 
 #include "global.hpp"
 #include "instruction.hpp"
@@ -28,25 +28,31 @@
 
 #define GLOBAL_CONTEXT          fonctionTable.front()
 
+/** Don't replace id in debug build, asm is much more easier to read */
 #ifdef DEBUG
 #define MACRO_REPLACE_ALL_OCCUR
 #else
 #define MACRO_REPLACE_ALL_OCCUR  wholeFile = replace_all(wholeFile, string(tmpStr1), string(tmpStr2));
 #endif 
 
-// Prototype
-void print_build_finished(struct timeval startTime, int nbError, int nbWarning);
-
 // Global variables
 vector<fonction *> fonctionTable;
 fonction * CUR_CONTEXT;
 uint32_t fileLineCounter;                  // Index of the line currently analysed (Preprocessor and compiler)
 
+/**
+ * @brief Replace all from occurances in str into to string
+ * 
+ * @param str 
+ * @param from 
+ * @param to 
+ * @return string 
+ */
 string replace_all(string str, const string &from, const string &to)
 {
   size_t start_pos = 0;
-  while ((start_pos = str.find(from, start_pos)) != string::npos)
-  {
+
+  while ((start_pos = str.find(from, start_pos)) != string::npos) {
     str.replace(start_pos, from.length(), to);
     start_pos += to.length(); // Handles case where 'to' is a substring of 'from'
   }
@@ -79,37 +85,37 @@ string remove_line_comment(string str)
 }
 
 /**
- * @brief Tell if "s" is representing a integer or not
+ * @brief Tell if "str" is representing a integer or not
  * 
- * @param s 
+ * @param str 
  * @return bool 
  */
-bool is_integer(const string &s)
+bool is_integer(const string &str)
 {
   char * p;
 
-  if (s.empty() || (!isdigit(s[0]) && (s[0] != '-') && (s[0] != '+'))) {
+  if (str.empty() || (!isdigit(str[0]) && (str[0] != '-') && (str[0] != '+'))) {
     return false;
   }
-  if (s.find(".") != string::npos) {
+  if (str.find(".") != string::npos) {
     return false;
   }
   
-  strtol(s.c_str(), &p, 10);
+  strtol(str.c_str(), &p, 10);
 
   return (*p == 0);
 }
 
 /**
- * @brief Tell if s is representing a real or not
+ * @brief Tell if "str" is representing a real or not
  * 
- * @param s 
+ * @param str
  * @return bool 
  */
-bool is_real(const string &s)
+bool is_real(const string &str)
 {
-  if (s.find(".") != string::npos) {
-    string t1 = s;
+  if (str.find(".") != string::npos) {
+    string t1 = str;
     t1 = replace_all(t1, ".", "");
     
     return is_integer(t1);
@@ -119,40 +125,40 @@ bool is_real(const string &s)
 }
 
 /**
- * @brief Tell if s is a correct variable name
+ * @brief Tell if str is a correct variable name
  * 
  * @param s 
  * @return true 
  * @return false 
  */
-bool is_a_valid_var_name(const string &s)
+bool is_a_valid_var_name(const string &str)
 {
   uint16_t index;
 
-  if (s.empty()) {
+  if (str.empty()) {
     _LOG_ERROR("Variable name is empty");
     return false;
   }
-  if (isdigit(s[0])) {
-    _LOG_ERROR("Variable name cannot start with a number: \"%s\"", s.c_str());
+  if (isdigit(str[0])) {
+    _LOG_ERROR("Variable name cannot start with a number: \"%s\"", str.c_str());
     return false;
   }
 
   // Check for special characters
-  for (index = 0; index < s.size(); index++) {
-    if (!isdigit(s[index]) && !isalpha(s[index]) && (s[index] != '_')) {
-      _LOG_ERROR("Variable name contain unauthorized character: \"%s\"", s.c_str());
+  for (index = 0; index < str.size(); index++) {
+    if (!isdigit(str[index]) && !isalpha(str[index]) && (str[index] != '_')) {
+      _LOG_ERROR("Variable name contain unauthorized character: \"%s\"", str.c_str());
       return false;
     }
   }
 
   // Look if the variable name is already used
-  if (CUR_CONTEXT->get_var(s) != NULL) {
-    _LOG_ERROR("Variable name is already used in the function context: \"%s\"", s.c_str());
+  if (CUR_CONTEXT->get_var(str) != NULL) {
+    _LOG_ERROR("Variable name is already used in the function context: \"%s\"", str.c_str());
     return false;
   }
-  if (GLOBAL_CONTEXT->get_var(s) != NULL) {
-    _LOG_ERROR("Variable name is already used in the global context: \"%s\"", s.c_str());
+  if (GLOBAL_CONTEXT->get_var(str) != NULL) {
+    _LOG_ERROR("Variable name is already used in the global context: \"%s\"", str.c_str());
     return false;
   }
 
@@ -177,7 +183,7 @@ fonction * find_fonction(string funcName)
 }
 
 /**
- * @brief Return the string between start and end
+ * @brief Return the extracted string between start and end
  * 
  * @param str 
  * @param start 
@@ -268,6 +274,7 @@ var * parse_var_declaration(string line)
     }
   }
 
+  // Check varaible type
   if (line.find("entier") == 0) {
     v->name = find_between(line, "entier", delimNameChar);
     v->type = INTEGER;
@@ -433,6 +440,13 @@ varCell * get_or_create_variable(string name)
   return v->get_var_cell(curArrayIndex);
 }
 
+/**
+ * @brief Extract the variable name between 
+ * the start of str and the first "=" charcater
+ * 
+ * @param str 
+ * @return string 
+ */
 string variable_to_change(string str)
 {
   return str.substr(0, str.find("="));
@@ -636,9 +650,9 @@ int parse_function_call(string line)
   argLine = find_between(line, "(", ")");
   argStrList = str_split(argLine, ",");
 
-  if (argStrList.size() != funcCalled->params.size()) {
+  if (argStrList.size() != funcCalled->args.size()) {
     _LOG_ERROR("Function \"%s\" needs %d arguments, %d given", 
-      funcCalled->params.size(), argStrList.size());
+      funcCalled->args.size(), argStrList.size());
     return -1;
   }
 
@@ -755,6 +769,7 @@ int preprocessor(const char * bagFilePath, const char * bagoFilePath)
   string line, originLine, defineTmp;
   vector<string> defineName;            // List of all define name found
   vector<string> defineContent;         // List of all define content found
+  string tmpStr;
 
   remove(bagoFilePath);
   bagoFile.open(bagoFilePath);
@@ -775,27 +790,36 @@ int preprocessor(const char * bagFilePath, const char * bagoFilePath)
     line = replace_all(line, "\t", "");
     line = remove_line_comment(line);         // Remove text after comment symbole "//"
 
-    // Search for new #definition instruction
-    if (line.find("#definition") != string::npos) {
-      // Save the name and content
-      defineName.push_back(find_between(line, "#definition", "("));
-      defineContent.push_back(find_between(line, "(", ")"));
-
-      // Check the name
-      if (defineName.back().empty()) {
-        _LOG_ERROR("Wrong syntax: \"%s\"", originLine.c_str());
-        retError = 2; // Syntaxe Error
-      } 
-      continue; // Do not copy tthe line of the #definition
-    }
-
     // Try to find in the line a known definition
     for (index = 0; index < defineName.size(); ++index) {
       if (line.find(defineName[index]) != string::npos) {
         line = replace_all(line, defineName[index], defineContent[index]);
       }
     }
-    
+
+    // Search for new #definition instruction
+    if (line.find("#definition") != string::npos) {
+      // Save the name and content
+      tmpStr = find_between(line, "#definition", "(");
+      // Check for redefinition
+      if (find(defineName.begin(), defineName.end(), tmpStr) != defineName.end()) {
+          _LOG_ERROR("Redefinition of \"%s\"", tmpStr.c_str());
+          retError = 2; // Syntaxe Error
+          continue;
+      }
+      // Check the name
+      if (tmpStr.empty()) {
+        _LOG_ERROR("Wrong syntax: \"%s\"", originLine.c_str());
+        retError = 2; // Syntaxe Error
+      } 
+
+      // Save it 
+      defineName.push_back(tmpStr);
+      defineContent.push_back(find_between(line, "(", ")"));
+
+      continue; // Do not copy the line of the #definition
+    }
+
     // Ignore empty lines (Have to be done after #definition replacement)
     if (line.length() <= 1) {
       continue;
@@ -862,7 +886,6 @@ int compiler(const char * bagoFilePath, const char * asmFilePath)
 
   // Create the context and set it as default
   create_global_context();
-
 
   // For all lines of the file, parse it !
   while (getline(bagoFile, line) && (nbErrorDetected < 5))
@@ -943,7 +966,7 @@ int compiler(const char * bagoFilePath, const char * asmFilePath)
 
       CUR_CONTEXT->add_instru(cond);
     }
-    else if (line.find("sinon;") == 0)
+    else if (line.find("sinon") == 0)
     {
       ins = new sinon;
       ins->id = CUR_CONTEXT->get_cur_cond_id();
@@ -1161,7 +1184,7 @@ int compiler(const char * bagoFilePath, const char * asmFilePath)
     MACRO_REPLACE_ALL_OCCUR
   }
 
-  // gestion des variables
+  // Gestion des variables
   for (fonction * func : fonctionTable) {
     LOG_DEBUG("CONTEXT : %s", func->name.c_str());
     for (var * variable : func->variableTable) {
@@ -1232,6 +1255,35 @@ abortLabel:
   bagoFile.close();
 
   return retError;
+}
+
+/**
+ * @brief Print the ending line of the compiler 
+ * 
+ * @param startTime
+ * @param nbError 
+ * @param nbWarnings 
+ */
+void print_build_finished(struct timeval startTime, int nbError, int nbWarning)
+{
+  struct timeval endTime;
+  int elapsedTimeSec;
+  int elapsedTimeMs;
+  int startTimeMs;
+  int endTimeMs;
+
+  // Save end time
+  gettimeofday(&endTime, NULL);
+
+  // Compute time variable
+  startTimeMs = startTime.tv_sec * 1000 + startTime.tv_usec / 1000;
+  endTimeMs = endTime.tv_sec * 1000 + endTime.tv_usec / 1000;
+
+  elapsedTimeSec = (endTimeMs - startTimeMs) / 1000;
+  elapsedTimeMs = (endTimeMs - startTimeMs) % 1000;
+
+  LOG_INFO("Build Finished. %d errors, %d warnings. (took %ds.%03dms)",
+           nbError, nbWarning, elapsedTimeSec, elapsedTimeMs);
 }
 
 void print_usage(void) 
@@ -1310,33 +1362,4 @@ int main(int argc, char const *argv[])
 
   // Return 0 only if no error
   return (nbErrorDetected == 0) ? 0 : 1;
-}
-
-/**
- * @brief Print the ending line of the compiler 
- * 
- * @param startTime
- * @param nbError 
- * @param nbWarnings 
- */
-void print_build_finished(struct timeval startTime, int nbError, int nbWarning)
-{
-  struct timeval endTime;
-  int elapsedTimeSec;
-  int elapsedTimeMs;
-  int startTimeMs;
-  int endTimeMs;
-
-  // Save end time
-  gettimeofday(&endTime, NULL);
-
-  // Compute time variable
-  startTimeMs = startTime.tv_sec * 1000 + startTime.tv_usec / 1000;
-  endTimeMs = endTime.tv_sec * 1000 + endTime.tv_usec / 1000;
-
-  elapsedTimeSec = (endTimeMs - startTimeMs) / 1000;
-  elapsedTimeMs = (endTimeMs - startTimeMs) % 1000;
-
-  LOG_INFO("Build Finished. %d errors, %d warnings. (took %ds.%03dms)",
-           nbError, nbWarning, elapsedTimeSec, elapsedTimeMs);
 }

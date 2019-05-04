@@ -1,3 +1,12 @@
+/******************************************************************************
+ *  Authors : Pierre JOUBERT, David DEVANT
+ *  With the kind collaboration of : Julien BESSE
+ *  Date    : 04/04/2018
+ *  Updated : 04/05/2019
+ *  OS      : Linux / MacOS
+ *    This file brings together all the "Baguette" instructions 
+ ******************************************************************************/
+
 #ifndef INSTRUCTION_HPP
 #define INSTRUCTION_HPP
 
@@ -61,7 +70,7 @@ public:
   string id;
   uint32_t address;
 
-  // Contain all printed instruction of the object
+  // Contains all printed instruction of the object
   string instBuffer;
   int nbInstrucLine;
 
@@ -319,7 +328,7 @@ public:
 
 private:
   fonction * func;
-  vector<varCell *> params; // Sorted list of function argument 
+  vector<varCell *> args; // Sorted list of function argument 
 
   string print_instruction();
 };

@@ -1,3 +1,10 @@
+/******************************************************************************
+ *  Authors : David DEVANT
+ *  Date    : 04/05/2019
+ *  OS      : Linux / MacOS
+ *    This class manages the context system of functions 
+ ******************************************************************************/
+
 #ifndef FONCTION_HPP
 #define FONCTION_HPP
 
@@ -20,13 +27,10 @@ using namespace std;
 class fonction
 {
   public:
-    fonction();
-    ~fonction();
-
-    bool isBeingEdited;     // Tell to the compiler if the function is being edited
+    bool isBeingEdited;       // Tell to the compiler if the function is being edited
     bool isCalledAtLeastOnce; // Tell if the fonction is called at least one time
 
-    string name;            // name of the function
+    string name;              // name of the function
 
     vector<var *> variableTable;
     vector<instruction *> instruTable;
@@ -40,16 +44,18 @@ class fonction
     uint16_t varCount;      // Number of declared variable in the function
 
     // Not (var *) : These are not real variable, just used for type compliance
-    vector<var> params;
+    vector<var> args;
 
     // If NULL, this mean no returned variable
     varCell * returnVar;
 
-    int startRamAddress; // Indicates where the function is located in the RAM
+    uint32_t startRamAddress; // Indicates where the function is located in the RAM
 
   public:
+    fonction();
+    ~fonction();
     int add_argument(var *v);
-    int set_return_var(varCell *vc);
+    void set_return_var(varCell *vc);
     bool is_argument_valid(uint16_t paramIndex, varCell *vc);
     bool is_returned_var_valid(varCell *vc);
     bool is_unused();

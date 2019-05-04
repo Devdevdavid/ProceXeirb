@@ -1,9 +1,16 @@
+/******************************************************************************
+ *  Authors : David DEVANT
+ *  Date    : 04/05/2019
+ *  OS      : Linux / MacOS
+ *    This header define some usefull macros and constants
+ ******************************************************************************/
+
 #ifndef GLOBAL_HPP
 #define GLOBAL_HPP
 
 #include <bag_devlib.h>
 
-#define APP_VERSION     "2.2.16-devantd"
+#define APP_VERSION     "2.2.25-devantd"
 
 /* MACRO: Each ERROR/WARNING are counted */
 #define _LOG_ERROR(format, ...)   LOG_ERROR(format, ##__VA_ARGS__); nbErrorDetected++;

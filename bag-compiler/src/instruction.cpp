@@ -1,8 +1,17 @@
+/******************************************************************************
+ *  Authors : Pierre JOUBERT, David DEVANT
+ *  With the kind collaboration of : Julien BESSE
+ *  Date    : 04/04/2018
+ *  Updated : 04/05/2019
+ *  OS      : Linux / MacOS
+ *    This file brings together all the "Baguette" instructions 
+ ******************************************************************************/
+
 #include "instruction.hpp"
 
 // Arrhh, you drive me crazy with this line of code...
 // Instruction needs to access to this function 
-// to use constant varaibles in asm
+// to use constant variables in asm
 varCell * get_or_create_variable(string name);
 
 /**
@@ -19,6 +28,14 @@ string get_const_var_id(string constVarName)
   constVar->p->isUsedAsRead = true;
   return constVar->get_id();
 }
+
+/**
+ * @brief Shortcut for get_const_var_id() with 
+ * constVarValue string convertion
+ * 
+ * @param constVarValue 
+ * @return string 
+ */
 string get_const_var_value(int32_t constVarValue)
 {
   return get_const_var_id(to_string(constVarValue));
@@ -72,6 +89,12 @@ void instruction::write_and_count_inst(string str)
   instBuffer += str;
 }
 
+/**
+ * @brief Prints the instruction to get the value 
+ * of a local variable cell inside the accu
+ * 
+ * @param vc 
+ */
 void instruction::print_get_local_var(varCell *vc)
 {
   // 1: Skip the EBP in the call stack
@@ -83,11 +106,10 @@ void instruction::print_get_local_var(varCell *vc)
 }
 
 /**
- * @brief Print instruction to Get a variable inside 
- * the ACCU register whatever the variable type 
- * LOCAL or GLOBAL
+ * @brief Print instruction to Get a variable cell inside 
+ * the ACCU register whatever the variable type LOCAL or GLOBAL
  * 
- * @param v 
+ * @param vc 
  */
 void instruction::print_get_inst_for_var(varCell *vc)
 {
@@ -99,6 +121,9 @@ void instruction::print_get_inst_for_var(varCell *vc)
   }
 }
 
+/**
+ * @brief Save the value of the ACCU in the retVar variable cell
+ */
 void instruction::print_save_accu(void)
 {
   if (retVar->p->isLocal) {
@@ -112,15 +137,20 @@ void instruction::print_save_accu(void)
   }
 }
 
+/**
+ * @brief Set the address of the instruction (for loop and conditions)
+ * 
+ * @param address 
+ */
 void instruction::set_address(uint32_t address)
 {
   this->address = address;
 }
 
 /**
- * @brief Print the asm instruction for operation (+ - * /)
+ * @brief Print the asm instruction for operations (+ - * /)
  * 
- * @param opInstStr
+ * @param opInstStr: operation type (ADD, FAD, DIV...)
  */
 void instruction::print_operation(string opInstStr)
 {
@@ -143,12 +173,22 @@ void instruction::print_operation(string opInstStr)
   }
 }
 
+/**
+ * @brief Shortcut for printing an operation 
+ * and save the result in the accu
+ * 
+ * @param opInstStr 
+ */
 void instruction::print_operation_and_store(string opInstStr)
 {
   print_operation(opInstStr);
   print_save_accu();
 }
 
+/**
+ * @brief Increment the stack Pointer and save the 
+ * accu to the new space in the callstack
+ */
 void instruction::print_push_accu()
 {
   write_and_count_inst("PSH 00000\n");
@@ -163,6 +203,12 @@ hw_init::hw_init()
 {
   type = HW_INIT;
 }
+
+/**
+ * @brief Initialize the CallStack pointers and the LCD display
+ * 
+ * @return string 
+ */
 string hw_init::print_instruction()
 {
   // Init Call Stack
@@ -283,7 +329,7 @@ affectation::affectation()
 string affectation::print_instruction()
 {
   if (retVar->p->type != a1->p->type) {
-    _LOG_ERROR("Variable are not of the same type in this operation: %s = %s",
+    _LOG_ERROR("Variables are not of the same type in this affectation: %s = %s",
       retVar->get_id().c_str(), 
       a1->get_id().c_str());
     return "";
@@ -387,7 +433,6 @@ disp_LCD::disp_LCD()
 {
   type = AFFICHAGE_LCD;
 }
-
 string disp_LCD::print_instruction()
 {
   print_get_inst_for_var(a1);
@@ -400,7 +445,6 @@ write_to_shared::write_to_shared()
 {
   type = ECRITURE_MEMOIRE;
 }
-
 string write_to_shared::print_instruction()
 {
   print_get_inst_for_var(a1);
@@ -420,7 +464,6 @@ sine::sine()
 {
   type = SIN;
 }
-
 string sine::print_instruction()
 {
   print_get_inst_for_var(a1);
@@ -436,14 +479,14 @@ cos::cos()
 {
   type = COS;
 }
-
 string cos::print_instruction()
 {
+  _LOG_WARNING("cos() table is not complete for value above 270 degrees");
   print_get_inst_for_var(a1);
   write_and_count_inst("ADD :addr(" + get_const_var_value(COS_TABLE_ADDR) + ")\n");
   write_and_count_inst("STA " DUMMY_FLASH_ADDR "\n");
-  write_and_count_inst("GAD " DUMMY_FLASH_ADDR "\n"); //get @ address
-  print_save_accu(); //store in the return var
+  write_and_count_inst("GAD " DUMMY_FLASH_ADDR "\n");
+  print_save_accu(); 
   
   return instBuffer;
 }
@@ -452,7 +495,6 @@ write_at::write_at()
 {
   type = WRITE_AT;
 }
-
 string write_at::print_instruction()
 {
   if (a2->p->isLocal) {
@@ -472,7 +514,6 @@ read_at::read_at()
 {
   type = READ_AT;
 }
-
 string read_at::print_instruction()
 {
   if (a1->p->isLocal) {
@@ -494,7 +535,6 @@ ins_fti::ins_fti()
 {
   type = FTI;
 }
-
 string ins_fti::print_instruction()
 {
   if (a1->p->isLocal) {
@@ -513,7 +553,6 @@ ins_itf::ins_itf()
 {
   type = ITF;
 }
-
 string ins_itf::print_instruction()
 {
   if (a1->p->isLocal) {
@@ -536,7 +575,6 @@ func_begin::func_begin()
 {
   type = FUNC_BEGIN;
 }
-
 string func_begin::print_instruction()
 {
   int index;
@@ -562,8 +600,8 @@ string func_begin::print_instruction()
     }
   }
 
-  // Copy params from before EBP to local variables
-  for (index = func->params.size() - 1; index >= 0; index--) {
+  // Copy args from before EBP to local variables
+  for (index = func->args.size() - 1; index >= 0; index--) {
     // Select the param in the call satck (2: Skip Old_EBP and Old_EIP)
     string constIdStr = get_const_var_value(2 + index);
     // Compute the dynamique address of the local variable
@@ -585,7 +623,6 @@ func_end::func_end()
 {
   type = FUNC_END;
 }
-
 string func_end::print_instruction()
 {
   // Restore the old value of ESP
@@ -671,14 +708,14 @@ int functionCall::link_function(fonction * pFunc)
  * with validity check. Argument should be linked in the same 
  * order as the function arguments to match
  * 
- * @param v 
+ * @param vc
  * @return -1: Error, 0: OK
  */
 int functionCall::link_argument(varCell *vc)
 {
   if (func == NULL) { return -1; }
 
-  if (func->is_argument_valid(params.size(), vc) == false) {
+  if (func->is_argument_valid(args.size(), vc) == false) {
     return -1; // A log is already displayed inside
   }
 
@@ -686,7 +723,7 @@ int functionCall::link_argument(varCell *vc)
   vc->p->isUsedAsRead = true;
 
   // Variable is valid, add it to the sorted list
-  params.push_back(vc);
+  args.push_back(vc);
 
   return 0;
 }
@@ -694,7 +731,7 @@ int functionCall::link_argument(varCell *vc)
 /**
  * @brief Link the returned value to the function with a validity check
  * 
- * @param v 
+ * @param vc
  * @return int -1: Error, 0: OK
  */
 int functionCall::link_returned_var(varCell *vc)
@@ -717,8 +754,8 @@ string functionCall::print_instruction()
   int index; 
 
   // PUSH Parameters
-  for (index = params.size() - 1; index >= 0; index--) {
-    print_get_inst_for_var(params.at(index));
+  for (index = args.size() - 1; index >= 0; index--) {
+    print_get_inst_for_var(args.at(index));
     print_push_accu();
   }
 
@@ -735,7 +772,7 @@ string functionCall::print_instruction()
   // At the end of the function, we come back here
 
   // POP all parameters
-  for (index = params.size() - 1; index >= 0; index--) {
+  for (index = args.size() - 1; index >= 0; index--) {
     write_and_count_inst("POP 00000\n");
   }
   
@@ -751,7 +788,6 @@ string functionCall::print_instruction()
 // ===========================
 //          DEBUG
 // ===========================
-
 ins_dbg::ins_dbg()
 {
   type = DBG;
@@ -759,7 +795,10 @@ ins_dbg::ins_dbg()
 
 string ins_dbg::print_instruction()
 {
+  #ifndef DEBUG
+  _LOG_WARNING("This instruction should not be used in Release build");
+  #endif
+  /** Debug code starts here */
   
-
   return instBuffer;
 }

@@ -1,78 +1,82 @@
+/******************************************************************************
+ *  Authors : David DEVANT
+ *  Date    : 04/05/2019
+ *  OS      : Linux / MacOS
+ *    This class manages the context system of functions 
+ ******************************************************************************/
+
 #include "fonction.hpp"
 
 fonction::fonction() 
 {
     isBeingEdited = false;
+    isCalledAtLeastOnce = false;
     name = "";
     variableTable.clear();
     instruTable.clear();
     loopId = 0;
+    loopStack.empty();
     condId = 0;
+    condStack.empty();
     varCount = 0;
-    params.clear();
+    args.clear();
     returnVar = NULL;
     startRamAddress = 0;
 }
 
 fonction::~fonction() 
-{
-
-}
+{}
 
 /**
- * @brief Declare a new argument to the function
+ * @brief Declare a new arguments to the function
  * The value of v is not used
  * 
- * @param v 
- * @return int 0
+ * @param v : the variable to use as argument to the function
+ * @return 0: Ok, -1: Error
  */
 int fonction::add_argument(var *v)
 {
     if (v == NULL) { return -1; }
-
-    // Arguments comes with value already written
-    v->isUsedAsWrite = true;
     
-    params.push_back(*v);
+    args.push_back(*v);
 
     return 0;
 }
 
 /**
- * @brief Declare the returned variable
+ * @brief Declare the returned variable cell
+ * Note: You can't return a variable (witht more than one cell)
  * 
- * @param v : NULL = no returned value
- * @return int 0
+ * @param vc : NULL = no returned value
  */
-int fonction::set_return_var(varCell *vc) 
+void fonction::set_return_var(varCell *vc) 
 {
     // Flag the used as read
     if (vc != NULL) { 
         vc->p->isUsedAsRead = true;
     }
 
-    // Link the object
+    // Link the object (Can be NULL)
     returnVar = vc;
-
-    return 0;
 }
 
 /**
  * @brief Check if the specified variable is 
  * valid as an input argument for the function
+ * @note Log error inside
  * 
- * @param paramIndex the index of the argument 
- * @param v 
- * @return boolean 
+ * @param paramIndex: the index of the argument 
+ * @param vc: The var cell to use as argument to a function
+ * @return true: valid, false: not valid
  */
 bool fonction::is_argument_valid(uint16_t paramIndex, varCell *vc) 
 {
-    if (paramIndex >= params.size()) {
+    if (paramIndex >= args.size()) {
         _LOG_ERROR("Too much arguments");
         return false;
     }
 
-    if (params.at(paramIndex).type != vc->p->type) {
+    if (args.at(paramIndex).type != vc->p->type) {
         _LOG_ERROR("Wrong type for argument %d", paramIndex + 1);
         return false;
     }
@@ -103,7 +107,7 @@ bool fonction::is_returned_var_valid(varCell * vc)
         }
     }
     
-    // We care about the returned value, check type
+    // We care about the returned value, check the type
     if (returnVar->p->type != vc->p->type) {
         _LOG_ERROR("Wrong type for returned value");
         return false;
@@ -123,8 +127,8 @@ bool fonction::is_unused()
 }
 
 /**
- * @brief Find a variable in the context by looking 
- * by its name
+ * @brief Find a local variable in the context by looking 
+ * with its name
  * @param varName 
  * @return var* : NULL if not found
  */
@@ -146,13 +150,16 @@ var * fonction::get_var(string varName)
 void fonction::add_var(var *v)
 {
     v->set_id(this->name);
-    v->contextOffset = (-1) * ( 1 + varCount++); // The offset starts at -1
+    // -1: the offset is negative because callstack begin 
+    // at high addresses and go to low addresses
+    // 1: Skip the oldEBP in the callstack to get the first variable
+    v->contextOffset = (-1) * ( 1 + varCount++);
     variableTable.push_back(v);
 }
 
 /**
  * @brief Add a new instruction to the function context
- * @param i 
+ * @param i : pointer on instruction to add
  */
 void fonction::add_instru(instruction *i)
 {
@@ -164,17 +171,36 @@ void fonction::add_instru(instruction *i)
  * ====================== 
  */
 
+/**
+ * @brief Usefull tool to build loop and condition identifiers
+ * 
+ * @param num : unique id in the context
+ * @return string : association of the function name and num
+ */
 string fonction::build_cond_loop_id(uint16_t num)
 {
     return this->name + "#" + to_string(num);
 }
 
+/**
+ * @brief Build a new loop id in the 
+ * context and return its id
+ * 
+ * @return string: id of the new loop
+ */
 string fonction::get_next_loop_id(void)
 {
     loopStack.push(++this->loopId);
     return build_cond_loop_id(loopStack.top());
 }
 
+/**
+ * @brief Forget the last loop id built after
+ * returning it
+ * @note Displays a log error in case of empty loop id stack
+ * 
+ * @return string 
+ */
 string fonction::consume_loop_id(void)
 {
     if (loopStack.size() > 0) {
@@ -187,12 +213,19 @@ string fonction::consume_loop_id(void)
     }
 }
 
-uint32_t fonction::get_loop_back_address(string loopIdToClose)
+/**
+ * @brief Get the address of a declared loop thanks to its id
+ * 
+ * @param loopId
+ * @return Address of a previously declared loop beginning
+ */
+uint32_t fonction::get_loop_back_address(string loopId)
 {
-    // begin by the end to get speed
-    for (int index = instruTable.size() - 1; index >= 0; index--) {
+    int index;
+    // Begin by the end to get speed
+    for (index = instruTable.size() - 1; index >= 0; index--) {
         if (instruTable.at(index)->type == TANT_QUE) {
-            if (instruTable.at(index)->id == loopIdToClose) {
+            if (instruTable.at(index)->id == loopId) {
                 return instruTable.at(index)->address;
             }
         }
@@ -201,17 +234,36 @@ uint32_t fonction::get_loop_back_address(string loopIdToClose)
     return 0;
 }
 
+/**
+ * @brief Build a new condition id in the 
+ * context and return its id
+ * 
+ * @return string: id of the new condition
+ */
 string fonction::get_next_cond_id(void)
 {
     condStack.push(++this->condId);
     return build_cond_loop_id(condStack.top());
 }
 
+/**
+ * @brief Give the id of the last created
+ * condition
+ * 
+ * @return the condition id
+ */
 string fonction::get_cur_cond_id(void)
 {
     return build_cond_loop_id(condStack.top());
 }
 
+/**
+ * @brief Forget the last condition id built after
+ * returning it
+ * @note Displays a log error in case of empty condition id stack
+ * 
+ * @return string 
+ */
 string fonction::consume_cond_id(void)
 {
     if (condStack.size() > 0) {
@@ -224,6 +276,10 @@ string fonction::consume_cond_id(void)
     }
 }
 
+/**
+ * @brief Check for unclosed loop or condition
+ * @note log error inside
+ */
 void fonction::check_loops_and_cond(void)
 {
     if (condStack.size() > 0) {
