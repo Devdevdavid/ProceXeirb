@@ -10,7 +10,7 @@
 
 #include <bag_devlib.h>
 
-#define APP_VERSION     "2.2.37-devantd"
+#define APP_VERSION     "2.2.38-devantd"
 
 /* MACRO: Each ERROR/WARNING are counted */
 #define _LOG_ERROR(format, ...)   LOG_ERROR(format, ##__VA_ARGS__); nbErrorDetected++;
@@ -31,15 +31,15 @@
     #define EIP_ADDR                "02403"     // Instruction Address register
     #define DUMMY_FLASH_ADDR        "02404"     // 1 Byte of Flash memory
     // Optimum INTEGER divisor
-    #define OPTI_DIV_R_IN1_ADDR     "02400"     // Optimum divisor real IN1 address
-    #define OPTI_DIV_R_IN2_ADDR     "02401"     // Optimum divisor real IN2 address
-    #define OPTI_DIV_R_OUT_ADDR     "02410"     // Optimum divisor real OUT address
-    #define OPTI_DIV_R_RDY_ADDR     "02411"     // Optimum divisor real READY address
+    #define OPTI_DIV_R_IN1_ADDR     "02408"     // Optimum divisor real IN1 address
+    #define OPTI_DIV_R_IN2_ADDR     "02409"     // Optimum divisor real IN2 address
+    #define OPTI_DIV_R_OUT_ADDR     "0240A"     // Optimum divisor real OUT address
+    #define OPTI_DIV_R_RDY_ADDR     "0240B"     // Optimum divisor real READY address
     // Optimum REAL divisor
-    #define OPTI_DIV_I_IN1_ADDR     "02400"     // Optimum divisor integer IN1 address
-    #define OPTI_DIV_I_IN2_ADDR     "02401"     // Optimum divisor integer IN2 address
-    #define OPTI_DIV_I_OUT_ADDR     "02410"     // Optimum divisor integer OUT address
-    #define OPTI_DIV_I_RDY_ADDR     "02411"     // Optimum divisor integer READY address
+    #define OPTI_DIV_I_IN1_ADDR     "0240C"     // Optimum divisor integer IN1 address
+    #define OPTI_DIV_I_IN2_ADDR     "0240D"     // Optimum divisor integer IN2 address
+    #define OPTI_DIV_I_OUT_ADDR     "0240E"     // Optimum divisor integer OUT address
+    #define OPTI_DIV_I_RDY_ADDR     "0240F"     // Optimum divisor integer READY address
 #else
     #define LCD_ADDR                "LCD_ADDR"
     #define ESP_ADDR                "ESP_ADDR" 
