@@ -20,7 +20,7 @@ all: $(BINTARG).bytes
 
 # Build ASM file
 $(OBJTARG).asm: $(SOURCES)
-	bag-compiler $(SOURCES) -o $(OBJTARG).asm -k
+	bag-compiler $(SOURCES) -o $(OBJTARG).asm
 
 # Build Bytes file
 $(BINTARG).bytes: $(OBJTARG).asm

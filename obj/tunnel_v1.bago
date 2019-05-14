@@ -170,7 +170,7 @@ entiercolorE;
 reelcolorR;
 reelrx;
 reelry;
-reelradius[1];
+reelradius[10];
 reelshapeRadius;
 nbShapeSummit=46;
 degreeStep=8;
@@ -179,7 +179,7 @@ tetaDegresCos=90;
 pRadius=@radius;
 shapeRadius=1.0;
 shapeIndex=0;
-tant_que(shapeIndex<1)
+tant_que(shapeIndex<10)
 ecrire_a(shapeRadius,pRadius);
 pRadius=pRadius+1;
 shapeRadius=shapeRadius+18.0;
@@ -204,7 +204,7 @@ sinon;
 slowDownCnt=slowDownCnt+1;
 fin_si;
 shapeIndex=0;
-tant_que(shapeIndex<1)
+tant_que(shapeIndex<10)
 shapeRadius=lire_a(pRadius);
 si(shapeRadius<0.0)
 isInExpansion=0;
@@ -216,7 +216,7 @@ fin_si;
 sinon;
 isInExpansion=1;
 shapeRadius=shapeRadius+1.0;
-si(shapeRadius>21.0)
+si(shapeRadius>210.0)
 isInExpansion=0;
 fin_si;
 fin_si;
@@ -227,7 +227,7 @@ colorR=shapeRadius;
 colorR=colorR*0.033;
 colorR=colorR+7.0;
 sinon;
-colorR=21.0-shapeRadius;
+colorR=210.0-shapeRadius;
 colorR=colorR*0.033;
 colorR=colorR+1.0;
 fin_si;
@@ -240,14 +240,14 @@ rx=sin(tetaDegresSin);
 rx=rx*shapeRadius;
 rx=rx+320.0;
 x=rve(rx);
-si(x>124)
+si(x>1024)
 x=0;
 fin_si;
 ry=sin(tetaDegresCos);
 ry=ry*shapeRadius;
 ry=ry+240.0;
 y=rve(ry);
-si(y>124)
+si(y>1024)
 y=0;
 fin_si;
 ecrire_a(x,sharedHead);

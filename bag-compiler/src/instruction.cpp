@@ -86,7 +86,7 @@ void instruction::set_return_var(varCell * vc)
 void instruction::write_and_count_inst(string str)
 {
   ++nbInstrucLine;
-  instBuffer += str;
+  instBuffer += str + "\n";
 }
 
 /**
@@ -100,9 +100,9 @@ void instruction::print_get_local_var(varCell *vc)
   // 1: Skip the EBP in the call stack
   string constIdStr = get_const_var_value(vc->p->contextOffset);
   // Compute the dynamique address of the local variable
-  write_and_count_inst("CSA :addr(" + constIdStr + ")\n");
+  write_and_count_inst("CSA :addr(" + constIdStr + ")");
   // Get the content of the computed address into the ACCU register
-  write_and_count_inst("GAD " DYN_ADDI_ADDR "\n");
+  write_and_count_inst("GAD " DYN_ADDI_ADDR);
 }
 
 /**
@@ -117,7 +117,7 @@ void instruction::print_get_inst_for_var(varCell *vc)
     print_get_local_var(vc);
   } else {
     // Get the content of the address into the ACCU register
-    write_and_count_inst("GET :addr(" + vc->get_id()  + ")\n");
+    write_and_count_inst("GET :addr(" + vc->get_id()  + ")");
   }
 }
 
@@ -129,11 +129,11 @@ void instruction::print_save_accu(void)
   if (retVar->p->isLocal) {
     string constIdStr = get_const_var_value(retVar->p->contextOffset);
     // Compute the dynamique address of the local variable
-    write_and_count_inst("CSA :addr(" + constIdStr + ")\n");
+    write_and_count_inst("CSA :addr(" + constIdStr + ")");
     // Move the accu to the content pointed by the dynamic address
-    write_and_count_inst("SAD " DYN_ADDI_ADDR "\n");
+    write_and_count_inst("SAD " DYN_ADDI_ADDR);
   } else {
-    write_and_count_inst("STA :addr(" + retVar->get_id() + ")\n");
+    write_and_count_inst("STA :addr(" + retVar->get_id() + ")");
   }
 }
 
@@ -164,12 +164,12 @@ void instruction::print_operation(string opInstStr)
 
   if (a2->p->isLocal) {
     print_get_local_var(a2);
-    write_and_count_inst("STA " DUMMY_FLASH_ADDR "\n");
+    write_and_count_inst("STA " DUMMY_FLASH_ADDR);
     print_get_inst_for_var(a1);
-    write_and_count_inst(opInstStr + " " DUMMY_FLASH_ADDR "\n");
+    write_and_count_inst(opInstStr + " " DUMMY_FLASH_ADDR);
   } else {
     print_get_inst_for_var(a1);
-    write_and_count_inst(opInstStr + " :addr(" + a2->get_id() + ")\n");
+    write_and_count_inst(opInstStr + " :addr(" + a2->get_id() + ")");
   }
 }
 
@@ -191,8 +191,8 @@ void instruction::print_operation_and_store(string opInstStr)
  */
 void instruction::print_push_accu()
 {
-  write_and_count_inst("PSH 00000\n");
-  write_and_count_inst("SAD " ESP_ADDR "\n");
+  write_and_count_inst("PSH 00000");
+  write_and_count_inst("SAD " ESP_ADDR);
 }
 
 // ===========================
@@ -212,11 +212,11 @@ hw_init::hw_init()
 string hw_init::print_instruction()
 {
   // Init Call Stack
-  write_and_count_inst("GET :addr(" + get_const_var_value(CALL_STACK_END) + ")\n");
-  write_and_count_inst("STA " ESP_ADDR "\n");
-  write_and_count_inst("STA " EBP_ADDR "\n");
-  write_and_count_inst("GET :addr(" + get_const_var_value(0) + ")\n");
-  write_and_count_inst("STA " LCD_ADDR "\n");
+  write_and_count_inst("GET :addr(" + get_const_var_value(CALL_STACK_END) + ")");
+  write_and_count_inst("STA " ESP_ADDR);
+  write_and_count_inst("STA " EBP_ADDR);
+  write_and_count_inst("GET :addr(" + get_const_var_value(0) + ")");
+  write_and_count_inst("STA " LCD_ADDR);
 
   return instBuffer;
 }
@@ -363,7 +363,7 @@ string condition::print_instruction()
   } else if (condition_type == "==") {
     print_operation("TEQ");
   } 
-  write_and_count_inst("JCC :condition(" + id + ")\n");
+  write_and_count_inst("JCC :condition(" + id + ")");
   return instBuffer;
 }
 
@@ -375,7 +375,7 @@ sinon::sinon()
 string sinon::print_instruction()
 {
   // This is the end of the CONDITION part to skip "sinon" if executed
-  write_and_count_inst("JMP :sinon(" + id + ")\n");
+  write_and_count_inst("JMP :sinon(" + id + ")");
   return instBuffer;
 }
 
@@ -408,7 +408,7 @@ string loop::print_instruction()
   } else if (condition_type ==  "==") {
     print_operation("TEQ");
   }
-  write_and_count_inst("JCC :endloop(" + id + ")\n");
+  write_and_count_inst("JCC :endloop(" + id + ")");
   
   return instBuffer;
 }
@@ -420,7 +420,7 @@ endloop::endloop()
 
 string endloop::print_instruction()
 {
-  write_and_count_inst("JMP :loop(" + id + ")\n");
+  write_and_count_inst("JMP :loop(" + id + ")");
 
   return instBuffer;
 }
@@ -436,7 +436,7 @@ disp_LCD::disp_LCD()
 string disp_LCD::print_instruction()
 {
   print_get_inst_for_var(a1);
-  write_and_count_inst("STA " LCD_ADDR "\n");
+  write_and_count_inst("STA " LCD_ADDR);
 
   return instBuffer;
 }
@@ -448,13 +448,13 @@ write_to_shared::write_to_shared()
 string write_to_shared::print_instruction()
 {
   print_get_inst_for_var(a1);
-  write_and_count_inst("ADD :addr(" + get_const_var_value(SHARED_MEM_ADDR) + ")\n");
+  write_and_count_inst("ADD :addr(" + get_const_var_value(SHARED_MEM_ADDR) + ")");
   if (a2->p->isLocal) {
     print_get_local_var(a2);
-    write_and_count_inst("STA " DUMMY_FLASH_ADDR "\n");
-    write_and_count_inst("SAD " DUMMY_FLASH_ADDR "\n");
+    write_and_count_inst("STA " DUMMY_FLASH_ADDR);
+    write_and_count_inst("SAD " DUMMY_FLASH_ADDR);
   } else {
-    write_and_count_inst("SAD :addr(" + a2->get_id() + ")\n");
+    write_and_count_inst("SAD :addr(" + a2->get_id() + ")");
   }
 
   return instBuffer;
@@ -467,9 +467,9 @@ sine::sine()
 string sine::print_instruction()
 {
   print_get_inst_for_var(a1);
-  write_and_count_inst("ADD :addr(" + get_const_var_value(SIN_TABLE_ADDR) + ")\n");
-  write_and_count_inst("STA " DUMMY_FLASH_ADDR "\n");
-  write_and_count_inst("GAD " DUMMY_FLASH_ADDR "\n");
+  write_and_count_inst("ADD :addr(" + get_const_var_value(SIN_TABLE_ADDR) + ")");
+  write_and_count_inst("STA " DUMMY_FLASH_ADDR);
+  write_and_count_inst("GAD " DUMMY_FLASH_ADDR);
   print_save_accu(); //store in the return var
 
   return instBuffer;
@@ -483,9 +483,9 @@ string cos::print_instruction()
 {
   _LOG_WARNING("cos() table is not complete for value above 270 degrees");
   print_get_inst_for_var(a1);
-  write_and_count_inst("ADD :addr(" + get_const_var_value(COS_TABLE_ADDR) + ")\n");
-  write_and_count_inst("STA " DUMMY_FLASH_ADDR "\n");
-  write_and_count_inst("GAD " DUMMY_FLASH_ADDR "\n");
+  write_and_count_inst("ADD :addr(" + get_const_var_value(COS_TABLE_ADDR) + ")");
+  write_and_count_inst("STA " DUMMY_FLASH_ADDR);
+  write_and_count_inst("GAD " DUMMY_FLASH_ADDR);
   print_save_accu(); 
   
   return instBuffer;
@@ -499,12 +499,12 @@ string write_at::print_instruction()
 {
   if (a2->p->isLocal) {
     print_get_local_var(a2);
-    write_and_count_inst("STA " DUMMY_FLASH_ADDR "\n");
+    write_and_count_inst("STA " DUMMY_FLASH_ADDR);
     print_get_inst_for_var(a1);
-    write_and_count_inst("SAD " DUMMY_FLASH_ADDR "\n");
+    write_and_count_inst("SAD " DUMMY_FLASH_ADDR);
   } else {
     print_get_inst_for_var(a1);
-    write_and_count_inst("SAD :addr(" + a2->get_id() + ")\n");
+    write_and_count_inst("SAD :addr(" + a2->get_id() + ")");
   }
   
   return instBuffer;
@@ -518,10 +518,10 @@ string read_at::print_instruction()
 {
   if (a1->p->isLocal) {
     print_get_local_var(a1);
-    write_and_count_inst("STA " DUMMY_FLASH_ADDR "\n");
-    write_and_count_inst("GAD " DUMMY_FLASH_ADDR "\n");
+    write_and_count_inst("STA " DUMMY_FLASH_ADDR);
+    write_and_count_inst("GAD " DUMMY_FLASH_ADDR);
   } else {
-    write_and_count_inst("GAD :addr(" + a1->get_id() + ")\n");
+    write_and_count_inst("GAD :addr(" + a1->get_id() + ")");
   }
   print_save_accu(); 
   return instBuffer;
@@ -539,10 +539,10 @@ string ins_fti::print_instruction()
 {
   if (a1->p->isLocal) {
     print_get_inst_for_var(a1);
-    write_and_count_inst("STA " DUMMY_FLASH_ADDR "\n");
-    write_and_count_inst("FTI " DUMMY_FLASH_ADDR "\n");
+    write_and_count_inst("STA " DUMMY_FLASH_ADDR);
+    write_and_count_inst("FTI " DUMMY_FLASH_ADDR);
   } else {
-    write_and_count_inst("FTI :addr(" + a1->get_id() + ")\n");
+    write_and_count_inst("FTI :addr(" + a1->get_id() + ")");
   }
   print_save_accu();
 
@@ -557,10 +557,10 @@ string ins_itf::print_instruction()
 {
   if (a1->p->isLocal) {
     print_get_inst_for_var(a1);
-    write_and_count_inst("STA " DUMMY_FLASH_ADDR "\n");
-    write_and_count_inst("ITF " DUMMY_FLASH_ADDR "\n");
+    write_and_count_inst("STA " DUMMY_FLASH_ADDR);
+    write_and_count_inst("ITF " DUMMY_FLASH_ADDR);
   } else {
-    write_and_count_inst("ITF :addr(" + a1->get_id() + ")\n");
+    write_and_count_inst("ITF :addr(" + a1->get_id() + ")");
   }
   print_save_accu();
 
@@ -580,17 +580,17 @@ string func_begin::print_instruction()
   int index;
 
   // PUSH EBP
-  write_and_count_inst("GET " EBP_ADDR "\n");
+  write_and_count_inst("GET " EBP_ADDR);
   print_push_accu();
 
   // Set the new value of EBP (Base Pointer)
-  write_and_count_inst("GET " ESP_ADDR "\n");
-  write_and_count_inst("STA " EBP_ADDR "\n");
+  write_and_count_inst("GET " ESP_ADDR);
+  write_and_count_inst("STA " EBP_ADDR);
 
   // Manage local variables
   if (func->variableTable.size() > 0) {
     // Load 0 in accu to initialize local variables 
-    write_and_count_inst("GET :addr(" + get_const_var_value(0) + ")\n");
+    write_and_count_inst("GET :addr(" + get_const_var_value(0) + ")");
 
     // Allocate space for local variables
     for (var * variable : func->variableTable) {
@@ -605,15 +605,15 @@ string func_begin::print_instruction()
     // Select the param in the call satck (2: Skip Old_EBP and Old_EIP)
     string constIdStr = get_const_var_value(2 + index);
     // Compute the dynamique address of the local variable
-    write_and_count_inst("CSA :addr(" + constIdStr + ")\n");
+    write_and_count_inst("CSA :addr(" + constIdStr + ")");
     // Get the content of the computed address into the ACCU register
-    write_and_count_inst("GAD " DYN_ADDI_ADDR "\n");
+    write_and_count_inst("GAD " DYN_ADDI_ADDR);
 
     constIdStr = get_const_var_value(func->variableTable.at(index)->contextOffset);
     // Compute the dynamique address of the local variable
-    write_and_count_inst("CSA :addr(" + constIdStr + ")\n");
+    write_and_count_inst("CSA :addr(" + constIdStr + ")");
     // Move the accu to the content pointed by the dynamic address
-    write_and_count_inst("SAD " DYN_ADDI_ADDR "\n");
+    write_and_count_inst("SAD " DYN_ADDI_ADDR);
   }
 
   return instBuffer;
@@ -626,42 +626,29 @@ func_end::func_end()
 string func_end::print_instruction()
 {
   // Restore the old value of ESP
-  write_and_count_inst("GET " EBP_ADDR "\n");
-  write_and_count_inst("STA " ESP_ADDR "\n");
+  write_and_count_inst("GET " EBP_ADDR);
+  write_and_count_inst("STA " ESP_ADDR);
 
   // Restore the old value of EBP
-  write_and_count_inst("GAD " ESP_ADDR "\n");
-  write_and_count_inst("STA " EBP_ADDR "\n");
+  write_and_count_inst("GAD " ESP_ADDR);
+  write_and_count_inst("STA " EBP_ADDR);
 
   // POP the old EBP from call stack
-  write_and_count_inst("POP 00000\n");
+  write_and_count_inst("POP 00000");
 
-  // Are we interrested in the returned value ? (THIS DOESN'T WORK FOR NOW)
+  // Are we interrested in the returned value ?
   if (func->returnVar != NULL) {
-    // Save return value in ACCU
+    // Save return value in DUMMY
     print_get_inst_for_var(func->returnVar);
+    write_and_count_inst("STA " DUMMY_FLASH_ADDR);
   }
 
-  // Return to calling function (Equi. POP EIP) (All code below is a JMP)
-  // Get the current position of the EIP
-  write_and_count_inst("GET " EIP_ADDR "\n");
-  // Compute the address where we want to save the instruction
-  write_and_count_inst("ADD :addr(" + get_const_var_value(6) + ")\n");
-  // Save it in dummy
-  write_and_count_inst("STA " DUMMY_FLASH_ADDR "\n");
-
-  // Dynamicaly create the JMP Instruction
   // Get the old EIP where we want to jump and pop it
-  write_and_count_inst("GAD " ESP_ADDR "\n");
-  write_and_count_inst("POP 00000\n");
-  // Add the OP code of the JMP
-  write_and_count_inst("ADD :addr(" + get_const_var_value(OP_JMP << 20) + ")\n");
+  write_and_count_inst("GAD " ESP_ADDR);
+  write_and_count_inst("POP 00000");
 
-  // Set this at the address located in DUMMY
-  write_and_count_inst("SAD " DUMMY_FLASH_ADDR "\n");
-
-  // This instruction will be erased by the execution of above code
-  write_and_count_inst("JMP CAFFE\n");
+  // Set the value in the EIP to JUMP
+  write_and_count_inst("STA " EIP_ADDR);
 
   return instBuffer;
 }
@@ -761,25 +748,25 @@ string functionCall::print_instruction()
 
   /** CALL (Equi. to push eip + jump addr) */
   // PUSH EIP
-  write_and_count_inst("GET " EIP_ADDR "\n");
+  write_and_count_inst("GET " EIP_ADDR);
   // Add 3 to EIP value to skip the 2 instructions inside print_push_accu() and this ADD
-  write_and_count_inst("ADD :addr(" + get_const_var_value(4) + ")\n");
+  write_and_count_inst("ADD :addr(" + get_const_var_value(4) + ")");
   print_push_accu();
 
   // JUMP to the address where the function start
-  write_and_count_inst("JMP :call(" + func->name + ")\n");
+  write_and_count_inst("JMP :call(" + func->name + ")");
 
   // At the end of the function, we come back here
 
   // POP all parameters
   for (index = args.size() - 1; index >= 0; index--) {
-    write_and_count_inst("POP 00000\n");
+    write_and_count_inst("POP 00000");
   }
   
-  // Save return value from ACCU to returned variable if needed
+  // Save return value from DUMMY to returned variable if needed
   if (retVar != NULL) {
-    _LOG_ERROR("Returned value are not supported yet");
-    //print_save_accu();
+    write_and_count_inst("GET " DUMMY_FLASH_ADDR);
+    print_save_accu();
   }
 
   return instBuffer;
