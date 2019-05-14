@@ -1,4 +1,29 @@
-entier a;
-a = sin(4);
-afficher_LCD (a);
+entier cnt;
+entier retVal;
+
+// value of 16777215 is 16.10 sec
+// so 1ms is 16777215 / 16100 = 1042
+fonction delay_ms(entier value)
+	entier counter;
+
+	counter = 0;
+	value = value * 1042;
+	tant_que (counter < value)
+		counter = counter + 1;
+	fin_tant_que;
+retourne;
+
+tant_que(1 == 1)
+
+	cnt = cnt + 1;
+	si (cnt > 360)
+		cnt = 0;
+	fin_si;
+
+	retVal = cos(cnt);
+	afficher_LCD(retVal);
+
+	delay_ms(10);
+
+fin_tant_que;
 

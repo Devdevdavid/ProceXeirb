@@ -481,7 +481,7 @@ cos::cos()
 }
 string cos::print_instruction()
 {
-  _LOG_WARNING("cos() table is not complete for value above 270 degrees");
+  _LOG_WARNING("cos() table is not complete for value above 270 degrees"); // To be deleted after test
   print_get_inst_for_var(a1);
   write_and_count_inst("ADD :addr(" + get_const_var_value(COS_TABLE_ADDR) + ")");
   write_and_count_inst("STA " DUMMY_FLASH_ADDR);

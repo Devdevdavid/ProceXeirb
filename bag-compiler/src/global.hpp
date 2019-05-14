@@ -10,7 +10,7 @@
 
 #include <bag_devlib.h>
 
-#define APP_VERSION     "2.2.28-devantd"
+#define APP_VERSION     "2.2.33-devantd"
 
 /* MACRO: Each ERROR/WARNING are counted */
 #define _LOG_ERROR(format, ...)   LOG_ERROR(format, ##__VA_ARGS__); nbErrorDetected++;
@@ -30,6 +30,16 @@
     #define DYN_ADDI_ADDR           "02402"     // Output of the dynamic adress computer 
     #define EIP_ADDR                "02403"     // Instruction Address register
     #define DUMMY_FLASH_ADDR        "02404"     // 1 Byte of Flash memory
+    // Optimum INTEGER divisor
+    #define OPTI_DIV_R_IN1_ADDR     "02404"     // Optimum divisor real IN1 address
+    #define OPTI_DIV_R_IN2_ADDR     "02404"     // Optimum divisor real IN2 address
+    #define OPTI_DIV_R_OUT_ADDR     "02404"     // Optimum divisor real OUT address
+    #define OPTI_DIV_R_RDY_ADDR     "02404"     // Optimum divisor real READY address
+    // Optimum REAL divisor
+    #define OPTI_DIV_I_IN1_ADDR     "02404"     // Optimum divisor integer IN1 address
+    #define OPTI_DIV_I_IN2_ADDR     "02404"     // Optimum divisor integer IN2 address
+    #define OPTI_DIV_I_OUT_ADDR     "02404"     // Optimum divisor integer OUT address
+    #define OPTI_DIV_I_RDY_ADDR     "02404"     // Optimum divisor integer READY address
 #else
     #define LCD_ADDR                "LCD_ADDR"
     #define ESP_ADDR                "ESP_ADDR" 
