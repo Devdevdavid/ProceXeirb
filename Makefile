@@ -1,5 +1,5 @@
 # TARGET          = cube
-TARGET          = test_func
+TARGET          = test_div
 
 SRCDIR          = prog
 OBJDIR          = obj

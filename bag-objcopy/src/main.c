@@ -55,6 +55,7 @@ int decodeInstruction(char * instruction) {
   if (!strcmp(instruction, "TGT")) return OP_TGT;
   if (!strcmp(instruction, "TLT")) return OP_TLT;
   if (!strcmp(instruction, "TEQ")) return OP_TEQ;
+  //if (!strcmp(instruction, "TNE")) return OP_TNE; // Future feature !
   if (!strcmp(instruction, "GAD")) return OP_GAD;
   if (!strcmp(instruction, "CSA")) return OP_CSA;
   if (!strcmp(instruction, "SAD")) return OP_SAD;

@@ -484,6 +484,9 @@ string condition_type(string str)
     return "<";
   } else if (str.find("==") != string::npos) {
     return "==";
+  } else if (str.find("!=") != string::npos) {
+    _LOG_WARNING("Operator \"!=\" is not yet supported ! Comming soon...");
+    return "!=";
   }
 
   _LOG_ERROR("Unknown condition operator : \"%s\"", str.c_str());

@@ -269,11 +269,41 @@ division::division()
 }
 string division::print_instruction()
 {
-  if (a1->p->type == INTEGER) {
-    print_operation_and_store("DIV");
-  } else {
-    print_operation_and_store("FDI");
+  string addrIn1, addrIn2, addrOut, addrRdy;
+
+  if (a1->p->type != a2->p->type) {
+    _LOG_ERROR("Variable are not of the same type in this operation: %s / %s",
+      a1->get_id().c_str(), 
+      a2->get_id().c_str());
+    return "";
   }
+
+  if (a1->p->type == INTEGER) {
+    addrIn1 = OPTI_DIV_I_IN1_ADDR;
+    addrIn2 = OPTI_DIV_I_IN2_ADDR;
+    addrOut = OPTI_DIV_I_OUT_ADDR;
+    addrRdy = OPTI_DIV_I_RDY_ADDR;
+  } else {
+    addrIn1 = OPTI_DIV_R_IN1_ADDR;
+    addrIn2 = OPTI_DIV_R_IN2_ADDR;
+    addrOut = OPTI_DIV_R_OUT_ADDR;
+    addrRdy = OPTI_DIV_R_RDY_ADDR;
+  }
+
+  // Load a1 inside IN1
+  print_get_inst_for_var(a1);
+  write_and_count_inst("STA " + addrIn1);
+
+  // Load a2 inside IN2
+  print_get_inst_for_var(a2);
+  write_and_count_inst("STA " + addrIn2);
+
+  // Get the result in ACCU
+  write_and_count_inst("GET " + addrOut);
+
+  // Save the ACCU into the return value
+  print_save_accu();
+
   return instBuffer;
 }
 
@@ -362,6 +392,8 @@ string condition::print_instruction()
     print_operation("TLT");
   } else if (condition_type == "==") {
     print_operation("TEQ");
+  } else if (condition_type == "!=") {
+    print_operation("TNE");
   } 
   write_and_count_inst("JCC :condition(" + id + ")");
   return instBuffer;
@@ -405,8 +437,10 @@ string loop::print_instruction()
     print_operation("TGT");
   } else if (condition_type == "<") {
     print_operation("TLT");
-  } else if (condition_type ==  "==") {
+  } else if (condition_type == "==") {
     print_operation("TEQ");
+  } else if (condition_type == "!=") {
+    print_operation("TNE");
   }
   write_and_count_inst("JCC :endloop(" + id + ")");
   

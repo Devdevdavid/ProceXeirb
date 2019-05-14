@@ -1,0 +1,10 @@
+entier retVal;
+
+tant_que(1 == 1)
+
+
+	retVal = 10.0 / 10.0;
+	afficher_LCD(retVal);
+
+fin_tant_que;
+
