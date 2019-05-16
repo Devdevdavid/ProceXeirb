@@ -1,10 +1,22 @@
-entier retVal;
+#definition BASE_LED_ADDR (524304)
+reel retVal;
+entier cnt = 0;
+entier delay = 0;
+
+fonction add(reel aa, reel bb)
+	reel rr;
+	rr = aa + bb;
+retourne rr;
 
 tant_que(1 == 1)
 
-
-	retVal = 10.0 / 10.0;
+	retVal = add(retVal, 1.0);
 	afficher_LCD(retVal);
+
+	delay = 0;
+	tant_que(delay < 99999)
+		delay = delay + 1;
+	fin_tant_que;
 
 fin_tant_que;
 

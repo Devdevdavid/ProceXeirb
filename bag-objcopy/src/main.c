@@ -38,11 +38,8 @@ int decodeInstruction(char * instruction) {
   if (!strcmp(instruction, "XOR")) return OP_XOR;
   if (!strcmp(instruction, "ADD")) return OP_ADD;
   if (!strcmp(instruction, "SUB")) return OP_SUB;
-  if (!strcmp(instruction, "DIV")) return OP_DIV;
   if (!strcmp(instruction, "MUL")) return OP_MUL;
-  if (!strcmp(instruction, "MOD")) return OP_MOD;
   if (!strcmp(instruction, "FAD")) return OP_FAD;
-  if (!strcmp(instruction, "FDI")) return OP_FDI;
   if (!strcmp(instruction, "FMU")) return OP_FMU;
   if (!strcmp(instruction, "FTI")) return OP_FTI;
   if (!strcmp(instruction, "ITF")) return OP_ITF;
@@ -55,7 +52,7 @@ int decodeInstruction(char * instruction) {
   if (!strcmp(instruction, "TGT")) return OP_TGT;
   if (!strcmp(instruction, "TLT")) return OP_TLT;
   if (!strcmp(instruction, "TEQ")) return OP_TEQ;
-  //if (!strcmp(instruction, "TNE")) return OP_TNE; // Future feature !
+  if (!strcmp(instruction, "TNE")) return OP_TNE;
   if (!strcmp(instruction, "GAD")) return OP_GAD;
   if (!strcmp(instruction, "CSA")) return OP_CSA;
   if (!strcmp(instruction, "SAD")) return OP_SAD;

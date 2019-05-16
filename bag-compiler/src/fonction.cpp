@@ -45,7 +45,7 @@ int fonction::add_argument(var *v)
 
 /**
  * @brief Declare the returned variable cell
- * Note: You can't return a variable (witht more than one cell)
+ * Note: You can't return a variable (with more than one cell)
  * 
  * @param vc : NULL = no returned value
  */

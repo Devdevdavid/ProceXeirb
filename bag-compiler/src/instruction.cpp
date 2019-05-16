@@ -150,7 +150,7 @@ void instruction::set_address(uint32_t address)
 /**
  * @brief Print the asm instruction for operations (+ - * /)
  * 
- * @param opInstStr: operation type (ADD, FAD, DIV...)
+ * @param opInstStr: operation type (ADD, FAD...)
  */
 void instruction::print_operation(string opInstStr)
 {
@@ -515,7 +515,6 @@ cos::cos()
 }
 string cos::print_instruction()
 {
-  _LOG_WARNING("cos() table is not complete for value above 270 degrees"); // To be deleted after test
   print_get_inst_for_var(a1);
   write_and_count_inst("ADD :addr(" + get_const_var_value(COS_TABLE_ADDR) + ")");
   write_and_count_inst("STA " DUMMY_FLASH_ADDR);
@@ -659,6 +658,13 @@ func_end::func_end()
 }
 string func_end::print_instruction()
 {
+  // Are we interrested in the returned value ?
+  if (func->returnVar != NULL) {
+    // Save return value in DUMMY
+    print_get_inst_for_var(func->returnVar);
+    write_and_count_inst("STA " DUMMY_FLASH_ADDR);
+  }
+
   // Restore the old value of ESP
   write_and_count_inst("GET " EBP_ADDR);
   write_and_count_inst("STA " ESP_ADDR);
@@ -669,13 +675,6 @@ string func_end::print_instruction()
 
   // POP the old EBP from call stack
   write_and_count_inst("POP 00000");
-
-  // Are we interrested in the returned value ?
-  if (func->returnVar != NULL) {
-    // Save return value in DUMMY
-    print_get_inst_for_var(func->returnVar);
-    write_and_count_inst("STA " DUMMY_FLASH_ADDR);
-  }
 
   // Get the old EIP where we want to jump and pop it
   write_and_count_inst("GAD " ESP_ADDR);
