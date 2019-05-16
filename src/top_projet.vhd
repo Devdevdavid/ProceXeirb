@@ -204,7 +204,10 @@ architecture rtl of top_projet is
     cpu_base_pointer_en     : out std_logic;
     cpu_stack_add_param_en  : out std_logic;
     cpu_address_counter_en  : out std_logic;
-    cpu_dummy_en            : out std_logic
+    cpu_dummy_en            : out std_logic;
+    cpu_div_int_en          : out std_logic;
+    cpu_div_real_en         : out std_logic
+    
     );
   end component;
 
@@ -226,7 +229,9 @@ architecture rtl of top_projet is
     gpu_base_pointer_en     : out std_logic;
     gpu_stack_add_param_en  : out std_logic;
     gpu_address_counter_en  : out std_logic;
-    gpu_dummy_en            : out std_logic
+    gpu_dummy_en            : out std_logic;
+    gpu_div_int_en          : out std_logic;
+    gpu_div_real_en         : out std_logic
     );
 
   end component;
@@ -302,6 +307,30 @@ component reg_with_interface is
         );
   end component;
   
+  component optimumDivisor is
+    generic (
+            data_size    : integer := 8;
+            address_size : integer := 8;
+            mode         : integer := 0; -- 0 = int ; 1 = float
+            sfixed_msb  : integer := 15;
+            sfixed_lsb   : integer := -8
+        );
+    port (
+        clk                : in  std_logic;
+        clk_en             : in  std_logic;
+        reset              : in  std_logic;
+        
+
+        en                 : in  std_logic;
+        bus_data_in        : out std_logic_vector(data_size-1 downto 0);
+        bus_data_out       : in  std_logic_vector(data_size-1 downto 0);
+        bus_address        : in  std_logic_vector(address_size-1 downto 0);
+        bus_R_W            : in  std_logic;
+        bus_en             : in  std_logic
+        );
+
+end component;
+  
 -- Call stack
   component call_stack is
     generic (
@@ -339,6 +368,8 @@ component reg_with_interface is
   signal cpu_stack_add_param_en  : std_logic;
   signal cpu_address_counter_en  : std_logic;
   signal cpu_dummy_en            : std_logic;
+  signal cpu_div_int_en          : std_logic;
+  signal cpu_div_real_en         : std_logic;
 
   /* Signaux du GPU */
   signal gpu_bus_en         : std_logic;
@@ -359,7 +390,8 @@ component reg_with_interface is
   signal gpu_stack_add_param_en  : std_logic;
   signal gpu_address_counter_en  : std_logic;
   signal gpu_dummy_en            : std_logic;
-
+  signal gpu_div_int_en          : std_logic;
+  signal gpu_div_real_en         : std_logic;
 begin
 
 
@@ -450,7 +482,9 @@ inst_cpu_periph_manager : cpu_periph_manager
     cpu_base_pointer_en     => cpu_base_pointer_en,
     cpu_stack_add_param_en  => cpu_stack_add_param_en,
     cpu_address_counter_en  => cpu_address_counter_en,
-    cpu_dummy_en            => cpu_dummy_en
+    cpu_dummy_en            => cpu_dummy_en,
+    cpu_div_int_en            => cpu_div_int_en,
+    cpu_div_real_en            => cpu_div_real_en
     );
 
 /* La RAM du CPU */
@@ -497,6 +531,8 @@ inst_ram_cpu : ram_simple
 
     led_out            => led_out
     );
+    
+    
 
 --/*///////////-----------------------///////////
 --               INSTANCIATIONS GPU
@@ -580,7 +616,9 @@ inst_gpu_periph_manager : gpu_periph_manager
     gpu_base_pointer_en     => gpu_base_pointer_en,
     gpu_stack_add_param_en  => gpu_stack_add_param_en,
     gpu_address_counter_en  => gpu_address_counter_en,
-    gpu_dummy_en            => gpu_dummy_en
+    gpu_dummy_en            => gpu_dummy_en,
+    gpu_div_int_en            => gpu_div_int_en,
+    gpu_div_real_en            => gpu_div_real_en
     );
 
 /* La RAM du GPU */
@@ -747,4 +785,88 @@ inst_dummy_gpu : reg_with_interface
     bus_R_W         => gpu_bus_R_W,
     bus_en          => gpu_bus_en
   );   
+  
+  inst_div_int_cpu : optimumDivisor
+    generic map (
+      data_size    => data_size,
+      address_size => address_size,
+      mode         => 0, -- 0 = int ; 1 = float
+      sfixed_msb   => 15,
+      sfixed_lsb   => -8
+        )
+    port map(
+    reset       => reset,
+    clk             => clk,
+    clk_en          => clk_en,
+        
+    en              => cpu_div_int_en,         
+    bus_data_in     => cpu_bus_data_in,
+    bus_data_out    => cpu_bus_data_out,
+    bus_address     => cpu_bus_address,
+    bus_R_W         => cpu_bus_R_W,
+    bus_en          => cpu_bus_en
+        );
+   
+  inst_div_real_cpu : optimumDivisor
+    generic map (
+      data_size    => data_size,
+      address_size => address_size,
+      mode         => 1, -- 0 = int ; 1 = real
+      sfixed_msb   => 15,
+      sfixed_lsb   => -8
+        )
+    port map(
+    reset       => reset,
+    clk             => clk,
+    clk_en          => clk_en,
+        
+    en              => cpu_div_real_en,         
+    bus_data_in     => cpu_bus_data_in,
+    bus_data_out    => cpu_bus_data_out,
+    bus_address     => cpu_bus_address,
+    bus_R_W         => cpu_bus_R_W,
+    bus_en          => cpu_bus_en
+        );
+  
+   inst_div_int_gpu : optimumDivisor
+    generic map (
+      data_size    => data_size,
+      address_size => address_size,
+      mode         => 0, -- 0 = int ; 1 = float
+      sfixed_msb   => 15,
+      sfixed_lsb   => -8
+        )
+    port map(
+    reset       => reset,
+    clk             => clk,
+    clk_en          => clk_en,
+        
+    en              => gpu_div_int_en,         
+    bus_data_in     => gpu_bus_data_in,
+    bus_data_out    => gpu_bus_data_out,
+    bus_address     => gpu_bus_address,
+    bus_R_W         => gpu_bus_R_W,
+    bus_en          => gpu_bus_en
+        );
+        
+  inst_div_real_gpu : optimumDivisor
+    generic map (
+      data_size    => data_size,
+      address_size => address_size,
+      mode         => 1, -- 0 = int ; 1 = float
+      sfixed_msb   => 15,
+      sfixed_lsb   => -8
+        )
+    port map(
+    reset       => reset,
+    clk             => clk,
+    clk_en          => clk_en,
+        
+    en              => gpu_div_real_en,         
+    bus_data_in     => gpu_bus_data_in,
+    bus_data_out    => gpu_bus_data_out,
+    bus_address     => gpu_bus_address,
+    bus_R_W         => gpu_bus_R_W,
+    bus_en          => gpu_bus_en
+        );
 end rtl;

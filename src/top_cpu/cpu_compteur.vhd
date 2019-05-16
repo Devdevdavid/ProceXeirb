@@ -110,11 +110,14 @@ begin
 
                 elsif load_cpt = '1' then
                     cpt <= to_integer(unsigned(cpt_in));
-                
+                    
+                elsif  periph_R_W = '1' then 
+                    cpt <= to_integer(unsigned(periph_data_in));
+                    
                 elsif en_cpt = '1' then
                     if cpt < 2**address_size-1 then
                         cpt <= cpt + 1;
-                    
+                        
                     else
                         cpt <= 0;
 

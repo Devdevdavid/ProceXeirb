@@ -5,7 +5,7 @@ Algorithm                  :     Minimum_Area
 Memory Type                :     Dual_Port_RAM
 Port A Read Width          :     [25]
 Port A Write Width         :     [25]
-Memory Depth               :     [360]
+Memory Depth               :     [451]
 Port B Read Width          :     [25]
 Port B Write Width         :     [25]
 

@@ -24,7 +24,9 @@ entity cpu_periph_manager is
     cpu_base_pointer_en     : out std_logic;
     cpu_stack_add_param_en  : out std_logic;
     cpu_address_counter_en  : out std_logic;
-    cpu_dummy_en            : out std_logic
+    cpu_dummy_en            : out std_logic;
+    cpu_div_int_en          : out std_logic;
+    cpu_div_real_en        : out std_logic
     );
 
 end entity cpu_periph_manager;
@@ -47,6 +49,8 @@ begin
     cpu_stack_add_param_en  <= '0';
     cpu_address_counter_en  <= '0';
     cpu_dummy_en            <= '0';
+    cpu_div_int_en          <= '0';
+    cpu_div_real_en         <= '0';
     
     if cpu_bus_en = '1' then
       case to_integer(unsigned(cpu_bus_address)) is
@@ -70,11 +74,17 @@ begin
           
         when 16#02404# => 
           cpu_dummy_en    <= '1';
+          
+        when 16#02408# to 16#0240B# => 
+          cpu_div_int_en    <= '1';
+          
+        when 16#0240C# to 16#0240F#=> 
+          cpu_div_real_en    <= '1';
      
         when 16#03000# to 16#03fff# =>
           cpu_shr_ram_en   <= '1';
 
-        when 16#04000# to 16#05000# =>
+        when 16#04000# to 16#041C3# =>
           cpu_sinus_table_en   <= '1';
 
         when 16#80000# =>

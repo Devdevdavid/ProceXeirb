@@ -13,6 +13,7 @@ entity acces_carte is
           DataLSB   : in std_logic_vector(3 downto 0);
           DataMSB   : in std_logic_vector(3 downto 0);
           DataInMem : in std_logic_vector(7 downto 0);
+          Aff_Hexa_Dec  : in std_logic;
 	 	  ce1s      : out std_logic;
 	 	  ce25M     : out std_logic;
 	 	  AN        : out std_logic_vector(7 downto 0);
@@ -89,6 +90,17 @@ i_Bin27s_DataMSB      : Bin27s port map(DataMSB,ssegDataMSB);
 i_mux8_1              : mux8_1 port map(tiret,ssegAdrMSB,ssegAdrLSB,tiret,ssegDataInMemMSB,ssegDataInMemLSB,ssegDataMSB,ssegDataLSB,commande_mux8_1,Sseg);
 i_modulo8             : modulo8 port map(clk,reset,ce195k,commande_mux8_1,AN);
 i_gen_ce              : gen_ce  port map(clk,reset,ce195k,ce25M,ce1s);
+
+--    process (Aff_Hexa_Dec) is 
+--        begin
+--        if Aff_Hexa_Dec = '0' then
+            
+--        else
+               
+--        end if;
+--    end process;
+
+
 
 --LED <= not DataInMem(7) & not DataInMem(6) & not DataInMem(5) & not DataInMem(4) & not DataInMem(3) & not DataInMem(2) & not DataInMem(1) & not DataInMem(0);
 --LED <= DataInMem;

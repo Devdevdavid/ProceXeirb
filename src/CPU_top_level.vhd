@@ -102,7 +102,6 @@ component top_projet
                   -- Afficheur 8 x 7 segments
               sevenseg             : out std_logic_vector (6 downto 0);
               sevenseg_an          : out std_logic_vector (7 downto 0);
-              
           -- Interrupteurs
           switches    : in  std_logic_vector(15 downto 0);
           
@@ -119,12 +118,14 @@ component acces_carte
           DataLSB		: in std_logic_vector(3 downto 0);
           DataMSB		: in std_logic_vector(3 downto 0);
           DataInMem		: in std_logic_vector(7 downto 0);
+          Aff_Hexa_Dec  : in std_logic;
 	 	  ce1s  		: out std_logic;
 	      ce25M  		: out std_logic;
 	 	  AN            : out std_logic_vector(7 downto 0);
 	 	  Sseg 			: out std_logic_vector(7 downto 0);
 	 	  LED  			: out std_logic_vector(7 downto 0);
 		  LEDg 			: out std_logic);
+		  
 end component;
 
 signal Data_Mem_Unit    : STD_LOGIC_VECTOR (7 downto 0);
@@ -202,6 +203,7 @@ Peripheriques 	 : acces_carte  port map (clk25M,
 										  Data_Unit_Mem(3 downto 0), 
 										  Data_Unit_Mem(7 downto 4),
 										  Data_Mem_Unit,
+										  switches(0),
 										  ce1s,  
 										  ce25M, 
 										  open,

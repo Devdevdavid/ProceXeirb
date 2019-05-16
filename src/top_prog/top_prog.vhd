@@ -11,7 +11,8 @@ entity top_prog is
     data_size    : integer;    -- Taille de chaque mot stocké
     address_size : integer;    -- Largeur de l'adresse
     clk_div      : integer;    -- diviseur de l'horloge du fpga
-    ram_address_size : integer
+    ram_address_size : integer;
+    led_value    : integer := 10
   );
   port (
     clk       : in  std_logic;
@@ -104,14 +105,30 @@ architecture rtl of top_prog is
       );
   end component;
 
+  component gpio_pwm_led is
+    generic (
+      data_size    : integer
+    );
+    port (
+      clk        : in  std_logic;
+        
+      value      : in  std_logic_vector(data_size-1 downto 0);
+    
+      led_out    : out std_logic
+    );
+  end component;
 
   signal cpt_out          : std_logic_vector (ram_address_size-1 downto 0);
   signal uart_data        : std_logic_vector (data_size-1 downto 0);
   signal uart_data_avail  : std_logic;
   signal clear            : std_logic;
   signal prog_out_en      : std_logic;
+  signal led_status       : std_logic;
+  signal led_pwm       : std_logic;
 
 begin
+
+prog_status_led <= led_status and led_pwm;
 
 inst_uart_to_parallel : uart_to_parallel
   generic map (
@@ -149,7 +166,7 @@ inst_prog_fsm : prog_fsm
       prog_btn => prog_btn,
       cpt_out  => cpt_out,
       
-      prog_status_led => prog_status_led,
+      prog_status_led => led_status,
       clear           => clear,
       cpu_init        => cpu_init,
       prog_out_en     => prog_out_en
@@ -178,5 +195,15 @@ inst_bus_interface : bus_interface
       bus_en_mem   => bus_en_mem,
       en_mem       => uart_data_avail
       );
+      
+ inst_gpio_led : gpio_pwm_led
+     generic map (
+     data_size => data_size
+     )
+     port map (
+     clk => clk,
+     value =>  std_logic_vector(to_unsigned(led_value, data_size)),
+     led_out => led_pwm
+     );
 
 end architecture;

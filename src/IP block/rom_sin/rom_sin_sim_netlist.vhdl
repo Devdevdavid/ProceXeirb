@@ -1,9 +1,9 @@
 -- Copyright 1986-2018 Xilinx, Inc. All Rights Reserved.
 -- --------------------------------------------------------------------------------
 -- Tool Version: Vivado v.2018.3 (win64) Build 2405991 Thu Dec  6 23:38:27 MST 2018
--- Date        : Wed Mar  6 22:43:07 2019
+-- Date        : Thu May 16 10:32:33 2019
 -- Host        : DESKTOP-6RO2CF2 running 64-bit major release  (build 9200)
--- Command     : write_vhdl -force -mode funcsim {d:/MEGAsync/SEE09-2/S8/Proco 8bit/repo/ProceXeirb/src/IP
+-- Command     : write_vhdl -force -mode funcsim {D:/MEGAsync/SEE09-2/S8/Proco 8bit/repo/ProceXeirb/src/IP
 --               block/rom_sin/rom_sin_sim_netlist.vhdl}
 -- Design      : rom_sin
 -- Purpose     : This VHDL netlist is a functional simulation representation of the design and should not be modified or
@@ -127,18 +127,18 @@ begin
       INIT_2A => X"3F3F3F363F3F3F313F3F3F2D3F3F3F293F3F3F253F3F3F213F3F3F1C3F3F3F18",
       INIT_2B => X"3F3F3F583F3F3F543F3F3F503F3F3F4B3F3F3F473F3F3F433F3F3F3E3F3F3F3A",
       INIT_2C => X"3F3F3F7C3F3F3F783F3F3F733F3F3F6F3F3F3F6A3F3F3F663F3F3F613F3F3F5D",
-      INIT_2D => X"0000000000000000000000000000000000000000000000000000000000000000",
-      INIT_2E => X"0000000000000000000000000000000000000000000000000000000000000000",
-      INIT_2F => X"0000000000000000000000000000000000000000000000000000000000000000",
-      INIT_30 => X"0000000000000000000000000000000000000000000000000000000000000000",
-      INIT_31 => X"0000000000000000000000000000000000000000000000000000000000000000",
-      INIT_32 => X"0000000000000000000000000000000000000000000000000000000000000000",
-      INIT_33 => X"0000000000000000000000000000000000000000000000000000000000000000",
-      INIT_34 => X"0000000000000000000000000000000000000000000000000000000000000000",
-      INIT_35 => X"0000000000000000000000000000000000000000000000000000000000000000",
-      INIT_36 => X"0000000000000000000000000000000000000000000000000000000000000000",
-      INIT_37 => X"0000000000000000000000000000000000000000000000000000000000000000",
-      INIT_38 => X"0000000000000000000000000000000000000000000000000000000000000000",
+      INIT_2D => X"0000001F0000001A00000016000000110000000D000000080000000400000000",
+      INIT_2E => X"000000420000003D0000003900000035000000300000002C0000002800000023",
+      INIT_2F => X"000000640000005F0000005B00000057000000530000004F0000004A00000046",
+      INIT_30 => X"000001030000007F0000007C0000007800000074000000700000006C00000068",
+      INIT_31 => X"000001210000011D0000011A00000116000001120000010F0000010B00000107",
+      INIT_32 => X"0000013B0000013800000135000001310000012E0000012B0000012700000124",
+      INIT_33 => X"000001510000014F0000014C000001490000014600000144000001410000013E",
+      INIT_34 => X"00000164000001620000015F0000015D0000015B000001590000015600000154",
+      INIT_35 => X"00000172000001700000016E0000016D0000016B000001690000016800000166",
+      INIT_36 => X"0000017B0000017A000001790000017800000177000001760000017400000173",
+      INIT_37 => X"0000017F0000017F0000017F0000017E0000017E0000017D0000017C0000017C",
+      INIT_38 => X"0000000000000000000000000000000000000000000002000000017F0000017F",
       INIT_39 => X"0000000000000000000000000000000000000000000000000000000000000000",
       INIT_3A => X"0000000000000000000000000000000000000000000000000000000000000000",
       INIT_3B => X"0000000000000000000000000000000000000000000000000000000000000000",
@@ -594,9 +594,9 @@ entity rom_sin_blk_mem_gen_v8_4_2 is
   attribute C_PRIM_TYPE : integer;
   attribute C_PRIM_TYPE of rom_sin_blk_mem_gen_v8_4_2 : entity is 1;
   attribute C_READ_DEPTH_A : integer;
-  attribute C_READ_DEPTH_A of rom_sin_blk_mem_gen_v8_4_2 : entity is 360;
+  attribute C_READ_DEPTH_A of rom_sin_blk_mem_gen_v8_4_2 : entity is 451;
   attribute C_READ_DEPTH_B : integer;
-  attribute C_READ_DEPTH_B of rom_sin_blk_mem_gen_v8_4_2 : entity is 360;
+  attribute C_READ_DEPTH_B of rom_sin_blk_mem_gen_v8_4_2 : entity is 451;
   attribute C_READ_LATENCY_A : integer;
   attribute C_READ_LATENCY_A of rom_sin_blk_mem_gen_v8_4_2 : entity is 1;
   attribute C_READ_LATENCY_B : integer;
@@ -634,9 +634,9 @@ entity rom_sin_blk_mem_gen_v8_4_2 is
   attribute C_WEB_WIDTH : integer;
   attribute C_WEB_WIDTH of rom_sin_blk_mem_gen_v8_4_2 : entity is 1;
   attribute C_WRITE_DEPTH_A : integer;
-  attribute C_WRITE_DEPTH_A of rom_sin_blk_mem_gen_v8_4_2 : entity is 360;
+  attribute C_WRITE_DEPTH_A of rom_sin_blk_mem_gen_v8_4_2 : entity is 451;
   attribute C_WRITE_DEPTH_B : integer;
-  attribute C_WRITE_DEPTH_B of rom_sin_blk_mem_gen_v8_4_2 : entity is 360;
+  attribute C_WRITE_DEPTH_B of rom_sin_blk_mem_gen_v8_4_2 : entity is 451;
   attribute C_WRITE_MODE_A : string;
   attribute C_WRITE_MODE_A of rom_sin_blk_mem_gen_v8_4_2 : entity is "WRITE_FIRST";
   attribute C_WRITE_MODE_B : string;
@@ -880,9 +880,9 @@ architecture STRUCTURE of rom_sin is
   attribute C_PRIM_TYPE : integer;
   attribute C_PRIM_TYPE of U0 : label is 1;
   attribute C_READ_DEPTH_A : integer;
-  attribute C_READ_DEPTH_A of U0 : label is 360;
+  attribute C_READ_DEPTH_A of U0 : label is 451;
   attribute C_READ_DEPTH_B : integer;
-  attribute C_READ_DEPTH_B of U0 : label is 360;
+  attribute C_READ_DEPTH_B of U0 : label is 451;
   attribute C_READ_LATENCY_A : integer;
   attribute C_READ_LATENCY_A of U0 : label is 1;
   attribute C_READ_LATENCY_B : integer;
@@ -920,9 +920,9 @@ architecture STRUCTURE of rom_sin is
   attribute C_WEB_WIDTH : integer;
   attribute C_WEB_WIDTH of U0 : label is 1;
   attribute C_WRITE_DEPTH_A : integer;
-  attribute C_WRITE_DEPTH_A of U0 : label is 360;
+  attribute C_WRITE_DEPTH_A of U0 : label is 451;
   attribute C_WRITE_DEPTH_B : integer;
-  attribute C_WRITE_DEPTH_B of U0 : label is 360;
+  attribute C_WRITE_DEPTH_B of U0 : label is 451;
   attribute C_WRITE_MODE_A : string;
   attribute C_WRITE_MODE_A of U0 : label is "WRITE_FIRST";
   attribute C_WRITE_MODE_B : string;
