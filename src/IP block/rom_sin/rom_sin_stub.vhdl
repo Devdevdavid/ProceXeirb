@@ -1,10 +1,10 @@
 -- Copyright 1986-2018 Xilinx, Inc. All Rights Reserved.
 -- --------------------------------------------------------------------------------
 -- Tool Version: Vivado v.2018.3 (win64) Build 2405991 Thu Dec  6 23:38:27 MST 2018
--- Date        : Thu May 16 10:32:33 2019
+-- Date        : Thu May 16 10:32:32 2019
 -- Host        : DESKTOP-6RO2CF2 running 64-bit major release  (build 9200)
--- Command     : write_vhdl -force -mode synth_stub {D:/MEGAsync/SEE09-2/S8/Proco 8bit/repo/ProceXeirb/src/IP
---               block/rom_sin/rom_sin_stub.vhdl}
+-- Command     : write_vhdl -force -mode synth_stub -rename_top rom_sin -prefix
+--               rom_sin_ rom_sin_stub.vhdl
 -- Design      : rom_sin
 -- Purpose     : Stub declaration of top-level module interface
 -- Device      : xc7a100tcsg324-1

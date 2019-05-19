@@ -3,8 +3,8 @@ use IEEE.std_logic_1164.all;
 use IEEE.std_logic_unsigned.all;
 use IEEE.numeric_std.all;
 
- -- Main Author : Julien BESSE
- -- With the kind collaboration of : Pierre JOUBERT
+ -- Main Author : Aurelien TROMPAT
+ -- With the kind collaboration of : David DEVANT
 
 entity call_stack is
   generic (

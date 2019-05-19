@@ -1,10 +1,10 @@
 // Copyright 1986-2018 Xilinx, Inc. All Rights Reserved.
 // --------------------------------------------------------------------------------
 // Tool Version: Vivado v.2018.3 (win64) Build 2405991 Thu Dec  6 23:38:27 MST 2018
-// Date        : Thu May 16 10:32:33 2019
+// Date        : Thu May 16 10:32:32 2019
 // Host        : DESKTOP-6RO2CF2 running 64-bit major release  (build 9200)
-// Command     : write_verilog -force -mode funcsim {D:/MEGAsync/SEE09-2/S8/Proco 8bit/repo/ProceXeirb/src/IP
-//               block/rom_sin/rom_sin_sim_netlist.v}
+// Command     : write_verilog -force -mode funcsim -rename_top rom_sin -prefix
+//               rom_sin_ rom_sin_sim_netlist.v
 // Design      : rom_sin
 // Purpose     : This verilog netlist is a functional simulation representation of the design and should not be modified
 //               or synthesized. This netlist cannot be used for SDF annotated simulation.
@@ -202,7 +202,6 @@ module rom_sin
         .web(1'b0));
 endmodule
 
-(* ORIG_REF_NAME = "blk_mem_gen_generic_cstr" *) 
 module rom_sin_blk_mem_gen_generic_cstr
    (douta,
     doutb,
@@ -237,7 +236,6 @@ module rom_sin_blk_mem_gen_generic_cstr
         .enb(enb));
 endmodule
 
-(* ORIG_REF_NAME = "blk_mem_gen_prim_width" *) 
 module rom_sin_blk_mem_gen_prim_width
    (douta,
     doutb,
@@ -272,7 +270,6 @@ module rom_sin_blk_mem_gen_prim_width
         .enb(enb));
 endmodule
 
-(* ORIG_REF_NAME = "blk_mem_gen_prim_wrapper_init" *) 
 module rom_sin_blk_mem_gen_prim_wrapper_init
    (douta,
     doutb,
@@ -537,7 +534,6 @@ module rom_sin_blk_mem_gen_prim_wrapper_init
         .WEBWE({1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0}));
 endmodule
 
-(* ORIG_REF_NAME = "blk_mem_gen_top" *) 
 module rom_sin_blk_mem_gen_top
    (douta,
     doutb,
@@ -597,7 +593,7 @@ endmodule
 (* C_WEA_WIDTH = "1" *) (* C_WEB_WIDTH = "1" *) (* C_WRITE_DEPTH_A = "451" *) 
 (* C_WRITE_DEPTH_B = "451" *) (* C_WRITE_MODE_A = "WRITE_FIRST" *) (* C_WRITE_MODE_B = "WRITE_FIRST" *) 
 (* C_WRITE_WIDTH_A = "25" *) (* C_WRITE_WIDTH_B = "25" *) (* C_XDEVICEFAMILY = "artix7" *) 
-(* ORIG_REF_NAME = "blk_mem_gen_v8_4_2" *) (* downgradeipidentifiedwarnings = "yes" *) 
+(* downgradeipidentifiedwarnings = "yes" *) 
 module rom_sin_blk_mem_gen_v8_4_2
    (clka,
     rsta,
@@ -814,7 +810,6 @@ module rom_sin_blk_mem_gen_v8_4_2
         .enb(enb));
 endmodule
 
-(* ORIG_REF_NAME = "blk_mem_gen_v8_4_2_synth" *) 
 module rom_sin_blk_mem_gen_v8_4_2_synth
    (douta,
     doutb,

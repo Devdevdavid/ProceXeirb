@@ -3,14 +3,16 @@ use IEEE.std_logic_1164.all;
 use IEEE.std_logic_unsigned.all;
 use IEEE.numeric_std.all;
 
- -- Main Author : Julien BESSE
- -- With the kind collaboration of : Pierre JOUBERT
+ -- Main Author : Aurelien TROMPAT
+ -- With the kind collaboration of : David DEVANT
+
+--register connected to the bus (write only mode)
 
 entity reg_write_only_with_interface is
     generic (
-            data_size : integer := 8;
-            address_size : integer := 8;
-            init_value : integer := 0
+        data_size : integer := 8;
+        address_size : integer := 8;
+        init_value : integer := 0
         );
     port (
         reset    : in  std_logic;

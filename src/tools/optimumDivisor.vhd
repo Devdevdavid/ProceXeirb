@@ -6,15 +6,17 @@ use IEEE.numeric_std.all;
 --use IEEE.fixed_pkg.all;
 use work.fixed_generic_pkg_mod.all; -- Fix for Vivado
 
- -- Main Author : Aurélien TROMPAT
+ -- Main Author : Aurelien TROMPAT
  -- With the kind collaboration of : David DEVANT
 
+ -- This block is responsible for WNS = -75 ns
+ 
 entity optimumDivisor is
     generic (
             data_size    : integer := 8;
             address_size : integer := 8;
             mode         : integer := 0; -- 0 = int ; 1 = float
-            sfixed_msb  : integer := 15;
+            sfixed_msb  : integer := 10;
             sfixed_lsb   : integer := -8
         );
     port (
@@ -129,26 +131,32 @@ inst_bus_interface : bus_periph_interface
     process(in_1, in_2) is
         variable in_1_fixed     : sfixed(sfixed_msb downto sfixed_lsb);
         variable in_2_fixed     : sfixed(sfixed_msb downto sfixed_lsb);
+        variable un             : sfixed(sfixed_msb downto sfixed_lsb);
         variable result_fixed   : sfixed(sfixed_msb*2+1 downto sfixed_lsb*2); 
+        variable in_2_inv    : sfixed(sfixed_msb*2+1 downto sfixed_lsb*2);
+        
     begin
     result <= (others => '0');
     in_1_fixed        := (others => '0'); 
     in_2_fixed        := (others => '0'); 
     result_fixed      := (others => '0');
+    in_2_inv          := (others => '0');
+    un   := 24x"000001";
     
-    if mode = 0 then
-       result  <= std_logic_vector(signed(in_1) / (signed(in_2)));
-       --result  <= std_logic_vector(signed(in_1) + (signed(in_2)));
-    elsif mode = 1 then
+    if mode = 0 then -- int
+       result  <= std_logic_vector(signed(in_1) / (signed(in_2))); 
+       
+    elsif mode = 1 then -- fixed_point
      --Conversion
         in_1_fixed(sfixed_msb downto sfixed_lsb) := to_sfixed(in_1(sfixed_msb-sfixed_lsb  downto 0), sfixed_msb, sfixed_lsb);
         in_2_fixed(sfixed_msb downto sfixed_lsb) := to_sfixed(in_2(sfixed_msb-sfixed_lsb  downto 0), sfixed_msb, sfixed_lsb);
 
-         --Calculs
-        result_fixed (sfixed_msb*2+1 downto sfixed_lsb*2) := (in_1_fixed(sfixed_msb downto sfixed_lsb) / in_2_fixed(sfixed_msb downto sfixed_lsb));
-        --result_fixed (sfixed_msb+1 downto sfixed_lsb) := (in_1_fixed(sfixed_msb downto sfixed_lsb) + in_2_fixed(sfixed_msb downto sfixed_lsb));
+     --Calculs
+        -- fix (Magic) : vivado doesn't generate block if in_1/in_2 
+        in_2_inv(sfixed_msb*2+1 downto sfixed_lsb*2) :=  un(sfixed_msb downto sfixed_lsb) / in_2_fixed(sfixed_msb downto sfixed_lsb);
+        result_fixed (sfixed_msb*2+1 downto sfixed_lsb*2) := (in_1_fixed(sfixed_msb downto sfixed_lsb) * in_2_inv(sfixed_msb downto sfixed_lsb));
 
-         --Conversion
+     --Conversion
        result(sfixed_msb-sfixed_lsb downto 0) <= to_slv(result_fixed(sfixed_msb downto sfixed_lsb));
     else
        result(31 downto 0) <= x"CAFEFADE";

@@ -134,6 +134,19 @@ begin
 
         -- Conversion
         data_out_with_carry (sfixed_msb_add-sfixed_lsb+1  downto 0) <= to_slv(data_out_fixed(sfixed_msb_add+1 downto sfixed_lsb));
+        
+  -- OP_SUBF
+      when 5x"18" =>
+        
+        -- Conversion
+        data_A_fixed := to_sfixed(data_A(sfixed_msb_add-sfixed_lsb  downto 0), sfixed_msb_add, sfixed_lsb);
+        data_B_fixed := to_sfixed(data_B(sfixed_msb_add-sfixed_lsb  downto 0), sfixed_msb_add, sfixed_lsb);
+
+        -- Calculs
+        data_out_fixed(sfixed_msb_add+1 downto sfixed_lsb) := data_A_fixed - data_B_fixed;
+
+        -- Conversion
+        data_out_with_carry (sfixed_msb_add-sfixed_lsb+1  downto 0) <= to_slv(data_out_fixed(sfixed_msb_add+1 downto sfixed_lsb));
 
   -- OP_DIVF -- deprecated
   --    when "01010" =>
@@ -162,7 +175,7 @@ begin
   -- OP_ITOF
       when 5x"0a" =>
         -- On prend les bits les plus faibles de l'entier, qui deviennent la partie entière du virgule fixe
-       data_out_with_carry(sfixed_msb_add-sfixed_lsb downto -sfixed_lsb) <= data_A(sfixed_msb_add downto 0);
+        data_out_with_carry(sfixed_msb_add-sfixed_lsb downto -sfixed_lsb) <= data_A(sfixed_msb_add downto 0);
 
   -- Opérations mémoire
   -- OP_STA
