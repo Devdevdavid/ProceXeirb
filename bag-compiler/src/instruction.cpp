@@ -245,7 +245,11 @@ soustraction::soustraction()
 }
 string soustraction::print_instruction()
 {
-  print_operation_and_store("SUB");
+  if (a1->p->type == INTEGER) {
+    print_operation_and_store("SUB");
+  } else {
+    print_operation_and_store("FSU");
+  }
   return instBuffer;
 }
 

@@ -1,17 +1,17 @@
-#definition BASE_LED_ADDR (524304)
-reel retVal;
-entier cnt = 0;
-entier delay = 0;
+entier ea = 10;
+entier eb = 2;
+entier er;
+reel ra = 10.0;
+reel rb = 2.0;
+reel rr;
 
-fonction add(reel aa, reel bb)
-	reel rr;
-	rr = aa + bb;
-retourne rr;
+entier delay;
 
 tant_que(1 == 1)
-
-	retVal = add(retVal, 1.0);
-	afficher_LCD(retVal);
+	er = ea - eb;
+	rr = rb - ra;
+	
+	afficher_LCD(rr);
 
 	delay = 0;
 	tant_que(delay < 99999)

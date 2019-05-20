@@ -305,8 +305,9 @@ tant_que(1 == 1)
 	sharedHead = SHARED_MEM_START;
 	pPointXYZ = @pointXYZ;
 
-	Az = pointXYZ[2] - camXYZ[2]; 
+	Az = pointXYZ[2] - camXYZ[2];
 	reg1 = Bz / Az; // This is not working
+	reg1 = 0.0;
 
 	// For X
 	Axy = pointXYZ[0] - camXYZ[0]; 

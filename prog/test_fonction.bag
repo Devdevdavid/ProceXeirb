@@ -1,12 +1,16 @@
+// Variable globales
 entier retVal;
-entier param1;
+entier param1 = 42;
+entier offset = 255;
 
-fonction power2(entier a);
+// Cette fonction ajoute un offset à 'a'
+fonction addOffset(entier a);
+	// Variable locale
 	entier result;
 
-	result = a * a;
+	result = a + offset;
 retourne result;
 
-retVal = power2(param1);
+retVal = addOffset(param1);
 
 

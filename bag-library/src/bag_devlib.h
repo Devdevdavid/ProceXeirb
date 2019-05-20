@@ -39,30 +39,31 @@
 
 // REAL OPERANDS
 #define OP_FAD 0x07 // Addition of real
-#define OP_FMU 0x08 // Multiplication of real
+#define OP_FSU 0x08 // Substraction of real
+#define OP_FMU 0x09 // Multiplication of real
 
 // CASTS
-#define OP_FTI 0x09 // Real to integer conversion
-#define OP_ITF 0x0A // Integer to real conversion
+#define OP_FTI 0x0A // Real to integer conversion
+#define OP_ITF 0x0B // Integer to real conversion
 
 // UTILS
-#define OP_PSH 0x0B // Decrement stack pointer
-#define OP_POP 0x0C // Increment stack pointer
-#define OP_STA 0x0D // Store Accu
-#define OP_JCC 0x0E // Jump with carry condition
-#define OP_JMP 0x0F // Jump at address
-#define OP_GET 0x10 // Load into Accu
+#define OP_PSH 0x0C // Decrement stack pointer
+#define OP_POP 0x0D // Increment stack pointer
+#define OP_STA 0x0E // Store Accu
+#define OP_JCC 0x0F // Jump with carry condition
+#define OP_JMP 0x10 // Jump at address
+#define OP_GET 0x11 // Load into Accu
 
 // TESTS
-#define OP_TGT 0x11 // Greater than comparaison
-#define OP_TLT 0x12 // Lower than comparaison
-#define OP_TEQ 0x13 // Equal comparaison
-#define OP_TNE 0x14 // Not Equal comparaison
+#define OP_TGT 0x12 // Greater than comparaison
+#define OP_TLT 0x13 // Lower than comparaison
+#define OP_TEQ 0x14 // Equal comparaison
+#define OP_TNE 0x15 // Not Equal comparaison
 
 // MEMORY MOVEMENTS
-#define OP_CSA 0x15 // Compute Stack Address 
-#define OP_GAD 0x16 // Get at address
-#define OP_SAD 0x17 // Set at address
+#define OP_CSA 0x16 // Compute Stack Address 
+#define OP_GAD 0x17 // Get at address
+#define OP_SAD 0x18 // Set at address
 
 // VARIABLES (Not an instruction)
 #define OP_VAR 0x69

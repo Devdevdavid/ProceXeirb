@@ -40,6 +40,7 @@ int decodeInstruction(char * instruction) {
   if (!strcmp(instruction, "SUB")) return OP_SUB;
   if (!strcmp(instruction, "MUL")) return OP_MUL;
   if (!strcmp(instruction, "FAD")) return OP_FAD;
+  if (!strcmp(instruction, "FSU")) return OP_FSU;
   if (!strcmp(instruction, "FMU")) return OP_FMU;
   if (!strcmp(instruction, "FTI")) return OP_FTI;
   if (!strcmp(instruction, "ITF")) return OP_ITF;
