@@ -1,11 +1,12 @@
-# TARGET          = cube
-TARGET          = test_div
+# TARGET          = tunnel
+TARGET          = cube
+# TARGET          = test_div
 
 SRCDIR          = prog
 OBJDIR          = obj
 BINDIR          = bin
 
-PORT            = /dev/cu.usbserial-00001014B
+PORT            = /dev/cu.usbserial-00002014B
 
 OBJTARG         = $(OBJDIR)/$(TARGET)
 BINTARG         = $(BINDIR)/$(TARGET)

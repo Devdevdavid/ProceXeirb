@@ -10,7 +10,7 @@
 
 #include <bag_devlib.h>
 
-#define APP_VERSION     "2.2.61-devantd"
+#define APP_VERSION     "2.2.62-devantd"
 
 /* MACRO: Each ERROR/WARNING are counted */
 #define _LOG_ERROR(format, ...)   LOG_ERROR(format, ##__VA_ARGS__); nbErrorDetected++;
@@ -40,6 +40,9 @@
     #define OPTI_DIV_R_IN2_ADDR     "0240D"     // Optimum divisor reel IN2 address
     #define OPTI_DIV_R_OUT_ADDR     "0240E"     // Optimum divisor reel OUT address
     #define OPTI_DIV_R_RDY_ADDR     "0240F"     // Optimum divisor reel READY address
+    // Timer
+    #define TIMER_INPUT_ADDR        "02410"     // Timer input addresse
+    #define TIMER_OUTPUT_ADDR       "02411"     // Timer output addresse
 #else
     #define LCD_ADDR                "LCD_ADDR"
     #define ESP_ADDR                "ESP_ADDR" 
@@ -57,6 +60,9 @@
     #define OPTI_DIV_R_IN2_ADDR     "OPTI_DIV_R_IN2_ADDR"     // Optimum divisor real IN2 address
     #define OPTI_DIV_R_OUT_ADDR     "OPTI_DIV_R_OUT_ADDR"     // Optimum divisor real OUT address
     #define OPTI_DIV_R_RDY_ADDR     "OPTI_DIV_R_RDY_ADDR"     // Optimum divisor real READY address
+    // Timer
+    #define TIMER_INPUT_ADDR        "TIMER_INPUT_ADDR"        // Timer input addresse
+    #define TIMER_OUTPUT_ADDR       "TIMER_OUTPUT_ADDR"       // Timer output addresse
 #endif
 
 /* CONSTANT LIMITS */
