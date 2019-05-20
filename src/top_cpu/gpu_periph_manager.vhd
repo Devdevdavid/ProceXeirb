@@ -25,7 +25,8 @@ entity gpu_periph_manager is
     gpu_address_counter_en  : out std_logic;
     gpu_dummy_en            : out std_logic;
     gpu_div_int_en          : out std_logic;
-    gpu_div_real_en        : out std_logic
+    gpu_div_real_en         : out std_logic;
+    gpu_timer_en            : out std_logic
     );
 
 end entity gpu_periph_manager;
@@ -46,10 +47,10 @@ begin
     gpu_stack_add_param_en  <= '0';
     gpu_address_counter_en  <= '0';
     gpu_dummy_en            <= '0';
-    gpu_sinus_table_en <= '0';
+    gpu_sinus_table_en      <= '0';
     gpu_div_int_en          <= '0';
     gpu_div_real_en         <= '0';
-    
+    gpu_timer_en            <= '0';
     if gpu_bus_en = '1' then
       case to_integer(unsigned(gpu_bus_address)) is
         when 16#00000# to 16#01fff# => 
@@ -78,6 +79,9 @@ begin
           
         when 16#0240C# to 16#0240F#=> 
           gpu_div_real_en    <= '1';
+        
+        when 16#02410# to 16#02411#=> 
+          gpu_timer_en    <= '1';
           
         when 16#03000# to 16#03fff# =>
           gpu_shr_ram_en <= '1';

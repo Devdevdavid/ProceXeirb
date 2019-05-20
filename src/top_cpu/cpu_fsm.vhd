@@ -71,25 +71,25 @@ architecture rtl of FSM is
 
       when DECODE =>
         case op_code is
-          when 5x"0d" => -- OP_STA
+          when 5x"0e" => -- OP_STA
             next_state <= STA_STATIC;
 
-          when 5x"0e" => -- OP_JCC
+          when 5x"0f" => -- OP_JCC
             next_state <= EXE_JCC;
 
-          when 5x"0f" => -- OP_JMP
+          when 5x"10" => -- OP_JMP
             next_state <= EXE_JMP;
             
-          when 5x"16" => -- OP_GAD
+          when 5x"17" => -- OP_GAD
             next_state <= FETCH_ADDR;
 
-          when 5x"17" => -- OP_SAD
+          when 5x"18" => -- OP_SAD
             next_state <= FETCH_ADDR;
             
-          when 5x"0b" => -- OP_PSH
+          when 5x"0c" => -- OP_PSH
             next_state <= STACK_OP;
             
-          when 5x"0c" => -- OP_POP
+          when 5x"0d" => -- OP_POP
             next_state <= STACK_OP;
             
           when others =>  -- Opérations arithmétiques et logiques, ainsi que le GET pour que la donnée passe par l'UAL pour aller dans ACCU
@@ -98,21 +98,21 @@ architecture rtl of FSM is
         end case;
 
       when FETCH_ADDR =>
-        if op_code = 5x"16" then -- OP_GAD
+        if op_code = 5x"17" then -- OP_GAD
           next_state <= FETCH_OP_DYNAMIC;
         else 
           next_state <= STA_DYNAMIC;
         end if;
 
       when FETCH_OP_STATIC =>
-        if op_code = 5x"15" then -- CSA
+        if op_code = 5x"16" then -- CSA
             next_state <= FETCH_INST;
         else
             next_state <= EXE_UAL;
         end if;
 
       when FETCH_OP_DYNAMIC =>
-        if op_code = 5x"16" then -- OP_GAD
+        if op_code = 5x"17" then -- OP_GAD
             next_state <= EXE_UAL;
         else -- OP_CSA
             next_state <= FETCH_INST;
@@ -230,7 +230,7 @@ architecture rtl of FSM is
           sel_mux  <= "01";
           en_mem   <= '1';
           R_W      <= '0';
-          if op_code = 5x"15" then-- OP_CSA
+          if op_code = 5x"16" then-- OP_CSA
             load_rd  <= '0';
             load_of  <= '1';
           else
@@ -278,12 +278,12 @@ architecture rtl of FSM is
           if op_code = 5x"04" -- OP_ADD
           or op_code = 5x"05" -- OP_SUB
           or op_code = 5x"06" -- OP_MUL
-          or op_code = 5x"09" -- OP_FTOI
-          or op_code = 5x"0a" -- OP_ITOF
-          or op_code = 5x"11" -- OP_TGT
-          or op_code = 5x"12" -- OP_TLT
-          or op_code = 5x"13" -- OP_TEQ
-          or op_code = 5x"14" -- OP_TNE
+          or op_code = 5x"0a" -- OP_FTOI
+          or op_code = 5x"0b" -- OP_ITOF
+          or op_code = 5x"12" -- OP_TGT
+          or op_code = 5x"13" -- OP_TLT
+          or op_code = 5x"14" -- OP_TEQ
+          or op_code = 5x"15" -- OP_TNE
           then
             load_ff  <= '1'; 
 
@@ -344,10 +344,10 @@ architecture rtl of FSM is
         load_ra  <= '0';
         sel_ual  <= (others => '0');
         load_of  <= '0';
-        if op_code =  5x"0b" then -- OP_PSH
+        if op_code =  5x"0c" then -- OP_PSH
             rmv_stack <= '1';
             add_stack <= '0';
-        elsif op_code = 5x"0c" then -- OP_POP
+        elsif op_code = 5x"0d" then -- OP_POP
             rmv_stack <= '0';
             add_stack <= '1';
         end if;

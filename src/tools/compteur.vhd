@@ -8,7 +8,7 @@ use IEEE.numeric_std.all;
 
 entity cpt is
     generic (
-            size : integer :=8
+        size : integer :=8
         );
     port (
         reset    : in  std_logic;
@@ -46,6 +46,5 @@ begin
     end process;
 
     cpt_out <= std_logic_vector(to_unsigned(cpt, size));
-    periph_data_out <= std_logic_vector("00000" & to_unsigned(cpt, size));
 
 end architecture;
