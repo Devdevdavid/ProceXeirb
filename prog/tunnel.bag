@@ -253,6 +253,8 @@ fonction led_anim_1()
 retourne;
 
 // Used by CPU
+entier nbPoints = 5;
+entier curPoint = 0;
 reel reg1;
 reel Axy;
 reel Az;
@@ -262,6 +264,7 @@ reel planePointXY[2];
 entier screenPointXY[2];
 reel camXYZ[3];
 reel planeXYZ[3];
+reel cpPointXYZ[3];
 reel pointXYZ[12];
 entier pPointXYZ;
 
@@ -305,37 +308,51 @@ tant_que(1 == 1)
 	sharedHead = SHARED_MEM_START;
 	pPointXYZ = @pointXYZ;
 
-	Az = pointXYZ[2] - camXYZ[2];
-	reg1 = Bz / Az; // This is not working
-	reg1 = 0.0;
-
-	// For X
-	Axy = pointXYZ[0] - camXYZ[0]; 
-	planePointXY[0] = reg1 * Axy; 
-
-	// For Y
-	Axy = pointXYZ[1] - camXYZ[1]; 
-	planePointXY[1] = reg1 * Axy; 
-
-	// Adaptation
-	planePointXY[0] = planePointXY[0] * 10.0;
-	planePointXY[0] = planePointXY[0] + 320.0;
-	planePointXY[1] = planePointXY[1] * 10.0;
-	planePointXY[1] = planePointXY[1] + 240.0;
-
-	// Convertion
-	screenPointXY[0] = rve(planePointXY[0]);
-	screenPointXY[1] = rve(planePointXY[1]);
-
-	ecrire_a(1, sharedHead);	// NB_POINT
+	// Init the segment
+	ecrire_a(1, sharedHead);			// NB_POINT
 	sharedHead = sharedHead + 1;
-	ecrire_a(COLOR_WHITE, sharedHead); // Color
+	ecrire_a(COLOR_WHITE, sharedHead); 	// Color
 	sharedHead = sharedHead + 1;
 
-	ecrire_a(screenPointXY[0], sharedHead); // X
-	sharedHead = sharedHead + 1;
-	ecrire_a(screenPointXY[1], sharedHead); // Y
-	sharedHead = sharedHead + 1;
+	curPoint = 0;
+	tant_que(curPoint < nbPoints)
+		cpPointXYZ[0] = lire_a(pPointXYZ);
+		pPointXYZ = pPointXYZ + 1;
+		cpPointXYZ[1] = lire_a(pPointXYZ);
+		pPointXYZ = pPointXYZ + 1;
+		cpPointXYZ[2] = lire_a(pPointXYZ);
+		pPointXYZ = pPointXYZ + 1;
+
+
+		Az = cpPointXYZ[2] - camXYZ[2];
+		reg1 = Bz / Az; // This is not working
+
+		// For X
+		Axy = cpPointXYZ[0] - camXYZ[0]; 
+		planePointXY[0] = reg1 * Axy; 
+
+		// For Y
+		Axy = cpPointXYZ[1] - camXYZ[1]; 
+		planePointXY[1] = reg1 * Axy; 
+
+		// Adaptation
+		planePointXY[0] = planePointXY[0] * 10.0;
+		planePointXY[0] = planePointXY[0] + 320.0;
+		planePointXY[1] = planePointXY[1] * 10.0;
+		planePointXY[1] = planePointXY[1] + 240.0;
+
+		// Convertion
+		screenPointXY[0] = rve(planePointXY[0]);
+		screenPointXY[1] = rve(planePointXY[1]);
+
+		ecrire_a(screenPointXY[0], sharedHead); // X
+		sharedHead = sharedHead + 1;
+		ecrire_a(screenPointXY[1], sharedHead); // Y
+		sharedHead = sharedHead + 1;
+
+		// Go to next point
+		curPoint = curPoint + 1;
+	fin_tant_que;
 
 	ecrire_a(0, sharedHead); // NB_POINTS = 0 indicates the end
 

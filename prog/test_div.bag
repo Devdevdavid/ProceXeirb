@@ -1,3 +1,5 @@
+#definition BASE_LED_ADDR (524304)
+
 entier ea = 10;
 entier eb = 2;
 entier er;
@@ -6,15 +8,31 @@ reel rb = 2.0;
 reel rr;
 
 entier delay;
+entier pLED;
+entier index;
+entier ledValue = 0;
 
 tant_que(1 == 1)
-	er = ea - eb;
-	rr = rb - ra;
+	er = ea / eb;
+	rr = ra / rb;
 	
 	afficher_LCD(rr);
 
+	// Increment led
+	ledValue = ledValue + 1;
+	si (ledValue > 255)
+		ledValue = 0;
+	fin_si;
+
+	index = 0;
+	tant_que (index < 16)
+		pLED = index + BASE_LED_ADDR;
+		ecrire_a(ledValue, pLED);
+		index = index + 1;
+	fin_tant_que
+
 	delay = 0;
-	tant_que(delay < 99999)
+	tant_que(delay < 9999)
 		delay = delay + 1;
 	fin_tant_que;
 
