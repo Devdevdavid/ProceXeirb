@@ -1,0 +1,35 @@
+#definition TIMER_IN (9232)
+#definition TIMER_OUT (9233)
+
+entier timerOut;
+entier timerOutOld;
+entier timerDiff;
+
+entier tictac;
+
+ecrire_a(255, TIMER_IN);
+tant_que (1 == 1)
+	timerOut = lire_a(TIMER_OUT);
+	afficher_LCD(timerOut);
+fin_tant_que;
+
+
+tant_que (1 == 1)
+
+	timerDiff = 0;
+	tant_que(timerDiff < 1000)
+		timerOut = lire_a(TIMER_OUT);
+		afficher_LCD(timerOut);
+		timerDiff = timerOut - timerOutOld;
+	fin_tant_que;
+	timerOutOld = timerOut;
+
+	si (tictac == 0)
+		afficher_LCD(255);
+		tictac = 1;
+	sinon
+		afficher_LCD(0);
+		tictac = 0;
+	fin_si;
+	
+fin_tant_que;

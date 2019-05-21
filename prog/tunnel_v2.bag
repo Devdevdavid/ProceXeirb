@@ -1,6 +1,6 @@
-// File: tunnel.bag (V3)
+// File: tunnel_v2.bag (V2)
 // Author: David DEVANT
-// Date: May 21, 2019
+// Date: May 2, 2019
 //
 #definition BASE_LED_ADDR (524304)
 #definition BASE_VGA (524288)
@@ -19,7 +19,6 @@
 #definition COLOR_WHITE (15)
 #definition COLOR_GRAY (7)
 #definition COLOR_BLACK (0)
-#definition COLOR_NONE (-1)
 
 // Used by both (but not equivalent !)
 entier isGPU;
@@ -39,7 +38,28 @@ entier oldPointY;
 ecrire_a(1, LAST_VGA_PIXEL);
 isGPU = lire_a(LAST_VGA_PIXEL);
 
-//ecrire_a(COLOR_WHITE, LAST_VGA_PIXEL); // Debug
+fonction draw_point(entier color, entier x1, entier y1)
+	// Do not show pixel out of mask
+	si (x1 < SCREEN_MASK_LEFT)
+		color = 0;
+	fin_si;
+	si (y1 < SCREEN_MASK_TOP)
+		color = 0;
+	fin_si;
+	si (x1 > SCREEN_MASK_RIGHT)
+		color = 0;
+	fin_si;
+	si (y1 > SCREEN_MASK_BOTTOM)
+		color = 0;
+	fin_si;
+
+	si (color > 0)
+		vgaHead = SCREEN_WIDTH * y1;
+		vgaHead = vgaHead + x1;
+		vgaHead = vgaHead + BASE_VGA;
+		ecrire_a(color, vgaHead);
+	fin_si;
+retourne;
 
 fonction draw_segment(entier color, entier x1, entier y1, entier x2, entier y2)
 	entier diagDistance; // Number of points between p1 and p2
@@ -49,11 +69,6 @@ fonction draw_segment(entier color, entier x1, entier y1, entier x2, entier y2)
 	entier yIncrement;
 	entier Dx;
 	entier Dy;
-	entier hasBeginOutside;
-	entier yDiffBis;
-	entier newXOffset;
-
-	hasBeginOutside = 0;
 
 	si (x1 > x2)
 		// Swap p1 and p2 to be able to draw from left to right of the screen
@@ -71,40 +86,16 @@ fonction draw_segment(entier color, entier x1, entier y1, entier x2, entier y2)
 	si (y1 < y2)
 		yDiff = y2 - y1;
 		yIncrement = 1;
-		si (y1 < SCREEN_MASK_TOP)
-			// Compute x1
-			yDiffBis = SCREEN_MASK_TOP - y1;
-			newXOffset = yDiffBis / yDiff;
-			newXOffset = newXOffset * xDiff;
-			x1 = x1 + newXOffset;
-			// Compute y1
-			y1 = SCREEN_MASK_TOP;
-			// Recompute
-			xDiff = x2 - x1;
-			yDiff = y2 - y1;
-		fin_si;
 	sinon;
 		yDiff = y1 - y2;
 		yIncrement = -1;
-		si (y2 < SCREEN_MASK_TOP)
-			// Compute x2
-			yDiffBis = SCREEN_MASK_TOP - y2;
-			newXOffset = yDiffBis / yDiff;
-			newXOffset = newXOffset * xDiff;
-			x2 = x2 + newXOffset;
-			// Compute y2
-			y2 = SCREEN_MASK_TOP;
-			// Recompute
-			xDiff = x2 - x1;
-			yDiff = y1 - y2;
-		fin_si;
 	fin_si
 
 	// Get MAX
 	si (xDiff > yDiff)
-		diagDistance = xDiff + 1;
+		diagDistance = xDiff;
 	sinon;
-		diagDistance = yDiff + 1;
+		diagDistance = yDiff;
 	fin_si;
 
 	Dy = yDiff - xDiff;
@@ -112,27 +103,12 @@ fonction draw_segment(entier color, entier x1, entier y1, entier x2, entier y2)
 
 	index = 0;
 	tant_que (index < diagDistance)
-		// Abort segment if out of mask
-		si (x1 < SCREEN_MASK_LEFT)
-			color = COLOR_GRAY;
-		fin_si;
-		si (y1 < SCREEN_MASK_TOP)
-			color = COLOR_GRAY;
-		fin_si;
-		si (x1 > SCREEN_MASK_RIGHT)
-			color = COLOR_GRAY;
-		fin_si;
-		si (y1 > SCREEN_MASK_BOTTOM)
-			color = COLOR_GRAY;
-		fin_si;
-
 		// Draw current point
-		si (color != COLOR_NONE)
-			vgaHead = SCREEN_WIDTH * y1;
-			vgaHead = vgaHead + x1;
-			vgaHead = vgaHead + BASE_VGA;
-			ecrire_a(color, vgaHead);
-		fin_si;
+		draw_point(color, x1, y1);
+		//vgaHead = SCREEN_WIDTH * y1;
+		//vgaHead = vgaHead + x1;
+		//vgaHead = vgaHead + BASE_VGA;
+		//ecrire_a(color, vgaHead);
 
 		si (Dx > 0)
 			x1 = x1 + 1; // Only x as constant increment because we swaped
@@ -189,6 +165,7 @@ si (isGPU == 1)
 				si (pointIndex > 0)
 					draw_segment(pointsColor, oldPointX, oldPointY, pointX, pointY);
 				fin_si;
+				draw_point(pointsColor, pointX, pointY);
 
 				// Shift data
 				oldPointX = pointX;
@@ -276,8 +253,7 @@ fonction led_anim_1()
 retourne;
 
 // Used by CPU
-entier nbShapeSummit;
-entier summitIndex;
+entier nbLevelProf = 5;
 entier curLevelProf;
 entier curPoint = 0;
 entier eReg1;
@@ -292,60 +268,48 @@ reel camXYZ[3];
 reel planeXYZ[3];
 reel offsetXYZ[3];
 reel cpPointXYZ[3];
-reel pointXYZ[60]; // 20 summit max
-reel shapeRadius;
+reel pointXYZ[15];
 entier pPointXYZ;
 entier teta = 0;
-entier degreeStep;
-reel rx;
-reel ry;
 
 camXYZ[0] = 0.0; // x
 camXYZ[1] = 0.0; // y
-camXYZ[2] = -1.0; // z
+camXYZ[2] = 0.0; // z
 
 planeXYZ[0] = 0.0; // x
 planeXYZ[1] = 0.0; // y
-planeXYZ[2] = 0.0; // z
+planeXYZ[2] = 10.0; // z
 
-shapeRadius = 256.0;
-nbShapeSummit = 7;
-teta = 0;
-degreeStep = nbShapeSummit - 1;
-degreeStep = 360 / degreeStep;
-pPointXYZ = @pointXYZ;
-// Génération des points
-summitIndex = 0;
-tant_que (summitIndex < nbShapeSummit)
-	// Compute X and Y from the middle
-	rx = cos(teta);
-	rx = rx * shapeRadius;
+// Offset of the figure
+offsetXYZ[0] = 0.0;
+offsetXYZ[1] = 0.0;
+offsetXYZ[2] = 0.0;
 
-	ry = sin(teta);
-	ry = ry * shapeRadius;
+pointXYZ[0] = -10.0; // x
+pointXYZ[1] = 10.0; // y
+pointXYZ[2] = 10.0; // z
 
-	// Write X and Y
-	ecrire_a(rx, pPointXYZ); // x
-	pPointXYZ = pPointXYZ + 1;
-	ecrire_a(ry, pPointXYZ); // y
-	pPointXYZ = pPointXYZ + 1;
-	ecrire_a(0.0, pPointXYZ); // z
-	pPointXYZ = pPointXYZ + 1;
+pointXYZ[3] = 10.0;
+pointXYZ[4] = 10.0;
+pointXYZ[5] = 10.0;
 
-	// Update teta to go to next summit
-	teta = teta + degreeStep;
-	si (teta > 360)
-		teta = teta - 360;
-	fin_si;
+pointXYZ[6] = 10.0;
+pointXYZ[7] = -10.0;
+pointXYZ[8] = 10.0;
 
-	// Next summit
-	summitIndex = summitIndex + 1;
-fin_tant_que; // nbSummit
+pointXYZ[9] = -10.0;
+pointXYZ[10] = -10.0;
+pointXYZ[11] = 10.0;
 
+pointXYZ[12] = -10.0; 
+pointXYZ[13] = 10.0; 
+pointXYZ[14] = 10.0;
 
-reel zMoveInside = 0.0;
-reel zAccuOffset = 1.0;
-entier nbLevelProf = 10;
+Bz = planeXYZ[2] - camXYZ[2]; 
+nbPoints = 5;
+
+reel offsetMax = 40.0;
+reel zOffsetStep = 5.0;
 
 tant_que(1 == 1)
 
@@ -357,55 +321,50 @@ tant_que(1 == 1)
 
 	led_anim_1();
 
-	// Change the position of the camera
 	teta = teta + 1;
 	si (teta > 360)
 		teta = 0;
 	fin_si;
-	camXYZ[0] = cos(teta);
-	camXYZ[0] = camXYZ[0] * 150.0;
-	//camXYZ[1] = sin(teta);
-	//camXYZ[1] = camXYZ[1] * 200.0;
-	camXYZ[1] = 100.0;
+	offsetXYZ[0] = cos(teta);
+	offsetXYZ[0] = offsetXYZ[0] * offsetMax;
+	offsetXYZ[1] = sin(teta);
+	offsetXYZ[1] = offsetXYZ[1] * offsetMax;
 
 	// Init
 	sharedHead = SHARED_MEM_START;
 
-	zMoveInside = zMoveInside - 0.01;
-	reg1 = -1.0;
-	si (zMoveInside < reg1)
-		zMoveInside = 0.0;
-	fin_si;
-
 	curLevelProf = nbLevelProf;
-	tant_que(curLevelProf > 990)
+	tant_que(curLevelProf > 0)
 
 		// Init the segment
 		pPointXYZ = @pointXYZ;
-		ecrire_a(nbShapeSummit, sharedHead); // NB_POINT
+		ecrire_a(nbPoints, sharedHead);	// NB_POINT
 		sharedHead = sharedHead + 1;
 
-		//eReg1 = COLOR_WHITE - curLevelProf;
-		ecrire_a(COLOR_WHITE, sharedHead); 	// Color
+		eReg1 = COLOR_WHITE - curLevelProf;
+		ecrire_a(eReg1, sharedHead); 	// Color
 		sharedHead = sharedHead + 1;
 
-		summitIndex = 0;
-		tant_que(summitIndex < nbShapeSummit)
+		curPoint = 0;
+		tant_que(curPoint < nbPoints)
 			cpPointXYZ[0] = lire_a(pPointXYZ);
 			pPointXYZ = pPointXYZ + 1;
 			cpPointXYZ[1] = lire_a(pPointXYZ);
 			pPointXYZ = pPointXYZ + 1;
-			cpPointXYZ[2] = zMoveInside;
+			cpPointXYZ[2] = lire_a(pPointXYZ);
 			pPointXYZ = pPointXYZ + 1;
 
 			reg1 = evr(curLevelProf);
-			reg1 = reg1 - 1.0;
-			reg1 = reg1 * zAccuOffset;
+			reg1 = reg1 * zOffsetStep;
 			cpPointXYZ[2] = cpPointXYZ[2] + reg1;
 
-			Bz = planeXYZ[2] - camXYZ[2];
+			// Apply offset
+			cpPointXYZ[0] = cpPointXYZ[0] + offsetXYZ[0];
+			cpPointXYZ[1] = cpPointXYZ[1] + offsetXYZ[1];
+			cpPointXYZ[2] = cpPointXYZ[2] + offsetXYZ[2];
+
 			Az = cpPointXYZ[2] - camXYZ[2];
-			reg1 = Bz / Az;
+			reg1 = Bz / Az; // This is not working
 
 			// For X
 			Axy = cpPointXYZ[0] - camXYZ[0]; 
@@ -416,9 +375,9 @@ tant_que(1 == 1)
 			planePointXY[1] = reg1 * Axy; 
 
 			// Adaptation
-			planePointXY[0] = planePointXY[0] / 2.0;
+			planePointXY[0] = planePointXY[0] * 10.0;
 			planePointXY[0] = planePointXY[0] + 320.0;
-			planePointXY[1] = planePointXY[1] / 2.0;
+			planePointXY[1] = planePointXY[1] * 10.0;
 			planePointXY[1] = planePointXY[1] + 240.0;
 
 			// Convertion
@@ -431,26 +390,12 @@ tant_que(1 == 1)
 			sharedHead = sharedHead + 1;
 
 			// Go to next point
-			summitIndex = summitIndex + 1;
+			curPoint = curPoint + 1;
 		fin_tant_que;
 
 		// Go to next level of prof
 		curLevelProf = curLevelProf - 1;
 	fin_tant_que;
-
-	ecrire_a(2, sharedHead); // NB_POINT
-	sharedHead = sharedHead + 1;
-	ecrire_a(COLOR_WHITE, sharedHead); // COLOR
-	sharedHead = sharedHead + 1;
-	ecrire_a(320, sharedHead); // x1
-	sharedHead = sharedHead + 1;
-	ecrire_a(240, sharedHead); // y1
-	sharedHead = sharedHead + 1;
-	ecrire_a(340, sharedHead); // x2
-	sharedHead = sharedHead + 1;
-	entier negVal = -10;
-	ecrire_a(negVal, sharedHead); // y2
-	sharedHead = sharedHead + 1;
 
 	ecrire_a(0, sharedHead); // NB_POINTS = 0 indicates the end
 

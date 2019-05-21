@@ -1,5 +1,6 @@
 # TARGET          = tunnel
-TARGET          = cube
+TARGET          = test_timer
+# TARGET          = cube
 # TARGET          = test_div
 
 SRCDIR          = prog
