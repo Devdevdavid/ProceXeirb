@@ -508,8 +508,9 @@ inst_cpu_periph_manager : cpu_periph_manager
     cpu_stack_add_param_en  => cpu_stack_add_param_en,
     cpu_address_counter_en  => cpu_address_counter_en,
     cpu_dummy_en            => cpu_dummy_en,
-    cpu_div_int_en            => cpu_div_int_en,
-    cpu_div_real_en            => cpu_div_real_en
+    cpu_div_int_en          => cpu_div_int_en,
+    cpu_div_real_en         => cpu_div_real_en,
+    cpu_timer_en            => cpu_timer_en
     );
 
 /* La RAM du CPU */
@@ -642,8 +643,9 @@ inst_gpu_periph_manager : gpu_periph_manager
     gpu_stack_add_param_en  => gpu_stack_add_param_en,
     gpu_address_counter_en  => gpu_address_counter_en,
     gpu_dummy_en            => gpu_dummy_en,
-    gpu_div_int_en            => gpu_div_int_en,
-    gpu_div_real_en            => gpu_div_real_en
+    gpu_div_int_en          => gpu_div_int_en,
+    gpu_div_real_en         => gpu_div_real_en,
+    gpu_timer_en            => gpu_timer_en
     );
 
 /* La RAM du GPU */

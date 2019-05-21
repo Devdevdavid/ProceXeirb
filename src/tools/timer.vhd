@@ -74,6 +74,8 @@ end component;
     signal periode           : std_logic_vector(data_size-1 downto 0);
     signal cpt_100           : std_logic_vector(data_size-1 downto 0);
     signal clk_en_div_100    : std_logic;
+    signal cpt_periode       : std_logic_vector(data_size-1 downto 0);
+    signal clk_en_div_periode: std_logic;
     --bus 
     signal periph_data_in    : std_logic_vector(data_size-1 downto 0);
     signal periph_data_out   : std_logic_vector(data_size-1 downto 0);
@@ -115,7 +117,7 @@ begin
     clk             => clk,
     clk_en          => clk_en,
     
-    cpt_max_value   => 25x"64",
+    cpt_max_value   => 25x"00064",
     cpt_out         => cpt_100
     );
     
@@ -129,7 +131,7 @@ begin
     clk_en          => clk_en_div_100,
     
     cpt_max_value   => periode,
-    cpt_out         => cpt_value
+    cpt_out         => cpt_periode
     );
     
     process (cpt_100, reset) is
@@ -142,6 +144,29 @@ begin
              clk_en_div_100 <= '0';
         end if;
     end process;
+    
+    process (cpt_periode, reset) is
+    begin
+        if reset = '1' then
+            clk_en_div_periode <= '0';
+        elsif cpt_periode = 25x"00000000" then
+            clk_en_div_periode <= '1';
+        else
+             clk_en_div_periode <= '0';
+        end if;
+    end process;
+    
+    process (clk_en_div_periode, reset) is
+    begin
+        if reset = '1' then
+            cpt_value <= (others => '0');
+        elsif rising_edge(clk_en_div_periode) then
+            cpt_value <= std_logic_vector(signed(cpt_value)+1);
+        end if;
+    end process;
+    
+    
+    
     
     
     process(clk, reset) is
@@ -156,11 +181,14 @@ begin
                         when '0' =>
                             if (periph_R_W = '1') then
                                 periode <= periph_data_in;
+                            else
+                                periph_data_out <= periode;
                             end if;
                         when '1' =>
                             if (periph_R_W = '0') then
                                 periph_data_out <= cpt_value;
                             end if;
+                        when others =>
                     end case;
                 end if;
             end if;
