@@ -403,7 +403,7 @@ tant_que(1 == 1)
 	fin_si;
 
 	curLevelProf = nbLevelProf;
-	tant_que(curLevelProf > 990)
+	tant_que(curLevelProf > 0)
 
 		// Init the segment
 		pPointXYZ = @pointXYZ;
@@ -462,29 +462,6 @@ tant_que(1 == 1)
 		// Go to next level of prof
 		curLevelProf = curLevelProf - 1;
 	fin_tant_que;
-
-	entier negVal = -10;
-	entier x;
-	entier y;
-	x = cos(teta);
-	x = x * 2;
-	x = x + 320;
-	y = sin(teta);
-	y = y * 2;
-	y = y + 240;
-
-	ecrire_a(2, sharedHead); // NB_POINT
-	sharedHead = sharedHead + 1;
-	ecrire_a(COLOR_WHITE, sharedHead); // COLOR
-	sharedHead = sharedHead + 1;
-	ecrire_a(320, sharedHead); // x1
-	sharedHead = sharedHead + 1;
-	ecrire_a(240, sharedHead); // y1
-	sharedHead = sharedHead + 1;
-	ecrire_a(x, sharedHead); // x2
-	sharedHead = sharedHead + 1;
-	ecrire_a(y, sharedHead); // y2
-	sharedHead = sharedHead + 1;
 
 	ecrire_a(0, sharedHead); // NB_POINTS = 0 indicates the end
 
