@@ -16,7 +16,7 @@ entity optimumDivisor is
             data_size    : integer := 8;
             address_size : integer := 8;
             mode         : integer := 0; -- 0 = int ; 1 = float
-            sfixed_msb  : integer := 10;
+            sfixed_msb  : integer := 15;
             sfixed_lsb   : integer := -8
         );
     port (
@@ -144,7 +144,7 @@ inst_bus_interface : bus_periph_interface
     un   := 24x"000001";
     
     if mode = 0 then -- int
-       result  <= std_logic_vector(signed(in_1) / (signed(in_2))); 
+       result(17 downto 0)  <= std_logic_vector(signed(in_1(17 downto 0)) / (signed(in_2(17 downto 0)))); 
        
     elsif mode = 1 then -- fixed_point
      --Conversion
@@ -158,6 +158,7 @@ inst_bus_interface : bus_periph_interface
 
      --Conversion
        result(sfixed_msb-sfixed_lsb downto 0) <= to_slv(result_fixed(sfixed_msb downto sfixed_lsb));
+       --result <= result sll 1  ; 
     else
        result(31 downto 0) <= x"CAFEFADE";
     end if;

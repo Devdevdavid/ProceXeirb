@@ -136,14 +136,14 @@ begin
         data_out_with_carry (sfixed_msb_add-sfixed_lsb+1  downto 0) <= to_slv(data_out_fixed(sfixed_msb_add+1 downto sfixed_lsb));
         
   -- OP_SUBF
-      when 5x"18" =>
+      when 5x"08" =>
         
         -- Conversion
         data_A_fixed := to_sfixed(data_A(sfixed_msb_add-sfixed_lsb  downto 0), sfixed_msb_add, sfixed_lsb);
         data_B_fixed := to_sfixed(data_B(sfixed_msb_add-sfixed_lsb  downto 0), sfixed_msb_add, sfixed_lsb);
 
         -- Calculs
-        data_out_fixed(sfixed_msb_add+1 downto sfixed_lsb) := data_A_fixed - data_B_fixed;
+        data_out_fixed(sfixed_msb_add+1 downto sfixed_lsb) := data_B_fixed - data_A_fixed;
 
         -- Conversion
         data_out_with_carry (sfixed_msb_add-sfixed_lsb+1  downto 0) <= to_slv(data_out_fixed(sfixed_msb_add+1 downto sfixed_lsb));
@@ -152,7 +152,7 @@ begin
   --    when "01010" =>
 
   -- OP_MULF
-      when 5x"08" =>
+      when 5x"09" =>
 
         -- Conversion
         data_A_fixed(sfixed_msb_mul downto sfixed_lsb) := to_sfixed(data_A(sfixed_msb_mul-sfixed_lsb  downto 0), sfixed_msb_mul, sfixed_lsb);
@@ -168,47 +168,47 @@ begin
      
   -- Conversions virgules fixes/entiers
   -- OP_FTOI
-      when 5x"09" =>
+      when 5x"a" =>
         -- Tronquage de la partie entière (l'idéal serait un arrondi mais bon...)
         data_out_with_carry(sfixed_msb_add downto 0) <= data_A(sfixed_msb_add-sfixed_lsb downto (-sfixed_lsb)); 
 
   -- OP_ITOF
-      when 5x"0a" =>
+      when 5x"0b" =>
         -- On prend les bits les plus faibles de l'entier, qui deviennent la partie entière du virgule fixe
         data_out_with_carry(sfixed_msb_add-sfixed_lsb downto -sfixed_lsb) <= data_A(sfixed_msb_add downto 0);
 
   -- Opérations mémoire
   -- OP_STA
-      when 5x"0d" =>
-
-  -- OP_JCC
       when 5x"0e" =>
 
-  -- OP_JMP
+  -- OP_JCC
       when 5x"0f" =>
 
-  -- OP_GET
+  -- OP_JMP
       when 5x"10" =>
+
+  -- OP_GET
+      when 5x"11" =>
         data_out_with_carry (data_size-1 downto 0) <= data_A;
 
   -- OP_GAD
-      when 5x"16" =>
+      when 5x"17" =>
         data_out_with_carry (data_size-1 downto 0) <= data_A;
         
   -- Tests sur les entiers et les virgules fixes
   -- OP_TGT
-      when 5x"11" =>
+      when 5x"12" =>
         data_out_with_carry(data_size) <= '1' when signed(data_A) < signed (data_B) else '0';
 
   -- OP_TLT
-      when 5x"12" =>
+      when 5x"13" =>
         data_out_with_carry(data_size) <= '1' when signed(data_A) > signed (data_B) else '0';
 
   -- OP_TEQ
-      when 5x"13" =>
+      when 5x"14" =>
         data_out_with_carry(data_size) <= '1' when signed(data_A) = signed (data_B) else '0';
   -- OP_TNE
-      when 5x"14" =>
+      when 5x"15" =>
         data_out_with_carry(data_size) <= '1' when signed(data_A) /= signed (data_B) else '0';
 
 

@@ -26,7 +26,8 @@ entity cpu_periph_manager is
     cpu_address_counter_en  : out std_logic;
     cpu_dummy_en            : out std_logic;
     cpu_div_int_en          : out std_logic;
-    cpu_div_real_en        : out std_logic
+    cpu_div_real_en         : out std_logic;
+    cpu_timer_en            : out std_logic
     );
 
 end entity cpu_periph_manager;
@@ -51,7 +52,7 @@ begin
     cpu_dummy_en            <= '0';
     cpu_div_int_en          <= '0';
     cpu_div_real_en         <= '0';
-    
+    cpu_timer_en            <= '0';
     if cpu_bus_en = '1' then
       case to_integer(unsigned(cpu_bus_address)) is
         when 16#00000# to 16#01fff# => 
@@ -80,6 +81,9 @@ begin
           
         when 16#0240C# to 16#0240F#=> 
           cpu_div_real_en    <= '1';
+          
+         when 16#02410# to 16#02411#=> 
+           cpu_timer_en    <= '1';
      
         when 16#03000# to 16#03fff# =>
           cpu_shr_ram_en   <= '1';
