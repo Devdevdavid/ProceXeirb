@@ -22,7 +22,7 @@ entity cpt is
 end entity cpt;
 
 architecture rtl of cpt is 
-    signal cpt : integer range 0 to 2**size-1;
+    signal cpt : integer range 0 to (2**size)-1;
 
 begin
 
@@ -38,7 +38,7 @@ begin
                     cpt <= cpt + 1;
                         
                 else
-                    cpt <= 0;
+                    cpt <= 1;
 
                 end if;
             end if;

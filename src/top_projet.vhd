@@ -832,24 +832,24 @@ inst_dummy_gpu : reg_with_interface
     bus_en          => cpu_bus_en
         );
    
-  inst_div_real_cpu : optimumDivisor
-    generic map (
-      data_size    => data_size,
-      address_size => address_size,
-      mode         => 1 -- 0 = int ; 1 = fixed
-    )
-    port map(
-    reset       => reset,
-    clk             => clk,
-    clk_en          => clk_en,
+--  inst_div_real_cpu : optimumDivisor
+--    generic map (
+--      data_size    => data_size,
+--      address_size => address_size,
+--      mode         => 1 -- 0 = int ; 1 = fixed
+--    )
+--    port map(
+--    reset       => reset,
+--    clk             => clk,
+--    clk_en          => clk_en,
         
-    en              => cpu_div_real_en,         
-    bus_data_in     => cpu_bus_data_in,
-    bus_data_out    => cpu_bus_data_out,
-    bus_address     => cpu_bus_address,
-    bus_R_W         => cpu_bus_R_W,
-    bus_en          => cpu_bus_en
-        );
+--    en              => cpu_div_real_en,         
+--    bus_data_in     => cpu_bus_data_in,
+--    bus_data_out    => cpu_bus_data_out,
+--    bus_address     => cpu_bus_address,
+--    bus_R_W         => cpu_bus_R_W,
+--    bus_en          => cpu_bus_en
+--        );
   
    inst_div_int_gpu : optimumDivisor
     generic map (
@@ -870,24 +870,24 @@ inst_dummy_gpu : reg_with_interface
     bus_en          => gpu_bus_en
     );
         
-  inst_div_real_gpu : optimumDivisor
-    generic map (
-      data_size    => data_size,
-      address_size => address_size,
-      mode         => 1 -- 0 = int ; 1 = fixed
-      )
-    port map(
-    reset       => reset,
-    clk             => clk,
-    clk_en          => clk_en,
+--  inst_div_real_gpu : optimumDivisor
+--    generic map (
+--      data_size    => data_size,
+--      address_size => address_size,
+--      mode         => 1 -- 0 = int ; 1 = fixed
+--      )
+--    port map(
+--    reset       => reset,
+--    clk             => clk,
+--    clk_en          => clk_en,
         
-    en              => gpu_div_real_en,         
-    bus_data_in     => gpu_bus_data_in,
-    bus_data_out    => gpu_bus_data_out,
-    bus_address     => gpu_bus_address,
-    bus_R_W         => gpu_bus_R_W,
-    bus_en          => gpu_bus_en
-        );
+--    en              => gpu_div_real_en,         
+--    bus_data_in     => gpu_bus_data_in,
+--    bus_data_out    => gpu_bus_data_out,
+--    bus_address     => gpu_bus_address,
+--    bus_R_W         => gpu_bus_R_W,
+--    bus_en          => gpu_bus_en
+--        );
         
   inst_timer_cpu : timer
     generic map (

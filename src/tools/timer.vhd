@@ -58,7 +58,7 @@ end component;
     
 component cpt is
     generic (
-            size : integer :=8
+            size : integer := data_size
         );
     port (
         reset    : in  std_logic;
@@ -70,12 +70,26 @@ component cpt is
         );
 
 end component; 
-    signal cpt_value         : std_logic_vector(data_size-1 downto 0);
-    signal periode           : std_logic_vector(data_size-1 downto 0);
-    signal cpt_100           : std_logic_vector(data_size-1 downto 0);
-    signal clk_en_div_100    : std_logic;
-    signal cpt_periode       : std_logic_vector(data_size-1 downto 0);
-    signal clk_en_div_periode: std_logic;
+
+component div_clk is
+    generic (
+        size : integer := data_size
+    );
+    port (
+        reset           : in  std_logic;
+        clk             : in  std_logic;
+        clk_en          : in  std_logic;
+
+        clk_in          : in  std_logic;
+        divider         : in  std_logic_vector (size -1 downto 0);
+        clk_out         : out std_logic       
+     );
+end component;
+
+    signal clk_1MHz          : std_logic;
+    signal clk_timer_out     : std_logic;
+    signal period            : std_logic_vector(data_size-1 downto 0) := 25x"0000002";
+    signal cpt_timer_out     : std_logic_vector(data_size-1 downto 0);
     --bus 
     signal periph_data_in    : std_logic_vector(data_size-1 downto 0);
     signal periph_data_out   : std_logic_vector(data_size-1 downto 0);
@@ -84,109 +98,88 @@ end component;
     signal periph_en         : std_logic;
 
 begin
-  inst_bus_interface : bus_periph_interface
-  generic map (
-    address_size  => address_size,
-    data_size     => data_size
-  )
-  port map (
-    en                => en,
-
-    periph_data_in    => periph_data_in,
-    periph_data_out   => periph_data_out,
-
-    bus_data_in       => bus_data_in,
-    bus_data_out      => bus_data_out,
-
-    periph_address    => periph_address,
-    bus_address       => bus_address,
-
-    bus_R_W           => bus_R_W,
-    periph_R_W        => periph_R_W,
-
-    bus_en            => bus_en,
-    periph_en         => periph_en
-    );
-    
-    inst_div_100 : cpt  
+    inst_bus_interface : bus_periph_interface
     generic map (
-    size     => data_size
-  )
-  port map (
-    reset           => reset,
-    clk             => clk,
-    clk_en          => clk_en,
-    
-    cpt_max_value   => 25x"00064",
-    cpt_out         => cpt_100
+        address_size  => address_size,
+        data_size     => data_size
+    )
+    port map (
+        en                => en,
+        
+        periph_data_in    => periph_data_in,
+        periph_data_out   => periph_data_out,
+        
+        bus_data_in       => bus_data_in,
+        bus_data_out      => bus_data_out,
+        
+        periph_address    => periph_address,
+        bus_address       => bus_address,
+        
+        bus_R_W           => bus_R_W,
+        periph_R_W        => periph_R_W,
+        
+        bus_en            => bus_en,
+        periph_en         => periph_en
     );
     
-    inst_div_periode : cpt  
+    ins_div_clk_1 : div_clk  
     generic map (
-    size     => data_size
-  )
-  port map (
-    reset           => reset,
-    clk             => clk,
-    clk_en          => clk_en_div_100,
-    
-    cpt_max_value   => periode,
-    cpt_out         => cpt_periode
+        size            => data_size
+    )
+    port map (
+        reset           => reset,
+        clk             => clk,
+        clk_en          => clk_en,
+        
+        clk_in          => '1',
+        divider         => 25x"00064", -- Divide by 100 to get a 1MHz
+        clk_out         => clk_1MHz
+    );
+    ins_div_clk_2 : div_clk  
+    generic map (
+        size            => data_size
+    )
+    port map (
+        reset           => reset,
+        clk             => clk,
+        clk_en          => clk_en,
+        
+        clk_in          => clk_1MHz,
+        divider         => period,
+        clk_out         => clk_timer_out
     );
     
-    process (cpt_100, reset) is
-    begin
-        if reset = '1' then
-            clk_en_div_100 <= '0';
-        elsif cpt_100 = 25x"00000000" then
-            clk_en_div_100 <= '1';
-        else
-             clk_en_div_100 <= '0';
-        end if;
-    end process;
-    
-    process (cpt_periode, reset) is
-    begin
-        if reset = '1' then
-            clk_en_div_periode <= '0';
-        elsif cpt_periode = 25x"00000000" then
-            clk_en_div_periode <= '1';
-        else
-             clk_en_div_periode <= '0';
-        end if;
-    end process;
-    
-    process (clk_en_div_periode, reset) is
-    begin
-        if reset = '1' then
-            cpt_value <= (others => '0');
-        elsif rising_edge(clk_en_div_periode) then
-            cpt_value <= std_logic_vector(signed(cpt_value)+1);
-        end if;
-    end process;
-    
-    
-    
-    
+    inst_cpt_periode : cpt  
+    generic map (
+        size     => data_size
+    )
+    port map (
+        reset           => reset,
+        clk             => clk,
+        clk_en          => clk_timer_out,
+        
+        cpt_max_value   => 25x"FFFFF", -- Max value of a 25 bits value
+        cpt_out         => cpt_timer_out
+    );
     
     process(clk, reset) is
     begin
         if reset = '1' then
             periph_data_out <= (others => '0');
-
+    
         elsif rising_edge(clk) then
             if clk_en = '1' then
                 if periph_en = '1' then
                     case periph_address(0) is
                         when '0' =>
                             if (periph_R_W = '1') then
-                                periode <= periph_data_in;
+                                period <= periph_data_in;
                             else
-                                periph_data_out <= periode;
+                                periph_data_out <= period;
                             end if;
                         when '1' =>
                             if (periph_R_W = '0') then
-                                periph_data_out <= cpt_value;
+                                periph_data_out <= cpt_timer_out;
                             end if;
                         when others =>
                     end case;

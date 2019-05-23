@@ -147,18 +147,18 @@ inst_bus_interface : bus_periph_interface
        result(17 downto 0)  <= std_logic_vector(signed(in_1(17 downto 0)) / (signed(in_2(17 downto 0)))); 
        
     elsif mode = 1 then -- fixed_point
---     --Conversion
---        in_1_fixed(sfixed_msb downto sfixed_lsb) := to_sfixed(in_1(sfixed_msb-sfixed_lsb  downto 0), sfixed_msb, sfixed_lsb);
---        in_2_fixed(sfixed_msb downto sfixed_lsb) := to_sfixed(in_2(sfixed_msb-sfixed_lsb  downto 0), sfixed_msb, sfixed_lsb);
+     --Conversion
+        in_1_fixed(sfixed_msb downto sfixed_lsb) := to_sfixed(in_1(sfixed_msb-sfixed_lsb  downto 0), sfixed_msb, sfixed_lsb);
+        in_2_fixed(sfixed_msb downto sfixed_lsb) := to_sfixed(in_2(sfixed_msb-sfixed_lsb  downto 0), sfixed_msb, sfixed_lsb);
 
---     --Calculs
---        -- fix (Magic) : vivado doesn't generate block if in_1/in_2 
---        in_2_inv(sfixed_msb*2+1 downto sfixed_lsb*2) :=  un(sfixed_msb downto sfixed_lsb) / in_2_fixed(sfixed_msb downto sfixed_lsb);
---        result_fixed (sfixed_msb*2+1 downto sfixed_lsb*2) := (in_1_fixed(sfixed_msb downto sfixed_lsb) * in_2_inv(sfixed_msb downto sfixed_lsb));
+     --Calculs
+        -- fix (Magic) : vivado doesn't generate block if in_1/in_2 
+        in_2_inv(sfixed_msb*2+1 downto sfixed_lsb*2) :=  un(sfixed_msb downto sfixed_lsb) / in_2_fixed(sfixed_msb downto sfixed_lsb);
+        result_fixed (sfixed_msb*2+1 downto sfixed_lsb*2) := (in_1_fixed(sfixed_msb downto sfixed_lsb) * in_2_inv(sfixed_msb downto sfixed_lsb));
 
---     --Conversion
---       result(sfixed_msb-sfixed_lsb downto 0) <= to_slv(result_fixed(sfixed_msb downto sfixed_lsb));
---       --result <= result sll 1  ; 
+     --Conversion
+       result(sfixed_msb-sfixed_lsb downto 0) <= to_slv(result_fixed(sfixed_msb downto sfixed_lsb));
+       --result <= result sll 1  ; 
     else
        result(31 downto 0) <= x"CAFEFADE";
     end if;
