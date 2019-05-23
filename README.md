@@ -39,13 +39,13 @@ Cette bibliothèque rassemble des fonctions globales au projet comme la mise en 
 Chaque bag-tool dispose de son fichier Makefile pour être compilé. Toutefois, un Super Makefile est situé à la racine du projet.
 
 ```bash
-make tools
+make tools -B
 ```
 La commande ci-dessus permet de compiler tous les bag-tools et de les installer (Testé uniquement sur MacOS).
 La commande suivante permet de compiler un fichier *.bag et de lancer l'envoi par liaison série :
 
 ```bash
-make load
+make load -B
 ```
 
 ## VHDL
@@ -59,27 +59,21 @@ La description du projet est faîte en VHDL avec l'outil Vivado de Xilinx. Les s
 * **Pierre JOUBERT** - *Initial work* - [PierreJoubertPJ](https://github.com/PierreJoubertPJ)
 * **Julien BESSE** - *Initial work* - [Nerradia](https://github.com/Nerradia)
 
-## Questions
+## Documentation
 
-- Peut-on supprimer cette ligne suite à la migration à Vivado 2018 ? (cpu_UAL.vhd:7)
-```vhdl
-use work.fixed_generic_pkg_mod.all; -- Fix for Vivado
-```
+Vous trouverez toute la documentation nécéssaire sur le projet en consultant le fichier suivant :
+[Rapport ProceXeirb V1.1](https://github.com/Devdevdavid/ProceXeirb/tree/master/doc/Rapport_ProceXeirb_v1.1.pdf)
 
 ## Liste des améliorations prévues
 
 ### CPU
 
-- Ajouter une Call Stack
 - Ajouter des interruptions
-- Ajouter un timer
 
 ### VGA
-- Ajouter de la couleur
 
-### Programmateur
+- Ajouter de la couleur
 
 ### Toolchain
 
-- Ajouter des appels de fonction au Baguette
 - Simulateur de Baguette
