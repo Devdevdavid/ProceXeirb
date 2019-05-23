@@ -1,4 +1,4 @@
-// File: tunnel.bag (V4)
+// File: tunnel.bag (V3)
 // Author: David DEVANT
 // Date: May 21, 2019
 //
@@ -49,6 +49,11 @@ fonction draw_segment(entier color, entier x1, entier y1, entier x2, entier y2)
 	entier yIncrement;
 	entier Dx;
 	entier Dy;
+	entier hasBeginOutside;
+	entier yDiffBis;
+	entier newXOffset;
+
+	hasBeginOutside = 0;
 
 	si (x1 > x2)
 		// Swap p1 and p2 to be able to draw from left to right of the screen
@@ -66,9 +71,58 @@ fonction draw_segment(entier color, entier x1, entier y1, entier x2, entier y2)
 	si (y1 < y2)
 		yDiff = y2 - y1;
 		yIncrement = 1;
+		si (y1 < SCREEN_MASK_TOP)
+			// Compute x1
+			yDiffBis = SCREEN_MASK_TOP - y1;
+			newXOffset = yDiffBis * xDiff;
+			newXOffset = newXOffset / yDiff;
+			x1 = x1 + newXOffset;
+			// Compute y1
+			y1 = SCREEN_MASK_TOP;
+			// Recompute
+			xDiff = x2 - x1;
+			yDiff = y2 - y1;
+		fin_si;
+		si (y2 > SCREEN_MASK_BOTTOM)
+			// Compute x2
+			yDiffBis = SCREEN_MASK_BOTTOM - y1;
+			newXOffset = yDiffBis * xDiff;
+			newXOffset = newXOffset / yDiff;
+			x2 = x1 + newXOffset;
+			// Compute y2
+			y2 = SCREEN_MASK_BOTTOM;
+			// Recompute
+			xDiff = x2 - x1;
+			yDiff = y2 - y1;
+		fin_si;
 	sinon
 		yDiff = y1 - y2;
 		yIncrement = -1;
+		si (y2 < SCREEN_MASK_TOP)
+			// Compute x2
+			yDiffBis = SCREEN_MASK_TOP - y2;
+			newXOffset = yDiffBis * xDiff;
+			newXOffset = newXOffset / yDiff;
+			x2 = x2 + newXOffset;
+			// Compute y2
+			y2 = SCREEN_MASK_TOP;
+			// Recompute
+			xDiff = x2 - x1;
+			yDiff = y1 - y2;
+		fin_si;
+		si (y1 > SCREEN_MASK_BOTTOM)
+			// Compute x1
+			yDiffBis = SCREEN_MASK_BOTTOM - y2;
+			newXOffset = yDiffBis * xDiff;
+			newXOffset = newXOffset / yDiff;
+			//x1 = x2 + newXOffset; // Pourquoi. ca le fait aller de coté ca ?
+			// Compute y1
+			y1 = SCREEN_MASK_BOTTOM;
+			// Recompute
+			xDiff = x2 - x1;
+			yDiff = y1 - y2;
+			ecrire_a(COLOR_WHITE, LAST_VGA_PIXEL); // Debug
+		fin_si;
 	fin_si
 
 	// Get MAX
@@ -85,23 +139,25 @@ fonction draw_segment(entier color, entier x1, entier y1, entier x2, entier y2)
 	tant_que (index < diagDistance)
 		// Abort segment if out of mask
 		si (x1 < SCREEN_MASK_LEFT)
-			index = diagDistance;
+			color = COLOR_GRAY;
 		fin_si;
 		si (y1 < SCREEN_MASK_TOP)
-			index = diagDistance;
+			color = COLOR_GRAY;
 		fin_si;
 		si (x1 > SCREEN_MASK_RIGHT)
-			index = diagDistance;
+			color = COLOR_GRAY;
 		fin_si;
 		si (y1 > SCREEN_MASK_BOTTOM)
-			index = diagDistance;
+			color = COLOR_GRAY;
 		fin_si;
 
 		// Draw current point
-		vgaHead = SCREEN_WIDTH * y1;
-		vgaHead = vgaHead + x1;
-		vgaHead = vgaHead + BASE_VGA;
-		ecrire_a(color, vgaHead);
+		si (color != COLOR_NONE)
+			vgaHead = SCREEN_WIDTH * y1;
+			vgaHead = vgaHead + x1;
+			vgaHead = vgaHead + BASE_VGA;
+			ecrire_a(color, vgaHead);
+		fin_si;
 
 		si (Dx > 0)
 			x1 = x1 + 1; // Only x as constant increment because we swaped
@@ -182,6 +238,18 @@ fin_si; // End of GPU part
 // This is the CPU part
 
 entier ledTime;			// Counter for led animation
+
+// value of 16777215 is 16.10 sec
+// so 1ms is 16777215 / 16100 = 1042
+fonction delay_ms(entier value)
+	entier counter;
+
+	counter = 0;
+	value = value * 1042;
+	tant_que (counter < value)
+		counter = counter + 1;
+	fin_tant_que;
+retourne;
 
 // This make nice animation on the 16 LED
 // Symetrical waves 
@@ -335,7 +403,7 @@ tant_que(1 == 1)
 	fin_si;
 
 	curLevelProf = nbLevelProf;
-	tant_que(curLevelProf > 0)
+	tant_que(curLevelProf > 990)
 
 		// Init the segment
 		pPointXYZ = @pointXYZ;
@@ -394,6 +462,29 @@ tant_que(1 == 1)
 		// Go to next level of prof
 		curLevelProf = curLevelProf - 1;
 	fin_tant_que;
+
+	entier negVal = -10;
+	entier x;
+	entier y;
+	x = cos(teta);
+	x = x * 2;
+	x = x + 320;
+	y = sin(teta);
+	y = y * 2;
+	y = y + 240;
+
+	ecrire_a(2, sharedHead); // NB_POINT
+	sharedHead = sharedHead + 1;
+	ecrire_a(COLOR_WHITE, sharedHead); // COLOR
+	sharedHead = sharedHead + 1;
+	ecrire_a(320, sharedHead); // x1
+	sharedHead = sharedHead + 1;
+	ecrire_a(240, sharedHead); // y1
+	sharedHead = sharedHead + 1;
+	ecrire_a(x, sharedHead); // x2
+	sharedHead = sharedHead + 1;
+	ecrire_a(y, sharedHead); // y2
+	sharedHead = sharedHead + 1;
 
 	ecrire_a(0, sharedHead); // NB_POINTS = 0 indicates the end
 

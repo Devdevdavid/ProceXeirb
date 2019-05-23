@@ -1,6 +1,6 @@
-// File: tunnel.bag (V4)
+// File: cube.bag (V3)
 // Author: David DEVANT
-// Date: May 21, 2019
+// Date: May 22, 2019
 //
 #definition BASE_LED_ADDR (524304)
 #definition BASE_VGA (524288)
@@ -233,78 +233,80 @@ fonction led_anim_1()
 retourne;
 
 // Used by CPU
-entier nbShapeSummit;
-entier summitIndex;
-entier curLevelProf;
-entier curPoint = 0;
-entier eReg1;
-reel reg1;
-reel Axy;
-reel Az;
-reel Bxy;
-reel Bz;
-reel planePointXY[2];
-entier screenPointXY[2];
-reel camXYZ[3];
-reel planeXYZ[3];
-reel offsetXYZ[3];
-reel cpPointXYZ[3];
-reel pointXYZ[60]; // 20 summit max
-reel shapeRadius;
-entier pPointXYZ;
-entier teta = 0;
-entier degreeStep;
-reel rx;
-reel ry;
+// Summit of the cube
+reel som1[3]; // 0: x, 1: y, 2: z
+reel som2[3];
+reel som3[3];
+reel som4[3];
+reel som5[3];
+reel som6[3];
+reel som7[3];
+reel som8[3];
+som1[0] = 90.; 
+som1[1] = 90.;
+som1[2] = -90.;
 
-camXYZ[0] = 0.0; // x
-camXYZ[1] = 0.0; // y
-camXYZ[2] = -1.0; // z
+som2[0] = 90.;
+som2[1] = 90.;
+som2[2] = 90.;
 
-planeXYZ[0] = 0.0; // x
-planeXYZ[1] = 0.0; // y
-planeXYZ[2] = 0.0; // z
+som3[0] = -90.;
+som3[1] = 90.;
+som3[2] = 90.;
 
-shapeRadius = 256.0;
-nbShapeSummit = 7;
-teta = 0;
-degreeStep = nbShapeSummit - 1;
-degreeStep = 360 / degreeStep;
-pPointXYZ = @pointXYZ;
-// Génération des points
-summitIndex = 0;
-tant_que (summitIndex < nbShapeSummit)
-	// Compute X and Y from the middle
-	rx = cos(teta);
-	rx = rx * shapeRadius;
+som4[0] = -90.;
+som4[1] = 90.;
+som4[2] = -90.;
 
-	ry = sin(teta);
-	ry = ry * shapeRadius;
+som5[0] = 90.;
+som5[1] = -90.;
+som5[2] = -90.;
 
-	// Write X and Y
-	ecrire_a(rx, pPointXYZ); // x
-	pPointXYZ = pPointXYZ + 1;
-	ecrire_a(ry, pPointXYZ); // y
-	pPointXYZ = pPointXYZ + 1;
-	ecrire_a(0.0, pPointXYZ); // z
-	pPointXYZ = pPointXYZ + 1;
+som6[0] = 90.;
+som6[1] = -90.;
+som6[2] = 90.;
 
-	// Update teta to go to next summit
-	teta = teta + degreeStep;
-	si (teta > 360)
-		teta = teta - 360;
-	fin_si;
+som7[0] = -90.;
+som7[1] = -90.;
+som7[2] = 90.;
 
-	// Next summit
-	summitIndex = summitIndex + 1;
-fin_tant_que; // nbSummit
+som8[0] = -90.;
+som8[1] = -90.;
+som8[2] = -90.;
 
-
-reel zMoveInside = 0.0;
-reel zAccuOffset = 1.0;
-entier nbLevelProf = 10;
+reel x1; 
+reel y1;
+reel x2; 
+reel y2;
+reel x3; 
+reel y3;
+reel x4; 
+reel y4;
+reel x5; 
+reel y5;
+reel x6; 
+reel y6;
+reel x7; 
+reel y7;
+reel x8; 
+reel y8;
+reel xx; 
+reel xy;
+reel yx;
+reel yy;
+reel zx;
+reel zy;
+reel temp1;
+reel sa; 
+reel sb; 
+reel sc; 
+reel ca; 
+reel cb; 
+reel cc; 
 
 tant_que(1 == 1)
+
+	led_anim_1();
 
 	// Wait GPU to be ready
 	sync = 1;
@@ -312,95 +314,177 @@ tant_que(1 == 1)
 	    sync = lire_a(CPU_DATA_OK); // 0: Data for CPU, 1: Data for GPU
 	fin_tant_que;
 
-	led_anim_1();
+	// Compute position
+	a_cos = a_cos + 1;
+	a_sin = a_sin + 1;
 
-	// Change the position of the camera
-	teta = teta + 1;
-	si (teta > 360)
-		teta = 0;
-	fin_si;
-	camXYZ[0] = cos(teta);
-	camXYZ[0] = camXYZ[0] * 150.0;
-	//camXYZ[1] = sin(teta);
-	//camXYZ[1] = camXYZ[1] * 200.0;
-	camXYZ[1] = 100.0;
-
-	// Init
-	sharedHead = SHARED_MEM_START;
-
-	zMoveInside = zMoveInside - 0.01;
-	reg1 = -1.0;
-	si (zMoveInside < reg1)
-		zMoveInside = 0.0;
-	fin_si;
-
-	curLevelProf = nbLevelProf;
-	tant_que(curLevelProf > 0)
-
-		// Init the segment
-		pPointXYZ = @pointXYZ;
-		ecrire_a(nbShapeSummit, sharedHead); // NB_POINT
-		sharedHead = sharedHead + 1;
-
-		//eReg1 = COLOR_WHITE - curLevelProf;
-		ecrire_a(COLOR_WHITE, sharedHead); 	// Color
-		sharedHead = sharedHead + 1;
-
-		summitIndex = 0;
-		tant_que(summitIndex < nbShapeSummit)
-			cpPointXYZ[0] = lire_a(pPointXYZ);
-			pPointXYZ = pPointXYZ + 1;
-			cpPointXYZ[1] = lire_a(pPointXYZ);
-			pPointXYZ = pPointXYZ + 1;
-			cpPointXYZ[2] = zMoveInside;
-			pPointXYZ = pPointXYZ + 1;
-
-			reg1 = evr(curLevelProf);
-			reg1 = reg1 - 1.0;
-			reg1 = reg1 * zAccuOffset;
-			cpPointXYZ[2] = cpPointXYZ[2] + reg1;
-
-			Bz = planeXYZ[2] - camXYZ[2];
-			Az = cpPointXYZ[2] - camXYZ[2];
-			reg1 = Bz / Az;
-
-			// For X
-			Axy = cpPointXYZ[0] - camXYZ[0]; 
-			planePointXY[0] = reg1 * Axy; 
-
-			// For Y
-			Axy = cpPointXYZ[1] - camXYZ[1]; 
-			planePointXY[1] = reg1 * Axy; 
-
-			// Adaptation
-			planePointXY[0] = planePointXY[0] / 2.0;
-			planePointXY[0] = planePointXY[0] + 320.0;
-			planePointXY[1] = planePointXY[1] / 2.0;
-			planePointXY[1] = planePointXY[1] + 240.0;
-
-			// Convertion
-			screenPointXY[0] = rve(planePointXY[0]);
-			screenPointXY[1] = rve(planePointXY[1]);
-
-			ecrire_a(screenPointXY[0], sharedHead); // X
-			sharedHead = sharedHead + 1;
-			ecrire_a(screenPointXY[1], sharedHead); // Y
-			sharedHead = sharedHead + 1;
-
-			// Go to next point
-			summitIndex = summitIndex + 1;
-		fin_tant_que;
-
-		// Go to next level of prof
-		curLevelProf = curLevelProf - 1;
+	tant_que (a_sin > 360)
+	a_sin = a_sin - 360;
 	fin_tant_que;
+
+	tant_que (a_cos > 270)
+	a_cos = a_cos - 360;
+	fin_tant_que;
+
+	si (b > 180) 
+	b = b - 180;
+	fin_si;
+
+	b = 20;
+	c = 5;
+
+	sa = sin(a_sin); 
+	sb = sin(b); 
+	sc = sin(c);
+	ca = cos(a_cos);
+	cb = cos(b);
+	cc = cos(c);
+
+	xx    = cc * ca;    
+	temp1 = sc * sa;
+	temp1 = temp1 * sb;
+	xx    = xx - temp1;
+
+	temp1 = cc * sa; 
+	xy    = temp1 * sb;
+	temp1 = sc * ca;
+	xy    = xy + temp1; 
+
+	temp1 = sa * cc; 
+	yx    = 0. - temp1; 
+	temp1 = sc * ca;
+	temp1 = sc * sb;
+	yx    = yx - temp1;
+
+	temp1 = cc * ca; 
+	yy    = temp1 * sb;
+	temp1 = sc * sa;
+	yy    = yy - temp1; 
+
+	zx    = sc * cb;    
+	zx    = 0. - zx;
+
+	zy    = cc * cb;    
+	zy    = zy * cb;
+
+	x1    = som1[0] * xx; 
+	temp1 = som1[1] * yx;
+	x1    = x1 + temp1;
+	temp1 = som1[2] * zx;
+	x1    = x1 + temp1;
+
+	y1    = som1[0] * xy;
+	temp1 = som1[1] * yy;
+	y1    = y1 + temp1;
+	temp1 = som1[2] * zy;
+	y1    = y1 + temp1;
+
+	x2    = som2[0] * xx; 
+	temp1 = som2[1] * yx;
+	x2    = x2 + temp1;
+	temp1 = som2[2] * zx;
+	x2    = x2 + temp1;
+
+	y2    = som2[0] * xy;
+	temp1 = som2[1] * yy;
+	y2    = y2 + temp1;
+	temp1 = som2[2] * zy;
+	y2    = y2 + temp1;
+
+	x3    = som3[0] * xx; 
+	temp1 = som3[1] * yx;
+	x3    = x3 + temp1;
+	temp1 = som3[2] * zx;
+	x3    = x3 + temp1;
+
+	y3    = som3[0] * xy;
+	temp1 = som3[1] * yy;
+	y3    = y3 + temp1;
+	temp1 = som3[2] * zy;
+	y3    = y3 + temp1;
+
+	x4    = som4[0] * xx; 
+	temp1 = som4[1] * yx;
+	x4    = x4 + temp1;
+	temp1 = som4[2] * zx;
+	x4    = x4 + temp1;
+
+	y4    = som4[0] * xy;
+	temp1 = som4[1] * yy;
+	y4    = y4 + temp1;
+	temp1 = som4[2] * zy;
+	y4    = y4 + temp1;
+
+	x5    = som5[0] * xx; 
+	temp1 = som5[1] * yx;
+	x5    = x5 + temp1;
+	temp1 = som5[2] * zx;
+	x5    = x5 + temp1;
+
+	y5    = som5[0] * xy;
+	temp1 = som5[1] * yy;
+	y5    = y5 + temp1;
+	temp1 = som5[2] * zy;
+	y5    = y5 + temp1;
+
+	x6    = som6[0] * xx;
+	temp1 = som6[1] * yx;
+	x6    = x6 + temp1;
+	temp1 = som6[2] * zx;
+	x6    = x6 + temp1;
+
+	y6    = som6[0] * xy;
+	temp1 = som6[1] * yy;
+	y6    = y6 + temp1;
+	temp1 = som6[2] * zy;
+	y6    = y6 + temp1;
+
+	x7    = som7[0] * xx; 
+	temp1 = som7[1] * yx;
+	x7    = x7 + temp1;
+	temp1 = som7[2] * zx;
+	x7    = x7 + temp1;
+
+	y7    = som7[0] * xy;
+	temp1 = som7[1] * yy;
+	y7    = y7 + temp1;
+	temp1 = som7[2] * zy;
+	y7    = y7 + temp1;
+
+	x8    = som8[0] * xx; 
+	temp1 = som8[1] * yx;
+	x8    = x8 + temp1;
+	temp1 = som8[2] * zx;
+	x8    = x8 + temp1;
+
+	y8    = som8[0] * xy;
+	temp1 = som8[1] * yy;
+	y8    = y8 + temp1;
+	temp1 = som8[2] * zy;
+	y8    = y8 + temp1;
+
+	x1 = x1 + CUBE_DECAL_X; 
+	y1 = y1 + CUBE_DECAL_Y;
+	x2 = x2 + CUBE_DECAL_X;
+	y2 = y2 + CUBE_DECAL_Y;
+	x3 = x3 + CUBE_DECAL_X;
+	y3 = y3 + CUBE_DECAL_Y;
+	x4 = x4 + CUBE_DECAL_X;
+	y4 = y4 + CUBE_DECAL_Y;
+	x5 = x5 + CUBE_DECAL_X;
+	y5 = y5 + CUBE_DECAL_Y;
+	x6 = x6 + CUBE_DECAL_X;
+	y6 = y6 + CUBE_DECAL_Y;
+	x7 = x7 + CUBE_DECAL_X;
+	y7 = y7 + CUBE_DECAL_Y;
+	x8 = x8 + CUBE_DECAL_X;
+	y8 = y8 + CUBE_DECAL_Y;
+
 
 	ecrire_a(0, sharedHead); // NB_POINTS = 0 indicates the end
 
 	// Indicate to the GPU data ready
 	ecrire_a (1, CPU_DATA_OK);
-
-
 fin_tant_que;
 
 
