@@ -24,9 +24,9 @@ contexts:
     # strings in YAML. When using single quoted strings, only single quotes
     # need to be escaped: this is done by using two single quotes next to each
     # other.
-    - match: '\b(si|fonction|definition|retourne|fin_si|tant_que|fin_tant_que|entier|ecrire_mem_part|lire_a|reel|evr|rve|.\+.|.\-.|.\*.|.\<.|.\>.|.\|.|.\^.|.\&.)\b'
+    - match: '\b(si|sinon|fonction|definition|retourne|fin_si|tant_que|fin_tant_que|entier|reel|evr|rve|.\+.|./.|.=.|.\-.|.\*.|.\<.|.\>.|.\|.|.\^.|.\&.|.==.|.!=.)\b'
       scope: keyword.control.example-c
-    - match: '\b(ecrire_a|afficher_LCD|sin|cos)\b'
+    - match: '\b(ecrire_a|afficher_LCD|sin|cos|ecrire_mem_part|lire_a)\b'
       scope: entity.name.class.example-c
 
   numbers:
