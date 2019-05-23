@@ -1,9 +1,0 @@
-entier a;
-entier c;
-reel b;
-//commentaire
-a = 66;
-b = evr(a);
-c = rve(b);
-a = a + 4;
-afficher_LCD(c);

@@ -1,7 +1,0 @@
-entier a;
-entier b;
-reel c;
-a = 20;
-c = 2000;
-b = rve(c);
-afficher_LCD(b);
